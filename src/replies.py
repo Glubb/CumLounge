@@ -139,14 +139,14 @@ format_strs = {
 		( " (one warning will be removed on {warnExpiry!t})" if warnings > 0 else "" ) + ", "+
 		"<b>cooldown</b>: "+
 		( cooldown and "yes, until {cooldown!t}" or "no" ),
- 		 types.USER_INFO_MOD: lambda warnings, cooldown, **_:
-   		 "<b>id</b>: {id} (<b>rank</b>: {rank})\n"+
-    		"<b>karma</b>: {karma}\n"+
-    		"<b>joined</b>: {joined!t}\n"+
-   		 "<b>warnings</b>: {warnings} " +
-   	 	  (" (one warning will be removed on {warnExpiry!t})" if warnings > 0 else "")+"\n"+
-    		"<b>cooldown</b>: "+
-      (cooldown and "yes, until {cooldown!t}" or "no" ),
+	types.USER_INFO_MOD: lambda warnings, cooldown, **_:
+		"<b>id</b>: {id} (<b>rank</b>: {rank})\n"+
+		"<b>pats</b>: {karma}\n"+
+		"<b>joined</b>: {joined!t}\n"+
+		"<b>warnings</b>: {warnings} " +
+		(" (one warning will be removed on {warnExpiry!t})" if warnings > 0 else "")+"\n"+
+		"<b>cooldown</b>: "+
+		(cooldown and "yes, until {cooldown!t}" or "no" ),
 	types.USERS_INFO: "<b>{active}</b> <i>active and</i> {inactive} <i>inactive users</i> (<i>total</i>: {total})",
 	types.USERS_INFO_EXTENDED:
 		"<b>{active}</b> <i>active</i>, {inactive} <i>inactive and</i> "+

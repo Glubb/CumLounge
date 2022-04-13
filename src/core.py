@@ -315,7 +315,7 @@ def toggle_karma(user):
 	with db.modifyUser(id=user.id) as user:
 		user.hideKarma = not user.hideKarma
 		new = user.hideKarma
-	return rp.Reply(rp.types.BOOLEAN_CONFIG, description="Karma notifications", enabled=not new)
+	return rp.Reply(rp.types.BOOLEAN_CONFIG, description="Pat notifications", enabled=not new)
 
 @requireUser
 def get_tripcode(user):
