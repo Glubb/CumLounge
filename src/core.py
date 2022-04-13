@@ -262,24 +262,29 @@ def get_info_mod(user, msid):
 	user2 = db.getUser(id=cm.user_id)
 	params = {
 		"id": user2.getObfuscatedId(),
-		"karma": user2.getObfuscatedKarma(),
+		"username": user2.getFormattedName(),
+		"rank": user2.rank,
+		"karma": user2.karma,
+		"joined": user2.joined,
+		"warnings": user2.warnings,
+		"warnExpiry": user2.warnExpiry,
 		"cooldown": user2.cooldownUntil if user2.isInCooldown() else None,
 	}
 	return rp.Reply(rp.types.USER_INFO_MOD, **params)
 
 @requireUser
 def get_users(user):
-	if user.rank < RANKS.mod:
-		n = sum(1 for user in db.iterateUsers() if user.isJoined())
-		return rp.Reply(rp.types.USERS_INFO, count=n)
 	active, inactive, black = 0, 0, 0
-	for user in db.iterateUsers():
-		if user.isBlacklisted():
+	for user2 in db.iterateUsers():
+		if user2.isBlacklisted():
 			black += 1
-		elif not user.isJoined():
+		elif not user2.isJoined():
 			inactive += 1
 		else:
 			active += 1
+	if user.rank < RANKS.mod:
+		return rp.Reply(rp.types.USERS_INFO,
+        	active=active, inactive=inactive, total=active + inactive)
 	return rp.Reply(rp.types.USERS_INFO_EXTENDED,
 		active=active, inactive=inactive, blacklisted=black,
 		total=active + inactive + black)

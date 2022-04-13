@@ -90,10 +90,10 @@ format_strs = {
 	types.BOOLEAN_CONFIG: lambda enabled, **_:
 		"<b>{description!x}</b>: " + (enabled and "enabled" or "disabled"),
 
-	types.CHAT_JOIN: em("You joined the chat!"),
-	types.CHAT_LEAVE: em("You left the chat!"),
-	types.USER_IN_CHAT: em("You're already in the chat."),
-	types.USER_NOT_IN_CHAT: em("You're not in the chat yet. Use /start to join!"),
+	types.CHAT_JOIN: em("You joined the cat lounge!"),
+	types.CHAT_LEAVE: em("You left the cat lounge!"),
+	types.USER_IN_CHAT: em("You're already in the cat lounge."),
+	types.USER_NOT_IN_CHAT: em("You're not in the cat lounge yet. Use /start to join!"),
 	types.GIVEN_COOLDOWN: lambda deleted, **_:
 		em( "You've been handed a cooldown of {duration!d} for this message"+
 			(deleted and " (message also deleted)" or "") ),
@@ -102,9 +102,9 @@ format_strs = {
 			"given this time, but refrain from posting it again." ),
 	types.PROMOTED_MOD: em("You've been promoted to moderator, run /modhelp for a list of commands."),
 	types.PROMOTED_ADMIN: em("You've been promoted to admin, run /adminhelp for a list of commands."),
-	types.KARMA_THANK_YOU: em("You just gave this user some sweet karma, awesome!"),
+	types.KARMA_THANK_YOU: em("You just gave this cat some nice pats, awesome!"),
 	types.KARMA_NOTIFICATION:
-		em( "You've just been given sweet karma! (check /info to see your karma"+
+		em( "You've just been given nice pats! (check /info to see your pats"+
 			" or /toggleKarma to turn these notifications off)" ),
 	types.TRIPCODE_INFO: lambda tripcode, **_:
 		"<b>tripcode</b>: " + ("<code>{tripcode!x}</code>" if tripcode is not None else "unset"),
@@ -134,17 +134,20 @@ format_strs = {
 
 	types.USER_INFO: lambda warnings, cooldown, **_:
 		"<b>id</b>: {id}, <b>username</b>: {username!x}, <b>rank</b>: {rank_i} ({rank})\n"+
-		"<b>karma</b>: {karma}\n"+
+		"<b>pats</b>: {karma}\n"+
 		"<b>warnings</b>: {warnings} " + smiley(warnings)+
 		( " (one warning will be removed on {warnExpiry!t})" if warnings > 0 else "" ) + ", "+
 		"<b>cooldown</b>: "+
 		( cooldown and "yes, until {cooldown!t}" or "no" ),
-	types.USER_INFO_MOD: lambda cooldown, **_:
-		"<b>id</b>: {id}, <b>username</b>: anonymous, <b>rank</b>: n/a, "+
-		"<b>karma</b>: {karma}\n"+
-		"<b>cooldown</b>: "+
-		( cooldown and "yes, until {cooldown!t}" or "no" ),
-	types.USERS_INFO: "<b>{count}</b> <i>users</i>",
+ 		 types.USER_INFO_MOD: lambda warnings, cooldown, **_:
+   		 "<b>id</b>: {id} (<b>rank</b>: {rank})\n"+
+    		"<b>karma</b>: {karma}\n"+
+    		"<b>joined</b>: {joined!t}\n"+
+   		 "<b>warnings</b>: {warnings} " +
+   	 	  (" (one warning will be removed on {warnExpiry!t})" if warnings > 0 else "")+"\n"+
+    		"<b>cooldown</b>: "+
+      (cooldown and "yes, until {cooldown!t}" or "no" ),
+	types.USERS_INFO: "<b>{active}</b> <i>active and</i> {inactive} <i>inactive users</i> (<i>total</i>: {total})",
 	types.USERS_INFO_EXTENDED:
 		"<b>{active}</b> <i>active</i>, {inactive} <i>inactive and</i> "+
 		"{blacklisted} <i>blacklisted users</i> (<i>total</i>: {total})",
