@@ -105,7 +105,7 @@ format_strs = {
 	types.KARMA_THANK_YOU: em("You just gave this cat some nice pats, awesome!"),
 	types.KARMA_NOTIFICATION:
 		em( "You've just been given nice pats! (check /info to see your pats"+
-			" or /toggleKarma to turn these notifications off)" ),
+			" or /togglepats to turn these notifications off)" ),
 	types.TRIPCODE_INFO: lambda tripcode, **_:
 		"<b>tripcode</b>: " + ("<code>{tripcode!x}</code>" if tripcode is not None else "unset"),
 	types.TRIPCODE_SET: em("Tripcode set. It will appear as: ") + "<b>{tripname!x}</b> <code>{tripcode!x}</code>",
