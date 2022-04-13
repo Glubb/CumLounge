@@ -561,7 +561,7 @@ def cmd_motd(ev, arg):
 		send_answer(ev, core.set_motd(c_user, arg), reply_to=True)
 
 cmd_toggledebug = wrap_core(core.toggle_debug)
-cmd_togglekarma = wrap_core(core.toggle_karma)
+cmd_togglepats = wrap_core(core.toggle_karma)
 
 @takesArgument(optional=True)
 def cmd_tripcode(ev, arg):
