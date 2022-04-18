@@ -28,6 +28,8 @@ class Reply():
 types = NumericEnum([
 	"CUSTOM",
 	"SUCCESS",
+	"SUCCESS_DELETE",
+	"SUCCESS_DELETEALL",
 	"BOOLEAN_CONFIG",
 
 	"CHAT_JOIN",
