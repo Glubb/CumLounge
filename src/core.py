@@ -421,11 +421,11 @@ def delete_message(user, msid, del_all=False):
 	user2 = db.getUser(id=cm.user_id)
 
 	if del_all:
-		count = 0
-		for cm2 in ch.getMessages(user2.id):
+		msgs = ch.getMessages(user2.id)
+		for cm2 in msgs:
 			Sender.delete(cm2)
 		logging.info("%s deleted all messages from [%s]", user, user2.getObfuscatedId())
-		return rp.Reply(rp.types.SUCCESS_DELETEALL, id=user2.getObfuscatedId(), count=count)
+		return rp.Reply(rp.types.SUCCESS_DELETEALL, id=user2.getObfuscatedId(), count=len(msgs))
 	else:
 		_push_system_message(rp.Reply(rp.types.MESSAGE_DELETED), who=user2, reply_to=msid)
 		Sender.delete(msid)
