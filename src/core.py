@@ -395,12 +395,18 @@ def warn_user(user, msid, delete=False, del_all=False):
 
 	if delete:
 		if del_all:
-			for cm2 in ch.getMessages(cm.user_id):
+			msgs = ch.getMessages(cm.user_id)
+			for cm2 in msgs:
 				Sender.delete(cm2)
+			logging.info("%s warned [%s] (all messages deleted)", user, user2.getObfuscatedId())
+			return rp.Reply(rp.types.SUCCESS_DELETEALL, id=cm.user_id, count=len(msgs))
 		else:
 			Sender.delete(msid)
-	logging.info("%s warned [%s]%s", user, user2.getObfuscatedId(), delete and " (" + (del_all and "all messages" or "message") + "deleted)" or "")
-	return rp.Reply(rp.types.SUCCESS)
+			logging.info("%s warned [%s] (message deleted)", user, user2.getObfuscatedId())
+			return rp.Reply(rp.types.SUCCESS_DELETE, id=cm.user_id)
+	else:
+		logging.info("%s warned [%s]", user, user2.getObfuscatedId())
+		return rp.Reply(rp.types.SUCCESS)
 
 @requireUser
 @requireRank(RANKS.mod)
@@ -415,6 +421,7 @@ def delete_message(user, msid, del_all=False):
 	user2 = db.getUser(id=cm.user_id)
 
 	if del_all:
+		count = 0
 		for cm2 in ch.getMessages(user2.id):
 			Sender.delete(cm2)
 		logging.info("%s deleted all messages from [%s]", user, user2.getObfuscatedId())
