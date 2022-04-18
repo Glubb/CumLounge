@@ -399,11 +399,11 @@ def warn_user(user, msid, delete=False, del_all=False):
 			for cm2 in msgs:
 				Sender.delete(cm2)
 			logging.info("%s warned [%s] (all messages deleted)", user, user2.getObfuscatedId())
-			return rp.Reply(rp.types.SUCCESS_DELETEALL, id=cm.user_id, count=len(msgs))
+			return rp.Reply(rp.types.SUCCESS_WARN_DELETEALL, id=cm.user_id, count=len(msgs))
 		else:
 			Sender.delete(msid)
 			logging.info("%s warned [%s] (message deleted)", user, user2.getObfuscatedId())
-			return rp.Reply(rp.types.SUCCESS_DELETE, id=cm.user_id)
+			return rp.Reply(rp.types.SUCCESS_WARN_DELETE, id=cm.user_id)
 	else:
 		logging.info("%s warned [%s]", user, user2.getObfuscatedId())
 		return rp.Reply(rp.types.SUCCESS)
