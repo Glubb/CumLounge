@@ -395,7 +395,7 @@ def warn_user(user, msid, delete=False, del_all=False):
 
 	if delete:
 		if del_all:
-			for cm2 in cm.getMessages(cm.user_id):
+			for cm2 in ch.getMessages(cm.user_id):
 				Sender.delete(cm2)
 		else:
 			Sender.delete(msid)
