@@ -46,6 +46,9 @@ class Cache():
 	def getMessage(self, msid):
 		with self.lock:
 			return self.msgs.get(msid, None)
+	def getMessages(self, uid):
+		with self.lock:
+			return {msid: msg for msid, msg in self.msgs if msg.user_id == uid}
 	def saveMapping(self, uid, msid, data):
 		with self.lock:
 			self._saveMapping(self.idmap, uid, msid, data)

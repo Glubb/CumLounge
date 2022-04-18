@@ -375,7 +375,7 @@ def send_admin_message(user, arg):
 
 @requireUser
 @requireRank(RANKS.mod)
-def warn_user(user, msid, delete=False):
+def warn_user(user, msid, delete=False, del_all=False):
 	cm = ch.getMessage(msid)
 	if cm is None or cm.user_id is None:
 		return rp.Reply(rp.types.ERR_NOT_IN_CACHE)
@@ -392,14 +392,19 @@ def warn_user(user, msid, delete=False):
 		user2 = db.getUser(id=cm.user_id)
 		if not delete: # allow deleting already warned messages
 			return rp.Reply(rp.types.ERR_ALREADY_WARNED)
+
 	if delete:
-		Sender.delete(msid)
-	logging.info("%s warned [%s]%s", user, user2.getObfuscatedId(), delete and " (message deleted)" or "")
+		if del_all:
+			for cm2 in cm.getMessages(cm.user_id):
+				Sender.delete(cm2)
+		else:
+			Sender.delete(msid)
+	logging.info("%s warned [%s]%s", user, user2.getObfuscatedId(), delete and " (" + (del_all and "all messages" or "message") + "deleted)" or "")
 	return rp.Reply(rp.types.SUCCESS)
 
 @requireUser
 @requireRank(RANKS.mod)
-def delete_message(user, msid):
+def delete_message(user, msid, del_all=False):
 	if not allow_remove_command:
 		return rp.Reply(rp.types.ERR_COMMAND_DISABLED)
 
@@ -408,10 +413,17 @@ def delete_message(user, msid):
 		return rp.Reply(rp.types.ERR_NOT_IN_CACHE)
 
 	user2 = db.getUser(id=cm.user_id)
-	_push_system_message(rp.Reply(rp.types.MESSAGE_DELETED), who=user2, reply_to=msid)
-	Sender.delete(msid)
-	logging.info("%s deleted a message from [%s]", user, user2.getObfuscatedId())
-	return rp.Reply(rp.types.SUCCESS)
+
+	if del_all:
+		for cm2 in cm.getMessages(user2.id):
+			Sender.delete(cm2)
+		logging.info("%s deleted all messages from [%s]", user, user2.getObfuscatedId())
+		return rp.Reply(rp.types.SUCCESS_DELETEALL, id=user2.getObfuscatedId(), count=count)
+	else:
+		_push_system_message(rp.Reply(rp.types.MESSAGE_DELETED), who=user2, reply_to=msid)
+		Sender.delete(msid)
+		logging.info("%s deleted a message from [%s]", user, user2.getObfuscatedId())
+		return rp.Reply(rp.types.SUCCESS_DELETE, id=user2.getObfuscatedId())
 
 @requireUser
 @requireRank(RANKS.admin)

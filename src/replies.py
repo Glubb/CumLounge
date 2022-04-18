@@ -87,6 +87,8 @@ def smiley(n):
 format_strs = {
 	types.CUSTOM: "{text}",
 	types.SUCCESS: "☑",
+	types.SUCCESS_DELETE: em("☑ A messages by <b>{id}</b> has been deleted"),
+    types.SUCCESS_DELETEALL: em("☑ All {count} messages by <b>{id}</b> have been deleted"),
 	types.BOOLEAN_CONFIG: lambda enabled, **_:
 		"<b>{description!x}</b>: " + (enabled and "enabled" or "disabled"),
 
