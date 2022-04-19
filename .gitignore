@@ -1,3 +1,7 @@
+# Our configuration file
 config.yaml
+# Any database files
+*.db
+# Directories
 venv
 __pycache__
