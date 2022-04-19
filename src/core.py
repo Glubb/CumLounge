@@ -471,7 +471,6 @@ def blacklist_user(user, msid, reason, del_all=False):
 	_push_system_message(
 		rp.Reply(rp.types.ERR_BLACKLISTED, reason=reason, contact=blacklist_contact),
 		who=user2, reply_to=msid)
-	Sender.delete(msid)
 	if del_all:
 		msgs = ch.getMessages(cm.user_id)
 		for cm2 in msgs:
@@ -479,6 +478,7 @@ def blacklist_user(user, msid, reason, del_all=False):
 		logging.info("%s was blacklisted by %s and all his messages were deleted for: %s", user2, user, reason)
 		return rp.Reply(rp.types.SUCCESS_BLACKLIST_DELETEALL, id=user2.getObfuscatedId(), count=len(msgs))
 	else:
+		Sender.delete(msid)
 		logging.info("%s was blacklisted by %s for: %s", user2, user, reason)
 		return rp.Reply(rp.types.SUCCESS_BLACKLIST, id=user2.getObfuscatedId())
 
