@@ -653,7 +653,7 @@ def cmd_blacklist(ev, arg):
 	reply_msid = ch.lookupMapping(ev.from_user.id, data=ev.reply_to_message.message_id)
 	if reply_msid is None:
 		return send_answer(ev, rp.Reply(rp.types.ERR_NOT_IN_CACHE), True)
-	return send_answer(ev, core.blacklist_user(c_user, reply_msid, arg), True)
+	return send_answer(ev, core.blacklist_user(c_user, reply_msid, arg, True), True)
 
 def plusone(ev):
 	c_user = UserContainer(ev.from_user)

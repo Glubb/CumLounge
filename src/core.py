@@ -398,14 +398,14 @@ def warn_user(user, msid, delete=False, del_all=False):
 			msgs = ch.getMessages(cm.user_id)
 			for cm2 in msgs:
 				Sender.delete(cm2)
-			logging.info("%s warned [%s] (all messages deleted)", user, user2.getObfuscatedId())
+			logging.info("%s warned %s (all messages deleted)", user, user2.getObfuscatedId())
 			return rp.Reply(rp.types.SUCCESS_WARN_DELETEALL, user2.getObfuscatedId(), count=len(msgs))
 		else:
 			Sender.delete(msid)
-			logging.info("%s warned [%s] (message deleted)", user, user2.getObfuscatedId())
+			logging.info("%s warned %s (message deleted)", user, user2.getObfuscatedId())
 			return rp.Reply(rp.types.SUCCESS_WARN_DELETE, user2.getObfuscatedId())
 	else:
-		logging.info("%s warned [%s]", user, user2.getObfuscatedId())
+		logging.info("%s warned %s", user, user2.getObfuscatedId())
 		return rp.Reply(rp.types.SUCCESS)
 
 @requireUser
@@ -457,7 +457,7 @@ def uncooldown_user(user, oid2=None, username2=None):
 
 @requireUser
 @requireRank(RANKS.admin)
-def blacklist_user(user, msid, reason):
+def blacklist_user(user, msid, reason, del_all=False):
 	cm = ch.getMessage(msid)
 	if cm is None or cm.user_id is None:
 		return rp.Reply(rp.types.ERR_NOT_IN_CACHE)
@@ -472,8 +472,15 @@ def blacklist_user(user, msid, reason):
 		rp.Reply(rp.types.ERR_BLACKLISTED, reason=reason, contact=blacklist_contact),
 		who=user2, reply_to=msid)
 	Sender.delete(msid)
-	logging.info("%s was blacklisted by %s for: %s", user2, user, reason)
-	return rp.Reply(rp.types.SUCCESS)
+	if del_all:
+		msgs = ch.getMessages(cm.user_id)
+		for cm2 in msgs:
+			Sender.delete(cm2)
+		logging.info("%s was blacklisted by %s and all his messages were deleted for: %s", user2, user, reason)
+		return rp.Reply(rp.types.SUCCESS_BLACKLIST_DELETEALL, id=user2.getObfuscatedId(), count=len(msgs))
+	else:
+		logging.info("%s was blacklisted by %s for: %s", user2, user, reason)
+		return rp.Reply(rp.types.SUCCESS_BLACKLIST, id=user2.getObfuscatedId())
 
 @requireUser
 def give_karma(user, msid):

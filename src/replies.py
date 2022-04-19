@@ -32,6 +32,8 @@ types = NumericEnum([
 	"SUCCESS_DELETEALL",
 	"SUCCESS_WARN_DELETE",
 	"SUCCESS_WARN_DELETEALL",
+	"SUCCESS_BLACKLIST",
+	"SUCCESS_BLACKLIST_DELETEALL",
 	"BOOLEAN_CONFIG",
 
 	"CHAT_JOIN",
@@ -95,6 +97,8 @@ format_strs = {
     types.SUCCESS_DELETEALL: "☑ All {count} messages by <b>{id}</b> have been deleted",
 	types.SUCCESS_WARN_DELETE: "☑ <b>{id}</b> has been warned and a message was deleted",
 	types.SUCCESS_WARN_DELETEALL: "☑ <b>{id}</b> has been warned and all {count} messages were deleted",
+	types.SUCCESS_BLACKLIST: "☑ <b>{id}</b> has been blacklisted",
+	types.SUCCESS_BLACKLIST_DELETEALL: "☑ <b>{id}</b> has been blacklisted and all {count} messages were deleted",
 	types.BOOLEAN_CONFIG: lambda enabled, **_:
 		"<b>{description!x}</b>: " + (enabled and "enabled" or "disabled"),
 
