@@ -573,8 +573,7 @@ def cmd_tripcode(ev, arg):
 		send_answer(ev, core.set_tripcode(c_user, arg))
 
 def cmd_help(ev):
-	c_user = UserContainer(ev.from_user)
-	send_answer(ev, rp.Reply(rp.types.HELP, rank=c_user.rank), True)
+	send_answer(ev, rp.Reply(rp.types.HELP, rank=ev.from_user.rank), True)
 
 def cmd_version(ev):
 	send_answer(ev, rp.Reply(rp.types.PROGRAM_VERSION, version=VERSION), True)

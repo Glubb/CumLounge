@@ -166,15 +166,15 @@ format_strs = {
 	types.PROGRAM_VERSION: "secretlounge-ng v{version} ~ https://github.com/sfan5/secretlounge-ng",
 	types.HELP: lambda rank, **_:
 		"\n<b><u>Important commands</u></b>\n"+
-		"	"+em("/info") +        " - <i>Show info about you</i>\n"+
-		"	"+em("/help")+         " - <i>Show available commands</i>\n"+
-		"	"+em("/users")+        " - <i>Show number of users</i>\n"+
+		"	"+em("/info") +            " - <i>Show info about you</i>\n"+
+		"	"+em("/help") +            " - <i>Show available commands</i>\n"+
+		"	"+em("/users") +           " - <i>Show number of users</i>\n"+
 		"\n<b><u>Additional commands</u></b>\n"+
-		"	"+em("/stop") +        " - <i>Leave the chat</i>\n"+
-		"	"+em("/version")+      " - <i>Show bot version</i>\n"+
+		"	"+em("/stop") +            " - <i>Leave the chat</i>\n"+
+		"	"+em("/version") +         " - <i>Show bot version</i>\n"+
 		"\n<b><u>Pat commands</u></b>\n"+
-		"	"+em("+1")    +" (reply) - <i>Give a pat</i>\n"+
-		"	"+em("-1")    +" (reply) - <i>Revoke a pat</i>\n"+
+		"	"+em("+1") +       " (reply) - <i>Give a pat</i>\n"+
+		"	"+em("-1") +       " (reply) - <i>Revoke a pat</i>\n"+
 		(
 			"\n<b><u>Mod commands</u></b>\n"+
 			"	"+em("/info") +        " (reply) - <i>Show info about a user</i>\n"+
