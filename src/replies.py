@@ -73,8 +73,7 @@ types = NumericEnum([
 	"USERS_INFO_EXTENDED",
 
 	"PROGRAM_VERSION",
-	"HELP_MODERATOR",
-	"HELP_ADMIN",
+	"HELP",
 ])
 
 # formatting of these as user-readable text
@@ -165,27 +164,36 @@ format_strs = {
 		"{blacklisted} <i>blacklisted users</i> (<i>total</i>: {total})",
 
 	types.PROGRAM_VERSION: "secretlounge-ng v{version} ~ https://github.com/sfan5/secretlounge-ng",
-	types.HELP_MODERATOR:
-		"<i>Moderators can use the following commands</i>:\n"+
-		"  /modhelp - show this text\n"+
-		"  /modsay &lt;message&gt; - send an official moderator message\n"+
-		"\n"+
-		"<i>Or reply to a message and use</i>:\n"+
-		"  /info - get info about the user that sent this message\n"+
-		"  /warn - warn the user that sent this message (cooldown)\n"+
-		"  /delete - delete a message and warn the user\n"
-		"  /remove - delete a message without a cooldown/warning",
-	types.HELP_ADMIN:
-		"<i>Admins can use the following commands</i>:\n"+
-		"  /adminhelp - show this text\n"+
-		"  /adminsay &lt;message&gt; - send an official admin message\n"+
-		"  /motd &lt;message&gt; - set the welcome message (HTML formatted)\n"+
-		"  /uncooldown &lt;id | username&gt; - remove cooldown from an user\n"+
-		"  /mod &lt;username&gt; - promote an user to the moderator rank\n"+
-		"  /admin &lt;username&gt; - promote an user to the admin rank\n"+
-		"\n"+
-		"<i>Or reply to a message and use</i>:\n"+
-		"  /blacklist [reason] - blacklist the user who sent this message",
+	types.HELP: lambda rank, **_:
+		"\n<b><u>Important commands</u></b>\n"+
+		"	"+em("/info") +        " - <i>Show info about you</i>\n"+
+		"	"+em("/help")+         " - <i>Show available commands</i>\n"+
+		"	"+em("/users")+        " - <i>Show number of users</i>\n"+
+		"\n<b><u>Additional commands</u></b>\n"+
+		"	"+em("/stop") +        " - <i>Leave the chat</i>\n"+
+		"	"+em("/version")+      " - <i>Show bot version</i>\n"+
+		"\n<b><u>Pat commands</u></b>\n"+
+		"	"+em("+1")    +" (reply) - <i>Give a pat</i>\n"+
+		"	"+em("-1")    +" (reply) - <i>Revoke a pat</i>\n"+
+		(
+			"\n<b><u>Mod commands</u></b>\n"+
+			"	"+em("/info") +        " (reply) - <i>Show info about a user</i>\n"+
+			"	"+em("/modsay TEXT") +        "  - <i>Post mod message</i>\n"+
+			"	"+em("/warn") +        " (reply) - <i>Warn a user</i>\n"+
+			"	"+em("/remove") +      " (reply) - <i>Delete a message</i>\n"+
+			"	"+em("/removeall") +   " (reply) - <i>Delete all messages</i>\n"+
+			"	"+em("/delete") +      " (reply) - <i>Delete a message and warn the user</i>\n"+
+			"	"+em("/deleteall") +   " (reply) - <i>Delete all messages and warn the user</i>\n"
+		if rank >= RANKS.mod else "")+
+		(
+			"\n<b><u>Admin commands</u></b>\n"+
+			"	"+em("/adminsay TEXT") +          "  - <i>Post admin message</i>\n"+
+			"	"+em("/motd TEXT") +              "  - <i>Define welcome message (HTML)</i>\n"+
+			"	"+em("/uncooldown ID/USERNAME") + "  - <i>Remove cooldown from a user</i>\n"+
+			"	"+em("/mod USERNAME") +           "  - <i>Promote a user to mod</i>\n"+
+			"	"+em("/admin USERNAME") +         "  - <i>Promote a user to admin</i>\n"+
+			"	"+em("/blacklist REASON") +       "  - <i>Blacklist a user and delete all messages</i>\n"
+		if rank >= RANKS.admin else "")
 }
 
 localization = {}

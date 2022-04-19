@@ -65,7 +65,7 @@ def init(config, _db, _ch):
 
 	cmds = [
 		"start", "stop", "users", "info", "motd", "toggledebug", "togglepats",
-		"version", "source", "modhelp", "adminhelp", "modsay", "adminsay", "mod",
+		"version", "source", "help", "modsay", "adminsay", "mod",
 		"admin", "warn", "delete", "deleteall", "remove", "removeall", "uncooldown", "blacklist", "s", "sign",
 		"tripcode", "t", "tsign"
 	]
@@ -572,12 +572,9 @@ def cmd_tripcode(ev, arg):
 	else:
 		send_answer(ev, core.set_tripcode(c_user, arg))
 
-
-def cmd_modhelp(ev):
-	send_answer(ev, rp.Reply(rp.types.HELP_MODERATOR), True)
-
-def cmd_adminhelp(ev):
-	send_answer(ev, rp.Reply(rp.types.HELP_ADMIN), True)
+def cmd_help(ev):
+	c_user = UserContainer(ev.from_user)
+	send_answer(ev, rp.Reply(rp.types.HELP, rank=c_user.rank), True)
 
 def cmd_version(ev):
 	send_answer(ev, rp.Reply(rp.types.PROGRAM_VERSION, version=VERSION), True)
