@@ -44,7 +44,8 @@ types = NumericEnum([
 	"MESSAGE_DELETED",
 	"PROMOTED_MOD",
 	"PROMOTED_ADMIN",
-	"KARMA_THANK_YOU",
+	"KARMA_VOTED_UP",
+	"KARMA_VOTED_DOWN",
 	"KARMA_NOTIFICATION",
 	"TRIPCODE_INFO",
 	"TRIPCODE_SET",
@@ -58,8 +59,9 @@ types = NumericEnum([
 	"ERR_NOT_IN_COOLDOWN",
 	"ERR_COOLDOWN",
 	"ERR_BLACKLISTED",
-	"ERR_ALREADY_UPVOTED",
-	"ERR_UPVOTE_OWN_MESSAGE",
+	"ERR_ALREADY_VOTED_UP",
+	"ERR_ALREADY_VOTED_DOWN",
+	"ERR_VOTE_OWN_MESSAGE",
 	"ERR_SPAMMY",
 	"ERR_SPAMMY_SIGN",
 	"ERR_SIGN_PRIVACY",
@@ -113,9 +115,10 @@ format_strs = {
 			"given this time, but refrain from posting it again." ),
 	types.PROMOTED_MOD: em("You've been promoted to moderator, run /modhelp for a list of commands."),
 	types.PROMOTED_ADMIN: em("You've been promoted to admin, run /adminhelp for a list of commands."),
-	types.KARMA_THANK_YOU: em("You just gave this cat some nice pats, awesome!"),
-	types.KARMA_NOTIFICATION:
-		em( "You've just been given nice pats! (check /info to see your pats"+
+	types.KARMA_VOTED_UP: em("☑ You just gave this cat a pat, awesome!"),
+	types.KARMA_VOTED_DOWN: em("☑ You just removed a pat from this cat!"),
+	types.KARMA_NOTIFICATION: lambda count, **_:
+		em( "You have just " + ("been given" if count > 0 else "lost") +" a pat! (check /info to see your pats"+
 			" or /togglepats to turn these notifications off)" ),
 	types.TRIPCODE_INFO: lambda tripcode, **_:
 		"<b>tripcode</b>: " + ("<code>{tripcode!x}</code>" if tripcode is not None else "unset"),
@@ -132,8 +135,9 @@ format_strs = {
 	types.ERR_BLACKLISTED: lambda reason, contact, **_:
 		em( "You've been blacklisted" + (reason and " for {reason!x}" or "") )+
 		( em("\ncontact:") + " {contact}" if contact else "" ),
-	types.ERR_ALREADY_UPVOTED: em("You have already upvoted this message."),
-	types.ERR_UPVOTE_OWN_MESSAGE: em("You can't upvote your own message."),
+	types.ERR_ALREADY_VOTED_UP: em("You have already given pats for this message"),
+	types.ERR_ALREADY_VOTED_DOWN: em("You have already stolen pats for this message"),
+	types.ERR_VOTE_OWN_MESSAGE: em("You cannot give or take yourself pats"),
 	types.ERR_SPAMMY: em("Your message has not been sent. Avoid sending messages too fast, try again later."),
 	types.ERR_SPAMMY_SIGN: em("Your message has not been sent. Avoid using /sign too often, try again later."),
 	types.ERR_SIGN_PRIVACY: em("Your account privacy settings prevent usage of the sign feature. Enable linked forwards first."),
@@ -178,7 +182,7 @@ format_strs = {
 		"	/s TEXT" +          " - <i>Sign a message with your username</i>\n"+
 		"\n<b><u>Pat commands</u></b>\n"+
 		"	+1" +       " (reply) - <i>Give a pat</i>\n"+
-		"	-1" +       " (reply) - <i>Revoke a pat (coming soon)</i>\n"+
+		"	-1" +       " (reply) - <i>Remove a pat</i>\n"+
 		"	/togglepats" +      " - <i>Toggle pat notifications</i>\n"+
 		(
 			"\n<b><u>Mod commands</u></b>\n"+

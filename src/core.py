@@ -483,21 +483,28 @@ def blacklist_user(user, msid, reason, del_all=False):
 		return rp.Reply(rp.types.SUCCESS_BLACKLIST, id=user2.getObfuscatedId())
 
 @requireUser
-def give_karma(user, msid):
+def mofify_karma(user, msid, amount):
 	cm = ch.getMessage(msid)
 	if cm is None or cm.user_id is None:
 		return rp.Reply(rp.types.ERR_NOT_IN_CACHE)
 
 	if cm.hasUpvoted(user):
-		return rp.Reply(rp.types.ERR_ALREADY_UPVOTED)
-	elif user.id == cm.user_id:
-		return rp.Reply(rp.types.ERR_UPVOTE_OWN_MESSAGE)
-	cm.addUpvote(user)
-	user2 = db.getUser(id=cm.user_id)
-	with db.modifyUser(id=cm.user_id) as user2:
-		user2.karma += KARMA_PLUS_ONE
-	if not user2.hideKarma:
-		_push_system_message(rp.Reply(rp.types.KARMA_NOTIFICATION), who=user2, reply_to=msid)
+		return rp.Reply(rp.types.ERR_ALREADY_VOTED_UP)
+	if cm.hasDownvoted(user):
+		return rp.Reply(rp.types.ERR_ALREADY_VOTED_DOWN)
+	if user.id == cm.user_id:
+		return rp.Reply(rp.types.ERR_VOTE_OWN_MESSAGE)
+	if amount != 0:
+		if amount > 0:
+			cm.addUpvote(user)
+		elif amount < 0:
+			cm.addDownvote(user)
+
+		user2 = db.getUser(id=cm.user_id)
+		with db.modifyUser(id=cm.user_id) as user2:
+			user2.karma += KARMA_PLUS_ONE * amount
+		if not user2.hideKarma:
+			_push_system_message(rp.Reply(rp.types.KARMA_NOTIFICATION, count=amount), who=user2, reply_to=msid)
 	return rp.Reply(rp.types.KARMA_THANK_YOU)
 
 
