@@ -494,19 +494,22 @@ def mofify_karma(user, msid, amount):
 		return rp.Reply(rp.types.ERR_ALREADY_VOTED_DOWN)
 	if user.id == cm.user_id:
 		return rp.Reply(rp.types.ERR_VOTE_OWN_MESSAGE)
-	if amount != 0:
-		if amount > 0:
-			cm.addUpvote(user)
-		elif amount < 0:
-			cm.addDownvote(user)
+	if amount > 0:
+		cm.addUpvote(user)
+	elif amount < 0:
+		cm.addDownvote(user)
+	else:
+		return
 
-		user2 = db.getUser(id=cm.user_id)
-		with db.modifyUser(id=cm.user_id) as user2:
-			user2.karma += KARMA_PLUS_ONE * amount
-		if not user2.hideKarma:
-			_push_system_message(rp.Reply(rp.types.KARMA_NOTIFICATION, count=amount), who=user2, reply_to=msid)
-	return rp.Reply(rp.types.KARMA_THANK_YOU)
-
+	user2 = db.getUser(id=cm.user_id)
+	with db.modifyUser(id=cm.user_id) as user2:
+		user2.karma += KARMA_PLUS_ONE * amount
+	if not user2.hideKarma:
+		_push_system_message(rp.Reply(rp.types.KARMA_NOTIFICATION, count=amount), who=user2, reply_to=msid)
+	if amount > 0:
+		return rp.Reply(rp.types.KARMA_VOTED_UP)
+	elif amount < 0:
+		return rp.Reply(rp.types.KARMA_VOTED_DOWN)
 
 @requireUser
 def prepare_user_message(user: User, msg_score, *, is_media=False, signed=False, tripcode=False):
