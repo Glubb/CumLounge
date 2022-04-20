@@ -37,7 +37,7 @@ def dump(obj, name=None, r=False):
 			print("%s%s = %r" % (name, e, ev))
 
 # Program version
-VERSION = "1.8 cat lounge edition (lil bit modified)"
+VERSION = "0.1"
 
 # Ranks
 RANKS = Enum({
@@ -48,7 +48,7 @@ RANKS = Enum({
 })
 
 # Cooldown related
-COOLDOWN_TIME_BEGIN = [5, 25, 120, 720, 4320] # begins with 1m, 5m, 25m, 2h, 12h, 3d
+COOLDOWN_TIME_BEGIN = [10, 30, 180, 1440, 4320] # begins with 1m, 5m, 25m, 2h, 12h, 3d
 COOLDOWN_TIME_LINEAR_M = 4320 # continues 7d, 10d, 13d, 16d, ... (linear)
 COOLDOWN_TIME_LINEAR_B = 10080
 WARN_EXPIRE_HOURS = 7 * 24

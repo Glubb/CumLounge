@@ -163,27 +163,32 @@ format_strs = {
 		"<b>{active}</b> <i>active</i>, {inactive} <i>inactive and</i> "+
 		"{blacklisted} <i>blacklisted users</i> (<i>total</i>: {total})",
 
-	types.PROGRAM_VERSION: "secretlounge-ng v{version} ~ https://github.com/sfan5/secretlounge-ng",
+	types.PROGRAM_VERSION: "catlounge-ng-meow v{version} ~ ",
 	types.HELP: lambda rank, **_:
 		"<b><u>Important commands</u></b>\n"+
+		"	/start" +           " - <i>Join the chat</i>\n"+
+		"	/stop" +            " - <i>Leave the chat</i>\n"+
 		"	/info" +            " - <i>Show info about you</i>\n"+
 		"	/help" +            " - <i>Show available commands</i>\n"+
-		"	/users" +           " - <i>Show number of users</i>\n"+
 		"\n<b><u>Additional commands</u></b>\n"+
-		"	/stop" +            " - <i>Leave the chat</i>\n"+
+		"	/users" +           " - <i>Show number of users</i>\n"+
 		"	/version" +         " - <i>Show bot version</i>\n"+
+		"	/motd" +            " - <i>Show rules</i>\n"+
+		"	/toggledebug" +     " - <i>toggle debug message</i>\n"+
+		"	/s TEXT" +          " - <i>Sign a message with your username</i>\n"+
 		"\n<b><u>Pat commands</u></b>\n"+
 		"	+1" +       " (reply) - <i>Give a pat</i>\n"+
-		"	-1" +       " (reply) - <i>Revoke a pat</i>\n"+
+		"	-1" +       " (reply) - <i>Revoke a pat[not yet]</i>\n"+
+		"	/togglepats" +      " - <i>toggle pat notifications</i>\n"+
 		(
 			"\n<b><u>Mod commands</u></b>\n"+
 			"	/info" +        " (reply) - <i>Show info about a user</i>\n"+
 			"	/modsay TEXT" +         " - <i>Post mod message</i>\n"+
 			"	/warn" +        " (reply) - <i>Warn a user</i>\n"+
 			"	/remove" +      " (reply) - <i>Delete a message</i>\n"+
-			"	/removeall" +   " (reply) - <i>Delete all messages</i>\n"+
+			"	/removeall" +   " (reply) - <i>Delete all messages from a user</i>\n"+
 			"	/delete" +      " (reply) - <i>Delete a message and warn the user</i>\n"+
-			"	/deleteall" +   " (reply) - <i>Delete all messages and warn the user</i>\n"
+			"	/deleteall" +   " (reply) - <i>Delete all messages from a user and warn</i>\n"
 		if rank >= RANKS.mod else "")+
 		(
 			"\n<b><u>Admin commands</u></b>\n"+
@@ -192,7 +197,7 @@ format_strs = {
 			"	/uncooldown ID/USERNAME" + "  - <i>Remove cooldown from a user</i>\n"+
 			"	/mod USERNAME" +           "  - <i>Promote a user to mod</i>\n"+
 			"	/admin USERNAME" +         "  - <i>Promote a user to admin</i>\n"+
-			"	/blacklist REASON" +       "  - <i>Blacklist a user and delete all messages</i>\n"
+			"	/blacklist REASON" +       "  - <i>Blacklist and delete all messages from a user </i>\n"
 		if rank >= RANKS.admin else "")
 }
 
