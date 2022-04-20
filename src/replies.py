@@ -166,7 +166,7 @@ format_strs = {
 	types.PROGRAM_VERSION: "secretlounge-ng v{version} ~ https://github.com/sfan5/secretlounge-ng",
 	types.HELP: lambda rank, **_:
 		"\n<b><u>Important commands</u></b>\n"+
-		"	"+em("/info") +            " - <i>Show info about you</i>\n"+
+		"	/info" +            " - <i>Show info about you</i>\n"+
 		"	"+em("/help") +            " - <i>Show available commands</i>\n"+
 		"	"+em("/users") +           " - <i>Show number of users</i>\n"+
 		"\n<b><u>Additional commands</u></b>\n"+
