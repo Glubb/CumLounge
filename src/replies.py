@@ -165,34 +165,34 @@ format_strs = {
 
 	types.PROGRAM_VERSION: "secretlounge-ng v{version} ~ https://github.com/sfan5/secretlounge-ng",
 	types.HELP: lambda rank, **_:
-		"\n<b><u>Important commands</u></b>\n"+
+		"<b><u>Important commands</u></b>\n"+
 		"	/info" +            " - <i>Show info about you</i>\n"+
-		"	"+em("/help") +            " - <i>Show available commands</i>\n"+
-		"	"+em("/users") +           " - <i>Show number of users</i>\n"+
+		"	/help" +            " - <i>Show available commands</i>\n"+
+		"	/users" +           " - <i>Show number of users</i>\n"+
 		"\n<b><u>Additional commands</u></b>\n"+
-		"	"+em("/stop") +            " - <i>Leave the chat</i>\n"+
-		"	"+em("/version") +         " - <i>Show bot version</i>\n"+
+		"	/stop" +            " - <i>Leave the chat</i>\n"+
+		"	/version" +         " - <i>Show bot version</i>\n"+
 		"\n<b><u>Pat commands</u></b>\n"+
-		"	"+em("+1") +       " (reply) - <i>Give a pat</i>\n"+
-		"	"+em("-1") +       " (reply) - <i>Revoke a pat</i>\n"+
+		"	+1" +       " (reply) - <i>Give a pat</i>\n"+
+		"	-1" +       " (reply) - <i>Revoke a pat</i>\n"+
 		(
 			"\n<b><u>Mod commands</u></b>\n"+
-			"	"+em("/info") +        " (reply) - <i>Show info about a user</i>\n"+
-			"	"+em("/modsay TEXT") +        "  - <i>Post mod message</i>\n"+
-			"	"+em("/warn") +        " (reply) - <i>Warn a user</i>\n"+
-			"	"+em("/remove") +      " (reply) - <i>Delete a message</i>\n"+
-			"	"+em("/removeall") +   " (reply) - <i>Delete all messages</i>\n"+
-			"	"+em("/delete") +      " (reply) - <i>Delete a message and warn the user</i>\n"+
-			"	"+em("/deleteall") +   " (reply) - <i>Delete all messages and warn the user</i>\n"
+			"	/info" +        " (reply) - <i>Show info about a user</i>\n"+
+			"	/modsay TEXT" +        "  - <i>Post mod message</i>\n"+
+			"	/warn" +        " (reply) - <i>Warn a user</i>\n"+
+			"	/remove" +      " (reply) - <i>Delete a message</i>\n"+
+			"	/removeall" +   " (reply) - <i>Delete all messages</i>\n"+
+			"	/delete" +      " (reply) - <i>Delete a message and warn the user</i>\n"+
+			"	/deleteall" +   " (reply) - <i>Delete all messages and warn the user</i>\n"
 		if rank >= RANKS.mod else "")+
 		(
 			"\n<b><u>Admin commands</u></b>\n"+
-			"	"+em("/adminsay TEXT") +          "  - <i>Post admin message</i>\n"+
-			"	"+em("/motd TEXT") +              "  - <i>Define welcome message (HTML)</i>\n"+
-			"	"+em("/uncooldown ID/USERNAME") + "  - <i>Remove cooldown from a user</i>\n"+
-			"	"+em("/mod USERNAME") +           "  - <i>Promote a user to mod</i>\n"+
-			"	"+em("/admin USERNAME") +         "  - <i>Promote a user to admin</i>\n"+
-			"	"+em("/blacklist REASON") +       "  - <i>Blacklist a user and delete all messages</i>\n"
+			"	/adminsay TEXT" +          "  - <i>Post admin message</i>\n"+
+			"	/motd TEXT" +              "  - <i>Define welcome message (HTML)</i>\n"+
+			"	/uncooldown ID/USERNAME" + "  - <i>Remove cooldown from a user</i>\n"+
+			"	/mod USERNAME" +           "  - <i>Promote a user to mod</i>\n"+
+			"	/admin USERNAME" +         "  - <i>Promote a user to admin</i>\n"+
+			"	/blacklist REASON" +       "  - <i>Blacklist a user and delete all messages</i>\n"
 		if rank >= RANKS.admin else "")
 }
 
