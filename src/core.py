@@ -399,11 +399,11 @@ def warn_user(user, msid, delete=False, del_all=False):
 			for cm2 in msgs:
 				Sender.delete(cm2)
 			logging.info("%s warned %s (all messages deleted)", user, user2.getObfuscatedId())
-			return rp.Reply(rp.types.SUCCESS_WARN_DELETEALL, user2.getObfuscatedId(), count=len(msgs))
+			return rp.Reply(rp.types.SUCCESS_WARN_DELETEALL, id=user2.getObfuscatedId(), count=len(msgs))
 		else:
 			Sender.delete(msid)
 			logging.info("%s warned %s (message deleted)", user, user2.getObfuscatedId())
-			return rp.Reply(rp.types.SUCCESS_WARN_DELETE, user2.getObfuscatedId())
+			return rp.Reply(rp.types.SUCCESS_WARN_DELETE, id=user2.getObfuscatedId())
 	else:
 		logging.info("%s warned %s", user, user2.getObfuscatedId())
 		return rp.Reply(rp.types.SUCCESS)
@@ -424,12 +424,12 @@ def delete_message(user, msid, del_all=False):
 		msgs = ch.getMessages(user2.id)
 		for cm2 in msgs:
 			Sender.delete(cm2)
-		logging.info("%s deleted all messages from [%s]", user, user2.getObfuscatedId())
+		logging.info("%s deleted all messages from %s", user, user2.getObfuscatedId())
 		return rp.Reply(rp.types.SUCCESS_DELETEALL, id=user2.getObfuscatedId(), count=len(msgs))
 	else:
 		_push_system_message(rp.Reply(rp.types.MESSAGE_DELETED), who=user2, reply_to=msid)
 		Sender.delete(msid)
-		logging.info("%s deleted a message from [%s]", user, user2.getObfuscatedId())
+		logging.info("%s deleted a message from %s", user, user2.getObfuscatedId())
 		return rp.Reply(rp.types.SUCCESS_DELETE, id=user2.getObfuscatedId())
 
 @requireUser

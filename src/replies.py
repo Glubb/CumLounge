@@ -174,30 +174,30 @@ format_strs = {
 		"	/users" +           " - <i>Show number of users</i>\n"+
 		"	/version" +         " - <i>Show bot version</i>\n"+
 		"	/motd" +            " - <i>Show rules</i>\n"+
-		"	/toggledebug" +     " - <i>toggle debug message</i>\n"+
+		"	/toggledebug" +     " - <i>Toggle debug message</i>\n"+
 		"	/s TEXT" +          " - <i>Sign a message with your username</i>\n"+
 		"\n<b><u>Pat commands</u></b>\n"+
 		"	+1" +       " (reply) - <i>Give a pat</i>\n"+
-		"	-1" +       " (reply) - <i>Revoke a pat[not yet]</i>\n"+
-		"	/togglepats" +      " - <i>toggle pat notifications</i>\n"+
+		"	-1" +       " (reply) - <i>Revoke a pat (coming soon)</i>\n"+
+		"	/togglepats" +      " - <i>Toggle pat notifications</i>\n"+
 		(
 			"\n<b><u>Mod commands</u></b>\n"+
 			"	/info" +        " (reply) - <i>Show info about a user</i>\n"+
 			"	/modsay TEXT" +         " - <i>Post mod message</i>\n"+
 			"	/warn" +        " (reply) - <i>Warn a user</i>\n"+
-			"	/remove" +      " (reply) - <i>Delete a message</i>\n"+
+			"	/remove" +      " (reply) - <i>Delete the message</i>\n"+
 			"	/removeall" +   " (reply) - <i>Delete all messages from a user</i>\n"+
-			"	/delete" +      " (reply) - <i>Delete a message and warn the user</i>\n"+
-			"	/deleteall" +   " (reply) - <i>Delete all messages from a user and warn</i>\n"
+			"	/delete" +      " (reply) - <i>Warn a user and delete the message</i>\n"+
+			"	/deleteall" +   " (reply) - <i>Warn a user and delete all messages</i>\n"
 		if rank >= RANKS.mod else "")+
 		(
 			"\n<b><u>Admin commands</u></b>\n"+
-			"	/adminsay TEXT" +          "  - <i>Post admin message</i>\n"+
-			"	/motd TEXT" +              "  - <i>Define welcome message (HTML)</i>\n"+
-			"	/uncooldown ID/USERNAME" + "  - <i>Remove cooldown from a user</i>\n"+
-			"	/mod USERNAME" +           "  - <i>Promote a user to mod</i>\n"+
-			"	/admin USERNAME" +         "  - <i>Promote a user to admin</i>\n"+
-			"	/blacklist REASON" +       "  - <i>Blacklist and delete all messages from a user </i>\n"
+			"	/adminsay TEXT" +          " - <i>Post admin message</i>\n"+
+			"	/motd TEXT" +              " - <i>Define welcome message (HTML)</i>\n"+
+			"	/uncooldown ID/USERNAME" + " - <i>Remove cooldown from a user</i>\n"+
+			"	/mod USERNAME" +           " - <i>Promote a user to mod</i>\n"+
+			"	/admin USERNAME" +         " - <i>Promote a user to admin</i>\n"+
+			"	/blacklist REASON" +       " - <i>Blacklist a user and delete all messages</i>\n"
 		if rank >= RANKS.admin else "")
 }
 
