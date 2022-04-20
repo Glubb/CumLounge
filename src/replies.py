@@ -178,7 +178,7 @@ format_strs = {
 		(
 			"\n<b><u>Mod commands</u></b>\n"+
 			"	/info" +        " (reply) - <i>Show info about a user</i>\n"+
-			"	/modsay TEXT" +        "  - <i>Post mod message</i>\n"+
+			"	/modsay TEXT" +         " - <i>Post mod message</i>\n"+
 			"	/warn" +        " (reply) - <i>Warn a user</i>\n"+
 			"	/remove" +      " (reply) - <i>Delete a message</i>\n"+
 			"	/removeall" +   " (reply) - <i>Delete all messages</i>\n"+
