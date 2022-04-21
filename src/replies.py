@@ -178,20 +178,20 @@ format_strs = {
 	types.PROGRAM_VERSION: "catlounge-ng-meow v{version} ~ ",
 	types.HELP: lambda rank, **_:
 		"<b><u>Important commands</u></b>\n"+
-		"	/start" +           " - <i>Join the chat</i>\n"+
-		"	/stop" +            " - <i>Leave the chat</i>\n"+
-		"	/info" +            " - <i>Show info about you</i>\n"+
-		"	/help" +            " - <i>Show available commands</i>\n"+
+		"	/start" +              " - <i>Join the chat</i>\n"+
+		"	/stop" +               " - <i>Leave the chat</i>\n"+
+		"	/info" +               " - <i>Show info about you</i>\n"+
+		"	/help" +               " - <i>Show available commands</i>\n"+
 		"\n<b><u>Additional commands</u></b>\n"+
-		"	/users" +           " - <i>Show number of users</i>\n"+
-		"	/version" +         " - <i>Show bot version</i>\n"+
-		"	/motd" +            " - <i>Show rules</i>\n"+
-		"	/toggledebug" +     " - <i>Toggle debug message</i>\n"+
-		"	/s TEXT" +          " - <i>Sign a message with your username</i>\n"+
+		"	/users" +              " - <i>Show number of users</i>\n"+
+		"	/version" +            " - <i>Show bot version</i>\n"+
+		"	/motd" +               " - <i>Show rules</i>\n"+
+		"	/toggledebug" +        " - <i>Toggle debug message</i>\n"+
+		"	/s TEXT" +             " - <i>Sign a message with your username</i>\n"+
 		"\n<b><u>Pat commands</u></b>\n"+
-		"	+1" +       " (reply) - <i>Give a pat</i>\n"+
-		"	-1" +       " (reply) - <i>Remove a pat</i>\n"+
-		"	/togglepats" +      " - <i>Toggle pat notifications</i>\n"+
+		"	+1" +          " (reply) - <i>Give a pat</i>\n"+
+		"	-1" +          " (reply) - <i>Remove a pat</i>\n"+
+		"	/togglepats" +         " - <i>Toggle pat notifications</i>\n"+
 		(
 			"\n<b><u>Mod commands</u></b>\n"+
 			"	/info" +        " (reply) - <i>Show info about a user</i>\n"+
@@ -204,12 +204,12 @@ format_strs = {
 		if rank >= RANKS.mod else "")+
 		(
 			"\n<b><u>Admin commands</u></b>\n"+
-			"	/adminsay TEXT" +          " - <i>Post admin message</i>\n"+
-			"	/motd TEXT" +              " - <i>Define welcome message (HTML)</i>\n"+
-			"	/uncooldown ID/USERNAME" + " - <i>Remove cooldown from a user</i>\n"+
-			"	/mod USERNAME" +           " - <i>Promote a user to mod</i>\n"+
-			"	/admin USERNAME" +         " - <i>Promote a user to admin</i>\n"+
-			"	/blacklist REASON" +       " - <i>Blacklist a user and delete all messages</i>\n"
+			"	/adminsay TEXT" +            " - <i>Post admin message</i>\n"+
+			"	/motd TEXT" +                " - <i>Define welcome message (HTML)</i>\n"+
+			"	/uncooldown ID/USERNAME" +   " - <i>Remove cooldown from a user</i>\n"+
+			"	/mod USERNAME" +             " - <i>Promote a user to mod</i>\n"+
+			"	/admin USERNAME" +           " - <i>Promote a user to admin</i>\n"+
+			"	/blacklist REASON" + " (reply) - <i>Blacklist a user and delete all messages</i>\n"
 		if rank >= RANKS.admin else "")
 }
 
