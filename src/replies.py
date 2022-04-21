@@ -117,8 +117,8 @@ format_strs = {
 			"given this time, but refrain from posting it again." ),
 	types.PROMOTED_MOD: em("You've been promoted to moderator, run /modhelp for a list of commands."),
 	types.PROMOTED_ADMIN: em("You've been promoted to admin, run /adminhelp for a list of commands."),
-	types.KARMA_VOTED_UP: em("☑ You just gave this cat a pat, awesome!"),
-	types.KARMA_VOTED_DOWN: em("☑ You just removed a pat from this cat!"),
+	types.KARMA_VOTED_UP: em("You just gave this cat a pat, awesome!"),
+	types.KARMA_VOTED_DOWN: em("You just removed a pat from this cat!"),
 	types.KARMA_NOTIFICATION: lambda count, **_:
 		em( "You have just " + ("been given" if count > 0 else "lost") +" a pat! (check /info to see your pats"+
 			" or /togglepats to turn these notifications off)" ),
@@ -143,11 +143,11 @@ format_strs = {
 	types.ERR_SPAMMY: em("Your message has not been sent. Avoid sending messages too fast, try again later."),
 	types.ERR_SPAMMY_SIGN: em("Your message has not been sent. Avoid using /sign too often, try again later."),
 	types.ERR_SPAMMY_VOTE_UP:
-		"Your pat was not transmitted.\n" +
-		"Avoid using <i>+1</i> too often, try again later.",
+		"<i>Your pat was not transmitted.\n" +
+		"Avoid using +1 too often, try again later.</i>",
 	types.ERR_SPAMMY_VOTE_DOWN:
-		"The pat was not removed.\n" +
-		"Avoid using <i>-1</i> too often, try again later.",
+		"<i>The pat was not removed.\n" +
+		"Avoid using -1 too often, try again later</i>.",
 	types.ERR_SIGN_PRIVACY: em("Your account privacy settings prevent usage of the sign feature. Enable linked forwards first."),
 	types.ERR_INVALID_TRIP_FORMAT:
 		em("Given tripcode is not valid, the format is ")+
