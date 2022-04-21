@@ -19,6 +19,11 @@ enable_signing: false
 # defaults to 600 if not specified, set to 0 to disable
 #sign_limit_interval: 600
 
+# limit usage of +1 and -1 to once every interval (seconds)
+# defaults to 0 (+1) and 60 (-1) if not specified, set to 0 to disable
+#vote_up_limit_interval: 0
+#vote_down_limit_interval: 60
+
 # point of contact shown to blacklisted users (optional)
 #blacklist_contact: http://t.me/invite/something
 

@@ -12,15 +12,19 @@ db = None
 ch = None
 spam_scores = None
 sign_last_used = {} # uid -> datetime
+vote_up_last_used = {} # uid -> datetime
+vote_down_last_used = {} # uid -> datetime
 
 blacklist_contact = None
 enable_signing = None
 allow_remove_command = None
 media_limit_period = None
 sign_interval = None
+vote_up_interval = None
+vote_down_interval = None
 
 def init(config, _db, _ch):
-	global db, ch, spam_scores, blacklist_contact, enable_signing, allow_remove_command, media_limit_period, sign_interval
+	global db, ch, spam_scores, blacklist_contact, enable_signing, allow_remove_command, media_limit_period, sign_interval, vote_up_interval, vote_down_interval
 	db = _db
 	ch = _ch
 	spam_scores = ScoreKeeper()
@@ -31,6 +35,8 @@ def init(config, _db, _ch):
 	if "media_limit_period" in config.keys():
 		media_limit_period = timedelta(hours=int(config["media_limit_period"]))
 	sign_interval = timedelta(seconds=int(config.get("sign_limit_interval", 600)))
+	vote_up_interval = timedelta(seconds=int(config.get("vote_up_limit_interval", 0)))
+	vote_down_interval = timedelta(seconds=int(config.get("vote_down_limit_interval", 60)))
 
 	if config.get("locale"):
 		rp.localization = __import__("src.replies_" + config["locale"],
@@ -483,7 +489,7 @@ def blacklist_user(user, msid, reason, del_all=False):
 		return rp.Reply(rp.types.SUCCESS_BLACKLIST, id=user2.getObfuscatedId())
 
 @requireUser
-def mofify_karma(user, msid, amount):
+def modify_karma(user, msid, amount):
 	cm = ch.getMessage(msid)
 	if cm is None or cm.user_id is None:
 		return rp.Reply(rp.types.ERR_NOT_IN_CACHE)
@@ -495,8 +501,22 @@ def mofify_karma(user, msid, amount):
 	if user.id == cm.user_id:
 		return rp.Reply(rp.types.ERR_VOTE_OWN_MESSAGE)
 	if amount > 0:
+		# enforce upvoting cooldown
+		if vote_up_interval.total_seconds() > 1:
+			last_used = vote_up_last_used.get(cm.user_id, None)
+			if last_used and (datetime.now() - last_used) < vote_up_interval:
+				return rp.Reply(rp.types.ERR_SPAMMY_VOTE_UP)
+			vote_up_last_used[cm.user_id] = datetime.now()
+
 		cm.addUpvote(user)
 	elif amount < 0:
+		# enforce downvoting cooldown
+		if vote_down_interval.total_seconds() > 1:
+			last_used = vote_down_last_used.get(cm.user_id, None)
+			if last_used and (datetime.now() - last_used) < vote_down_interval:
+				return rp.Reply(rp.types.ERR_SPAMMY_VOTE_DOWN)
+			vote_down_last_used[cm.user_id] = datetime.now()
+
 		cm.addDownvote(user)
 	else:
 		return
