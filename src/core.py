@@ -503,19 +503,19 @@ def modify_karma(user, msid, amount):
 	if amount > 0:
 		# enforce upvoting cooldown
 		if vote_up_interval.total_seconds() > 1:
-			last_used = vote_up_last_used.get(cm.user_id, None)
+			last_used = vote_up_last_used.get(user.id, None)
 			if last_used and (datetime.now() - last_used) < vote_up_interval:
 				return rp.Reply(rp.types.ERR_SPAMMY_VOTE_UP)
-			vote_up_last_used[cm.user_id] = datetime.now()
+			vote_up_last_used[user.id] = datetime.now()
 
 		cm.addUpvote(user)
 	elif amount < 0:
 		# enforce downvoting cooldown
 		if vote_down_interval.total_seconds() > 1:
-			last_used = vote_down_last_used.get(cm.user_id, None)
+			last_used = vote_down_last_used.get(user.id, None)
 			if last_used and (datetime.now() - last_used) < vote_down_interval:
 				return rp.Reply(rp.types.ERR_SPAMMY_VOTE_DOWN)
-			vote_down_last_used[cm.user_id] = datetime.now()
+			vote_down_last_used[user.id] = datetime.now()
 
 		cm.addDownvote(user)
 	else:

@@ -661,7 +661,7 @@ def reaction(ev, modifier):
 	reply_msid = ch.lookupMapping(ev.from_user.id, data=ev.reply_to_message.message_id)
 	if reply_msid is None:
 		return send_answer(ev, rp.Reply(rp.types.ERR_NOT_IN_CACHE), True)
-	 
+
 	return send_answer(ev, core.modify_karma(c_user, reply_msid, modifier), True)
 
 def relay(ev):
