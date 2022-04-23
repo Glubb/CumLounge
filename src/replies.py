@@ -175,7 +175,7 @@ format_strs = {
 		"<b>{active}</b> <i>active</i>, {inactive} <i>inactive and</i> "+
 		"{blacklisted} <i>blacklisted users</i> (<i>total</i>: {total})",
 
-	types.PROGRAM_VERSION: "<b>catloungebot</b> <i>is a fork of the original secretloungebot (https://github.com/secretlounge/secretlounge-ng). View our changes and source code in @catloungeadmin</i>",
+	types.PROGRAM_VERSION: "<b>catloungebot</b> <i>is a fork of the original secretloungebot. View our changes and source code in @catloungeadmin or on github (https://github.com/CatLounge/catlounge-ng-meow/)</i>",
 	types.HELP: lambda rank, **_:
 		"<b><u>Important commands</u></b>\n"+
 		"	/start" +              " - <i>Join the chat</i>\n"+

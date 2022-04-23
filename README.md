@@ -1,6 +1,6 @@
 catlounge-ng-meow
 ---------------
-Fork of [secretlounge](https://github.com/secretlounge/secretlounge-ng), a bot to make an anonymous group chat on Telegram.
+Fork of [secretlounge-ng](https://github.com/secretlounge/secretlounge-ng), a bot to make an anonymous group chat on Telegram.
 
 ## Changelog
 
@@ -39,6 +39,7 @@ Message [@BotFather](https://t.me/BotFather) to configure your bot as follows:
 
 ### Command list
 ```
+help - show all available commands
 start - Join the chat (start receiving messages)
 stop - Leave the chat (stop receiving messages)
 users - Find out how many users are in the chat
@@ -49,7 +50,6 @@ tsign - Sign a message with your tripcode
 t - Alias of tsign
 motd - Show the welcome message
 version - Get version & source code of this bot
-help - show all available commands
 toggledebug - Toggle debug mode (sends back all messages to you)
 togglepats - Toggle pat notifications
 tripcode - Show or set a tripcode for your messages
