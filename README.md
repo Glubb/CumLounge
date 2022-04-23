@@ -1,6 +1,26 @@
-secretlounge-ng
+catlounge-ng-meow
 ---------------
-Rewrite of [secretlounge](https://github.com/6697/secretlounge), a bot to make an anonymous group chat on Telegram.
+Fork of [secretlounge](https://github.com/secretlounge/secretlounge-ng), a bot to make an anonymous group chat on Telegram.
+
+## Changelog
+
+Version 0.1 
+- /help shows now all available commands and detect if you are user/mod/admin.
+- /adminhelp and /modhelp removed
+- karma is now pats
+- /togglekarma is now /togglepats
+- extended user count is now visible for all users
+- new mod command /deleteall and /removeall. It deletes all messages from the cache of the selected user
+- /blacklist also deletes all messages from the cache of the selected user
+- cooldown time has been increased
+- admin /info shows now the real rank, karma value and join date
+
+version 0.2
+- you can now downvote with -1
+- cooldown is 10 minutes for downvote another message
+
+version 0.3
+- /version and readme has been updated
 
 ## Setup
 ```
@@ -29,10 +49,9 @@ tsign - Sign a message with your tripcode
 t - Alias of tsign
 motd - Show the welcome message
 version - Get version & source code of this bot
-modhelp - Show commands available to moderators
-adminhelp - Show commands available to admins
+help - show all available commands
 toggledebug - Toggle debug mode (sends back all messages to you)
-togglekarma - Toggle karma notifications
+togglepats - Toggle pat notifications
 tripcode - Show or set a tripcode for your messages
 ```
 
