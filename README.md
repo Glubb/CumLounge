@@ -21,6 +21,7 @@ version 0.2
 
 version 0.3
 - /version and readme has been updated
+- /motd is now /rules
 
 ## Setup
 ```
@@ -48,7 +49,7 @@ sign - Sign a message with your username
 s - Alias of sign
 tsign - Sign a message with your tripcode
 t - Alias of tsign
-motd - Show the welcome message
+rules - Show the welcome message (rules)
 version - Get version & source code of this bot
 toggledebug - Toggle debug mode (sends back all messages to you)
 togglepats - Toggle pat notifications
