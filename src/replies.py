@@ -185,7 +185,7 @@ format_strs = {
 		"\n<b><u>Additional commands</u></b>\n"+
 		"	/users" +              " - <i>Show number of users</i>\n"+
 		"	/version" +            " - <i>Show bot version</i>\n"+
-		"	/motd" +               " - <i>Show rules</i>\n"+
+		"	/rules" +               " - <i>Show rules</i>\n"+
 		"	/toggledebug" +        " - <i>Toggle debug message</i>\n"+
 		"	/s TEXT" +             " - <i>Sign a message with your username</i>\n"+
 		"\n<b><u>Pat commands</u></b>\n"+
@@ -205,7 +205,7 @@ format_strs = {
 		(
 			"\n<b><u>Admin commands</u></b>\n"+
 			"	/adminsay TEXT" +            " - <i>Post admin message</i>\n"+
-			"	/motd TEXT" +                " - <i>Define welcome message (HTML)</i>\n"+
+			"	/rules TEXT" +                " - <i>Define rules (HTML)</i>\n"+
 			"	/uncooldown ID/USERNAME" +   " - <i>Remove cooldown from a user</i>\n"+
 			"	/mod USERNAME" +             " - <i>Promote a user to mod</i>\n"+
 			"	/admin USERNAME" +           " - <i>Promote a user to admin</i>\n"+

@@ -296,17 +296,17 @@ def get_users(user):
 		total=active + inactive + black)
 
 @requireUser
-def get_motd(user):
+def get_rules(user):
 	motd = db.getSystemConfig().motd
 	if motd == "": return
 	return rp.Reply(rp.types.CUSTOM, text=motd)
 
 @requireUser
 @requireRank(RANKS.admin)
-def set_motd(user, arg):
+def set_rules(user, arg):
 	with db.modifySystemConfig() as config:
 		config.motd = arg
-	logging.info("%s set motd to: %r", user, arg)
+	logging.info("%s set rules to: %r", user, arg)
 	return rp.Reply(rp.types.SUCCESS)
 
 @requireUser

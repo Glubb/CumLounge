@@ -64,7 +64,7 @@ def init(config, _db, _ch):
 	types += ["animation", "audio", "photo", "sticker", "video", "video_note", "voice"]
 
 	cmds = [
-		"start", "stop", "users", "info", "motd", "toggledebug", "togglepats",
+		"start", "stop", "users", "info", "rules", "toggledebug", "togglepats",
 		"version", "source", "help", "modsay", "adminsay", "mod",
 		"admin", "warn", "delete", "deleteall", "remove", "removeall", "uncooldown", "blacklist", "s", "sign",
 		"tripcode", "t", "tsign"
@@ -552,13 +552,13 @@ def cmd_info(ev):
 	return send_answer(ev, core.get_info_mod(c_user, reply_msid), True)
 
 @takesArgument(optional=True)
-def cmd_motd(ev, arg):
+def cmd_rules(ev, arg):
 	c_user = UserContainer(ev.from_user)
 
 	if arg == "":
-		send_answer(ev, core.get_motd(c_user), reply_to=True)
+		send_answer(ev, core.get_rules(c_user), reply_to=True)
 	else:
-		send_answer(ev, core.set_motd(c_user, arg), reply_to=True)
+		send_answer(ev, core.set_rules(c_user, arg), reply_to=True)
 
 cmd_toggledebug = wrap_core(core.toggle_debug)
 cmd_togglepats = wrap_core(core.toggle_karma)
