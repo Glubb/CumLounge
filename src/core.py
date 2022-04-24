@@ -406,7 +406,7 @@ def warn_user(user, msid, delete=False, del_all=False, duration=""):
 					"w": "weeks",
 				}
 				i = 0
-				while i < len(duration)
+				while i < len(duration):
 					c = duration[i]
 					n = ""
 					while (i < len(duration)) and (c == " "):
