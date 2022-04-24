@@ -629,17 +629,17 @@ def cmd_warn(ev, delete=False, only_delete=False, delete_all=False, cooldown_dur
 	send_answer(ev, r, True)
 
 def cmd_delete(ev, arg):
-	cmd_warn(ev, delete=True, cooldown_duration=arg)
+	return cmd_warn(ev, delete=True, cooldown_duration=arg)
 
 def cmd_deleteall(ev, arg):
-	cmd_warn(ev, delete=True, delete_all=True, cooldown_duration=arg)
+	return cmd_warn(ev, delete=True, delete_all=True, cooldown_duration=arg)
 
 cmd_remove = lambda ev: cmd_warn(ev, only_delete=True)
 
 cmd_removeall = lambda ev: cmd_warn(ev, only_delete=True, delete_all=True)
 
 def cmd_cooldown(ev, arg):
-	cmd_warn(ev, delete=False, cooldown_duration=arg)
+	return cmd_warn(ev, delete=False, cooldown_duration=arg)
 
 @takesArgument()
 def cmd_uncooldown(ev, arg):
