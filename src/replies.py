@@ -56,6 +56,7 @@ types = NumericEnum([
 	"ERR_NO_USER",
 	"ERR_NO_USER_BY_ID",
 	"ERR_ALREADY_WARNED",
+	"ERR_INVALID_DURATION",
 	"ERR_NOT_IN_COOLDOWN",
 	"ERR_COOLDOWN",
 	"ERR_BLACKLISTED",
@@ -133,6 +134,7 @@ format_strs = {
 	types.ERR_NO_USER_BY_ID: em("No user found by that id! Note that all ids rotate every 24 hours."),
 	types.ERR_COOLDOWN: em("Your cooldown expires at {until!t}"),
 	types.ERR_ALREADY_WARNED: em("A warning has already been issued for this message."),
+	types.ERR_INVALID_DURATION: em("You entered an invalid cooldown duration"),
 	types.ERR_NOT_IN_COOLDOWN: em("This user is not in a cooldown right now."),
 	types.ERR_BLACKLISTED: lambda reason, contact, **_:
 		em( "You've been blacklisted" + (reason and " for {reason!x}" or "") )+

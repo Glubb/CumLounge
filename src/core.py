@@ -381,14 +381,52 @@ def send_admin_message(user, arg):
 
 @requireUser
 @requireRank(RANKS.mod)
-def warn_user(user, msid, delete=False, del_all=False):
+def warn_user(user, msid, delete=False, del_all=False, duration=""):
 	cm = ch.getMessage(msid)
 	if cm is None or cm.user_id is None:
 		return rp.Reply(rp.types.ERR_NOT_IN_CACHE)
 
 	if not cm.warned:
 		with db.modifyUser(id=cm.user_id) as user2:
-			d = user2.addWarning()
+			if duration == "":
+				d = user2.addWarning()
+			else:
+				cooldown = {
+					"seconds": 0,
+					"minutes": 0,
+					"hours": 0,
+					"days": 0,
+					"weeks": 0,
+				}
+				cooldown_keys = {
+					"s": "seconds",
+					"m": "minutes",
+					"h": "hours",
+					"d": "days",
+					"w": "weeks",
+				}
+				i = 0
+				while i < len(duration)
+					c = duration[i]
+					n = ""
+					while (i < len(duration)) and (c == " "):
+						i += 1
+						c = duration[i]
+					while (i < len(duration)) and (c >= "0") and (c <= "9"):
+						n += c
+						i += 1
+						c = duration[i]
+					while (i < len(duration)) and (c == " "):
+						i += 1
+						c = duration[i]
+					if not (c in cooldown_keys):
+						return rp.Reply(rp.types.ERR_INVALID_DURATION)
+					key = cooldown_keys[c]
+					if cooldown[key] != 0:
+						return rp.Reply(rp.types.ERR_INVALID_DURATION)
+					cooldown[key] = int(n)
+					i += 1
+				d = user2.addWarning(timedelta(**cooldown))
 			user2.karma -= KARMA_WARN_PENALTY
 		_push_system_message(
 			rp.Reply(rp.types.GIVEN_COOLDOWN, duration=d, deleted=delete),

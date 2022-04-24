@@ -86,13 +86,16 @@ class User():
 		self.setLeft()
 		self.rank = RANKS.banned
 		self.blacklistReason = reason
-	def addWarning(self):
-		if self.warnings < len(COOLDOWN_TIME_BEGIN):
-			cooldownTime = COOLDOWN_TIME_BEGIN[self.warnings]
+	def addWarning(self, cooldown=None):
+		if cooldown is not None:
+			if self.warnings < len(COOLDOWN_TIME_BEGIN):
+				cooldownTime = COOLDOWN_TIME_BEGIN[self.warnings]
+			else:
+				x = self.warnings - len(COOLDOWN_TIME_BEGIN)
+				cooldownTime = COOLDOWN_TIME_LINEAR_M * x + COOLDOWN_TIME_LINEAR_B
+			cooldownTime = timedelta(minutes=cooldownTime)
 		else:
-			x = self.warnings - len(COOLDOWN_TIME_BEGIN)
-			cooldownTime = COOLDOWN_TIME_LINEAR_M * x + COOLDOWN_TIME_LINEAR_B
-		cooldownTime = timedelta(minutes=cooldownTime)
+			cooldownTime = cooldown
 		self.cooldownUntil = datetime.now() + cooldownTime
 		self.warnings += 1
 		self.warnExpiry = datetime.now() + timedelta(hours=WARN_EXPIRE_HOURS)

@@ -64,10 +64,16 @@ def init(config, _db, _ch):
 	types += ["animation", "audio", "photo", "sticker", "video", "video_note", "voice"]
 
 	cmds = [
-		"start", "stop", "users", "info", "rules", "toggledebug", "togglepats",
-		"version", "source", "help", "modsay", "adminsay", "mod",
-		"admin", "warn", "delete", "deleteall", "remove", "removeall", "uncooldown", "blacklist", "s", "sign",
-		"tripcode", "t", "tsign"
+		"start", "stop",
+		"users", "info", "rules",
+		"toggledebug", "togglepats",
+		"version", "source", "help",
+		"modsay", "adminsay",
+		"mod", "admin",
+		"warn", "delete", "deleteall", "remove", "removeall",
+		"cooldown", "uncooldown",
+		"blacklist",
+		"s", "sign", "tripcode", "t", "tsign"
 	]
 	for c in cmds: # maps /<c> to the function cmd_<c>
 		c = c.lower()
@@ -607,7 +613,7 @@ def cmd_admin(ev, arg):
 	arg = arg.lstrip("@")
 	send_answer(ev, core.promote_user(c_user, arg, RANKS.admin), True)
 
-def cmd_warn(ev, delete=False, only_delete=False, delete_all=False):
+def cmd_warn(ev, delete=False, only_delete=False, delete_all=False, cooldown_duration=""):
 	c_user = UserContainer(ev.from_user)
 
 	if ev.reply_to_message is None:
@@ -619,16 +625,21 @@ def cmd_warn(ev, delete=False, only_delete=False, delete_all=False):
 	if only_delete:
 		r = core.delete_message(c_user, reply_msid, delete_all)
 	else:
-		r = core.warn_user(c_user, reply_msid, delete, delete_all)
+		r = core.warn_user(c_user, reply_msid, delete, delete_all, cooldown_duration)
 	send_answer(ev, r, True)
 
-cmd_delete = lambda ev: cmd_warn(ev, delete=True)
+@takesArgument()
+cmd_delete = lambda ev, arg: cmd_warn(ev, delete=True, cooldown_duration=arg)
 
-cmd_deleteall = lambda ev: cmd_warn(ev, delete=True, delete_all=True)
+@takesArgument()
+cmd_deleteall = lambda ev, arg: cmd_warn(ev, delete=True, delete_all=True, cooldown_duration=arg)
 
 cmd_remove = lambda ev: cmd_warn(ev, only_delete=True)
 
 cmd_removeall = lambda ev: cmd_warn(ev, only_delete=True, delete_all=True)
+
+@takesArgument()
+cmd_cooldown = lambda ev, arg: cmd_warn(ev, delete=False, cooldown_duration=arg)
 
 @takesArgument()
 def cmd_uncooldown(ev, arg):
