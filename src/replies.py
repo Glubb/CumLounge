@@ -196,18 +196,20 @@ format_strs = {
 		"	/togglepats" +         " - <i>Toggle pat notifications</i>\n"+
 		(
 			"\n<b><u>Mod commands</u></b>\n"+
-			"	/info" +        " (reply) - <i>Show info about a user</i>\n"+
-			"	/modsay TEXT" +         " - <i>Post mod message</i>\n"+
-			"	/warn" +        " (reply) - <i>Warn a user</i>\n"+
-			"	/remove" +      " (reply) - <i>Delete the message</i>\n"+
-			"	/removeall" +   " (reply) - <i>Delete all messages from a user</i>\n"+
-			"	/delete" +      " (reply) - <i>Warn a user and delete the message</i>\n"+
-			"	/deleteall" +   " (reply) - <i>Warn a user and delete all messages</i>\n"
+			"	/info" +                   " (reply) - <i>Show info about a user</i>\n"+
+			"	/modsay TEXT" +            " - <i>Post mod message</i>\n"+
+			"	/warn" +       	    " (reply) - <i>Warn a user</i>\n"+
+			"	/remove" +      	    " (reply) - <i>Delete the message</i>\n"+
+			"	/removeall" +   	    " (reply) - <i>Delete all messages from a user</i>\n"+
+			"	/cooldown xs xm xd xw" +   " (reply) - <i>give a spicific cooldown+warn</i>\n"+
+			"	/delete" +     	    " (reply) - <i>Warn a user and delete the message</i>\n"+
+			"	/delete xs xm xd xw" +     " (reply) - <i>delete+warn and give a spicific cooldown</i>\n"+
+			"	/deleteall" +              " (reply) - <i>Warn a user and delete all messages</i>\n"
 		if rank >= RANKS.mod else "")+
 		(
 			"\n<b><u>Admin commands</u></b>\n"+
 			"	/adminsay TEXT" +            " - <i>Post admin message</i>\n"+
-			"	/rules TEXT" +                " - <i>Define rules (HTML)</i>\n"+
+			"	/rules TEXT" +               " - <i>Define rules (HTML)</i>\n"+
 			"	/uncooldown ID/USERNAME" +   " - <i>Remove cooldown from a user</i>\n"+
 			"	/mod USERNAME" +             " - <i>Promote a user to mod</i>\n"+
 			"	/admin USERNAME" +           " - <i>Promote a user to admin</i>\n"+

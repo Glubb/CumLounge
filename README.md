@@ -22,6 +22,8 @@ version 0.2
 version 0.3
 - /version and readme has been updated
 - /motd is now /rules
+- new mod command /cooldown xs xm xd xw to give spicific cooldown+warn
+- /delete xs xm xd xw is possible too now
 
 ## Setup
 ```
