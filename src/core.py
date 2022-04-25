@@ -407,21 +407,17 @@ def warn_user(user, msid, delete=False, del_all=False, duration=""):
 				}
 				i = 0
 				while i < len(duration):
-					c = duration[i]
 					n = ""
-					while (i < len(duration)) and (c == " "):
-						c = duration[i]
+					while (i < len(duration)) and (duration[i] == " "):
 						i += 1
-					while (i < len(duration)) and (c >= "0") and (c <= "9"):
-						c = duration[i]
-						n += c
+					while (i < len(duration)) and (duration[i] >= "0") and (duration[i] <= "9"):
+						n += duration[i]
 						i += 1
-					while (i < len(duration)) and (c == " "):
-						c = duration[i]
+					while (i < len(duration)) and (duration[i] == " "):
 						i += 1
-					if not (c in cooldown_keys):
+					if not (duration[i] in cooldown_keys):
 						return rp.Reply(rp.types.ERR_INVALID_DURATION)
-					key = cooldown_keys[c]
+					key = cooldown_keys[duration[i]]
 					if cooldown[key] != 0:
 						return rp.Reply(rp.types.ERR_INVALID_DURATION)
 					cooldown[key] = int(n)
