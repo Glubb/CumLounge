@@ -201,9 +201,9 @@ format_strs = {
 			"	/warn" +       	    " (reply) - <i>Warn a user</i>\n"+
 			"	/remove" +      	    " (reply) - <i>Delete the message</i>\n"+
 			"	/removeall" +   	    " (reply) - <i>Delete all messages from a user</i>\n"+
-			"	/cooldown xs xm xd xw" +   " (reply) - <i>give a spicific cooldown+warn</i>\n"+
+			"	/cooldown xs xm xh xd xw" +   " (reply) - <i>give a spicific cooldown+warn</i>\n"+
 			"	/delete" +     	    " (reply) - <i>Warn a user and delete the message</i>\n"+
-			"	/delete xs xm xd xw" +     " (reply) - <i>delete+warn and give a spicific cooldown</i>\n"+
+			"	/delete xs xm xh xd xw" +     " (reply) - <i>delete+warn and give a spicific cooldown</i>\n"+
 			"	/deleteall" +              " (reply) - <i>Warn a user and delete all messages</i>\n"
 		if rank >= RANKS.mod else "")+
 		(
