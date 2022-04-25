@@ -597,7 +597,7 @@ def cmd_changelog():
 				sections[caption] = []
 			elif re.match("^\* ", line):
 				sections[caption].append(line.lstrip(" *"))
-			else
+			else:
 				sections[caption].append(line)
 		send_answer(ev, rp.Reply(rp.types.PROGRAM_CHANGELOG, versions=sections, count=-1), True)
 	else:
