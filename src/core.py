@@ -404,8 +404,8 @@ def warn_user(user, msid, delete=False, del_all=False, duration=""):
 					"h": "hours",
 					"d": "days",
 					"w": "weeks",
-					"sec" "seconds",
-					"min" "minutes"
+					"sec": "seconds",
+					"min": "minutes"
 				}
 				i = 0
 				while i < len(duration):
