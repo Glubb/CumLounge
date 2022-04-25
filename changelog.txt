@@ -1,0 +1,20 @@
+= Version 0.1 =
+* Changed: /help shows now all available commands and detect if you are user/mod/admin
+* Removed: /adminhelp and /modhelp
+* Changed: Karma is now pats
+* Changed: /togglekarma is now /togglepats
+* Added: Enhanced user count for all users
+* Added: Mod command /deleteall and /removeall to delete all cached messages from a user
+* Changed: /blacklist also deletes all messages from the cache of the selected user
+* Changed: Cooldown time has been increased
+* Added: /info now shows the real rank, karma value and join date
+
+= Version 0.2 =
+* Added: You can now downvote with -1
+* Changed: Cooldown is 10 minutes for downvote another message
+
+= Version 0.3 =
+* Changed: /version and readme has been updated
+* Changed: /motd is now /rules
+* Added: Mod command /cooldown Xs Xm Xh Xd Xw to spicify a cooldown and assign a warning
+* Added: Support for /delete Xs Xm Xh Xd Xw to specify a cooldown
