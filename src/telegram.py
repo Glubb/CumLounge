@@ -591,7 +591,7 @@ def cmd_changelog(ev):
 		changelog = open(FILENAME_CHANGELOG, "r")
 		caption = ""
 		sections = {}
-		for line in changelog.readLines():
+		for line in changelog.readlines():
 			if re.match("^=.*=$", line):
 				caption = line.strip(" =")
 				sections[caption] = []
