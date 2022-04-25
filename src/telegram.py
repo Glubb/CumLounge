@@ -586,7 +586,7 @@ def cmd_help(ev):
 def cmd_version(ev):
 	send_answer(ev, rp.Reply(rp.types.PROGRAM_VERSION, version=VERSION), True)
 
-def cmd_changelog():
+def cmd_changelog(ev):
 	if os.path.exists(CHANGELOG_FILENAME):
 		changelog = open(CHANGELOG_FILENAME, "r")
 		caption = ""
