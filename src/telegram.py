@@ -628,11 +628,11 @@ def cmd_warn(ev, delete=False, only_delete=False, delete_all=False, cooldown_dur
 		r = core.warn_user(c_user, reply_msid, delete, delete_all, cooldown_duration)
 	send_answer(ev, r, True)
 
-@takesArgument()
+@takesArgument(optional=True)
 def cmd_delete(ev, arg):
 	return cmd_warn(ev, delete=True, cooldown_duration=arg)
 
-@takesArgument()
+@takesArgument(optional=True)
 def cmd_deleteall(ev, arg):
 	return cmd_warn(ev, delete=True, delete_all=True, cooldown_duration=arg)
 
