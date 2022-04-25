@@ -197,7 +197,7 @@ format_strs = {
 			) for index, (version, changes) in enumerate(
 				versions.items()
 			) if (count < 0) or (index >= len(versions) - count)
-		]
+		],
 	types.HELP: lambda rank, **_:
 		"<b><u>Important commands</u></b>\n"+
 		"	/start" +              " - <i>Join the chat</i>\n"+
