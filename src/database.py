@@ -87,7 +87,7 @@ class User():
 		self.rank = RANKS.banned
 		self.blacklistReason = reason
 	def addWarning(self, cooldown=None):
-		if cooldown is not None:
+		if cooldown is None:
 			if self.warnings < len(COOLDOWN_TIME_BEGIN):
 				cooldownTime = COOLDOWN_TIME_BEGIN[self.warnings]
 			else:
