@@ -1,3 +1,4 @@
+import os
 from src.util import Enum
 
 # a few utility functions
