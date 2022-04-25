@@ -404,8 +404,6 @@ def warn_user(user, msid, delete=False, del_all=False, duration=""):
 					"h": "hours",
 					"d": "days",
 					"w": "weeks",
-					"sec" "seconds",
-					"min" "seconds",
 				}
 				i = 0
 				while i < len(duration):
@@ -417,7 +415,7 @@ def warn_user(user, msid, delete=False, del_all=False, duration=""):
 						i += 1
 					while (i < len(duration)) and (duration[i] == " "):
 						i += 1
-					if not (duration[i].lower() in cooldown_keys):
+					if not (duration[i] in cooldown_keys):
 						return rp.Reply(rp.types.ERR_INVALID_DURATION)
 					key = cooldown_keys[duration[i]]
 					if cooldown[key] != 0:

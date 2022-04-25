@@ -15,22 +15,14 @@ def format_datetime(t):
 
 def format_timedelta(d):
 	timedelta = __import__("datetime").timedelta
-	units = {
-	    "w": timedelta(weeks=1),
-	    "d": timedelta(days=1),
-	    "h": timedelta(hours=1),
-	    "m": timedelta(minutes=1)
-	}
-	remainder = d
-	s = ""
-	for name, u in units.items():
-		if remainder >= u:
-			n = remainder // u
-			s += (" " if len(s) != 0 else "") + ("%d%c" % (n, name))
-			remainder -= u * n
-	if remainder != 0:
-	    s += (" " if len(s) != 0 else "") + ("%ds" % remainder.total_seconds())
-	return s
+	l = [
+		(timedelta(weeks=1), "w"), (timedelta(days=1), "d"),
+		(timedelta(hours=1), "h"), (timedelta(minutes=1), "m"),
+	]
+	for cmp, char in l:
+		if d >= cmp:
+			return "%d%c" % (d // cmp, char)
+	return "%ds" % d.total_seconds()
 
 ## for debugging ##
 def dump(obj, name=None, r=False):
