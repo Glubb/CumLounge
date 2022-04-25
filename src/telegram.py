@@ -587,8 +587,8 @@ def cmd_version(ev):
 	send_answer(ev, rp.Reply(rp.types.PROGRAM_VERSION, version=VERSION), True)
 
 def cmd_changelog(ev):
-	if os.path.exists(CHANGELOG_FILENAME):
-		changelog = open(CHANGELOG_FILENAME, "r")
+	if os.path.exists(FILENAME_CHANGELOG):
+		changelog = open(FILENAME_CHANGELOG, "r")
 		caption = ""
 		sections = {}
 		for line in changelog.readLines():
