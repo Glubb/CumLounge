@@ -396,7 +396,7 @@ def warn_user(user, msid, delete=False, del_all=False, duration=""):
 					"minutes": 0,
 					"hours": 0,
 					"days": 0,
-					"weeks": 0,
+					"weeks": 0
 				}
 				cooldown_keys = {
 					"s": "seconds",
@@ -405,7 +405,7 @@ def warn_user(user, msid, delete=False, del_all=False, duration=""):
 					"d": "days",
 					"w": "weeks",
 					"sec" "seconds",
-					"min" "seconds",
+					"min" "minutes"
 				}
 				i = 0
 				while i < len(duration):
