@@ -183,7 +183,7 @@ format_strs = {
 	types.PROGRAM_VERSION: "<b>catloungebot</b> <i>is a fork of the original secretloungebot. " +
 		"View our changes and source code in @catloungeadmin or on github (https://github.com/CatLounge/catlounge-ng-meow/)</i>",
 	types.PROGRAM_CHANGELOG: lambda versions, count=-1, **_:
-		["<b><u>" + version + "</u></b>\n" +
+		"\n\n".join(["<b><u>" + version + "</u></b>\n" +
 			"\n".join(
 				"• " + (
 					"<b>%s:</b> %s" % (
@@ -197,7 +197,7 @@ format_strs = {
 			) for index, (version, changes) in enumerate(
 				versions.items()
 			) if (count < 0) or (index >= len(versions) - count)
-		],
+		]),
 	types.HELP: lambda rank, **_:
 		"<b><u>Important commands</u></b>\n"+
 		"	/start" +              " - <i>Join the chat</i>\n"+
