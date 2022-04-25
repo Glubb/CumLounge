@@ -47,6 +47,9 @@ def dump(obj, name=None, r=False):
 # Program version
 VERSION = "x"
 
+# File names
+FILENAME_CHANGELOG = os.path.join(".", "changelog.txt")
+
 # Ranks
 RANKS = Enum({
 	"admin": 100,

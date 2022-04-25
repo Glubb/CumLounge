@@ -67,7 +67,7 @@ def init(config, _db, _ch):
 		"start", "stop",
 		"users", "info", "rules",
 		"toggledebug", "togglepats",
-		"version", "source", "help",
+		"version", "changelog", "help",
 		"modsay", "adminsay",
 		"mod", "admin",
 		"warn", "delete", "deleteall", "remove", "removeall",
@@ -586,8 +586,20 @@ def cmd_help(ev):
 def cmd_version(ev):
 	send_answer(ev, rp.Reply(rp.types.PROGRAM_VERSION, version=VERSION), True)
 
-cmd_source = cmd_version # alias
-
+def cmd_changelog():
+	if os.path.exists(CHANGELOG_FILENAME):
+		changelog = open(CHANGELOG_FILENAME, "r")
+		caption = ""
+		sections = {}
+		for line in changelog.readLines():
+			if re.match("^=.*=$", line):
+				caption = line.strip(" =")
+				sections[caption] = []
+			elif re.match("^* ", line):
+				sections[caption].append(line.lstrip())
+		send_answer(ev, rp.Reply(rp.types.PROGRAM_CHANGELOG, versions=sections, count=-1), True)
+	else:
+		send_answer(ev, rp.Reply(rp.types.ERR_NO_CHANGELOG), True)
 
 @takesArgument()
 def cmd_modsay(ev, arg):

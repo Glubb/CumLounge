@@ -71,6 +71,7 @@ types = NumericEnum([
 	"ERR_INVALID_TRIP_FORMAT",
 	"ERR_NO_TRIPCODE",
 	"ERR_MEDIA_LIMIT",
+	"ERR_NO_CHANGELOG",
 
 	"USER_INFO",
 	"USER_INFO_MOD",
@@ -78,6 +79,7 @@ types = NumericEnum([
 	"USERS_INFO_EXTENDED",
 
 	"PROGRAM_VERSION",
+	"PROGRAM_CHANGELOG",
 	"HELP",
 ])
 
@@ -156,6 +158,7 @@ format_strs = {
 		"<code>name#pass</code>" + em("."),
 	types.ERR_NO_TRIPCODE: em("You don't have a tripcode set."),
 	types.ERR_MEDIA_LIMIT: em("You can't send media or forward messages at this time, try again later."),
+	types.ERR_NO_CHANGELOG: em("Changelog not found"),
 
 	types.USER_INFO: lambda warnings, cooldown, **_:
 		"<b>id</b>: {id}, <b>username</b>: {username!x}, <b>rank</b>: {rank_i} ({rank})\n"+
@@ -177,7 +180,24 @@ format_strs = {
 		"<b>{active}</b> <i>active</i>, {inactive} <i>inactive and</i> "+
 		"{blacklisted} <i>blacklisted users</i> (<i>total</i>: {total})",
 
-	types.PROGRAM_VERSION: "<b>catloungebot</b> <i>is a fork of the original secretloungebot. View our changes and source code in @catloungeadmin or on github (https://github.com/CatLounge/catlounge-ng-meow/)</i>",
+	types.PROGRAM_VERSION: "<b>catloungebot</b> <i>is a fork of the original secretloungebot. " +
+		"View our changes and source code in @catloungeadmin or on github (https://github.com/CatLounge/catlounge-ng-meow/)</i>",
+	types.PROGRAM_CHANGELOG: lambda versions, count=-1, **_:
+		["<b><u>" + version + "</u></b>\n" +
+			"\n".join(
+				"• " + (
+					"<b>%s:</b> %s" % (
+						parts[0].strip(), ":".join(
+							parts[slice(1, len(parts))]
+						).strip()
+					) if len(
+						parts := change.split(":")
+					) >= 2 else "%s" % change
+				) for change in changes
+			) for index, (version, changes) in enumerate(
+				versions.items()
+			) if (count < 0) or (index >= len(versions) - count)
+		]
 	types.HELP: lambda rank, **_:
 		"<b><u>Important commands</u></b>\n"+
 		"	/start" +              " - <i>Join the chat</i>\n"+
