@@ -592,13 +592,15 @@ def cmd_changelog(ev):
 		caption = ""
 		sections = {}
 		for line in changelog.readlines():
-			if re.match("^=.*=$", line):
-				caption = line.strip(" =")
-				sections[caption] = []
-			elif re.match("^\* ", line):
-				sections[caption].append(line.lstrip(" *"))
-			else:
-				sections[caption].append(line)
+			line = line.strip(" \n\r")
+			if line != "":
+				if re.match("^=.*=$", line):
+					caption = line.strip(" =")
+					sections[caption] = []
+				elif re.match("^\* ", line):
+					sections[caption].append(line.lstrip(" *"))
+				else:
+					sections[caption].append(line)
 		send_answer(ev, rp.Reply(rp.types.PROGRAM_CHANGELOG, versions=sections, count=-1), True)
 	else:
 		send_answer(ev, rp.Reply(rp.types.ERR_NO_CHANGELOG), True)
