@@ -18,3 +18,4 @@
 * Changed: /motd is now /rules
 * Added: Mod command /cooldown Xs Xm Xh Xd Xw to spicify a cooldown and assign a warning
 * Added: Support for /delete Xs Xm Xh Xd Xw to specify a cooldown
+* Added: User command /changelog

@@ -207,6 +207,7 @@ format_strs = {
 		"\n<b><u>Additional commands</u></b>\n"+
 		"	/users" +              " - <i>Show number of users</i>\n"+
 		"	/version" +            " - <i>Show bot version</i>\n"+
+		"	/changelog" +            " - <i>Show changelog</i>\n"+
 		"	/rules" +               " - <i>Show rules</i>\n"+
 		"	/toggledebug" +        " - <i>Toggle debug message</i>\n"+
 		"	/s TEXT" +             " - <i>Sign a message with your username</i>\n"+

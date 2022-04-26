@@ -2,29 +2,6 @@ catlounge-ng-meow
 ---------------
 Fork of [secretlounge-ng](https://github.com/secretlounge/secretlounge-ng), a bot to make an anonymous group chat on Telegram.
 
-## Changelog
-
-Version 0.1 
-- /help shows now all available commands and detect if you are user/mod/admin.
-- /adminhelp and /modhelp removed
-- karma is now pats
-- /togglekarma is now /togglepats
-- extended user count is now visible for all users
-- new mod command /deleteall and /removeall. It deletes all messages from the cache of the selected user
-- /blacklist also deletes all messages from the cache of the selected user
-- cooldown time has been increased
-- admin /info shows now the real rank, karma value and join date
-
-version 0.2
-- you can now downvote with -1
-- cooldown is 10 minutes for downvote another message
-
-version 0.3
-- /version and readme has been updated
-- /motd is now /rules
-- new mod command /cooldown xs xm xh xd xw to give spicific cooldown+warn
-- /delete xs xm xd xw is possible too now
-
 ## Setup
 ```
 $ pip3 install -r requirements.txt
