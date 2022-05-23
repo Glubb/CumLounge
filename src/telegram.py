@@ -61,13 +61,13 @@ def init(config, _db, _ch):
 		types += ["contact"]
 	if allow_documents:
 		types += ["document"]
-	types += ["animation", "audio", "photo", "sticker", "video", "video_note", "voice"]
+	types += ["animation", "audio", "photo", "sticker", "video", "video_note", "voice", "poll"]
 
 	cmds = [
 		"start", "stop",
 		"users", "info", "rules",
 		"toggledebug", "togglepats",
-		"version", "source", "help",
+		"version", "changelog", "help",
 		"modsay", "adminsay",
 		"mod", "admin",
 		"warn", "delete", "deleteall", "remove", "removeall",
@@ -354,6 +354,7 @@ def resend_message(chat_id, ev, reply_to=None, force_caption: FormattedMessage=N
 		pass
 	elif is_forward(ev):
 		# forward message instead of re-sending the contents
+
 		return bot.forward_message(chat_id, ev.chat.id, ev.message_id)
 
 	kwargs = {}
@@ -404,6 +405,8 @@ def resend_message(chat_id, ev, reply_to=None, force_caption: FormattedMessage=N
 		return bot.send_contact(chat_id, **kwargs)
 	elif ev.content_type == "sticker":
 		return bot.send_sticker(chat_id, ev.sticker.file_id, **kwargs)
+	elif ev.content_type == "poll":
+		return send_answer(ev, rp.Reply(rp.types.ERR_POLL_NOT_FORWARDED), True)		#FIXME Error message gets send 5 times 
 	else:
 		raise NotImplementedError("content_type = %s" % ev.content_type)
 
@@ -586,8 +589,24 @@ def cmd_help(ev):
 def cmd_version(ev):
 	send_answer(ev, rp.Reply(rp.types.PROGRAM_VERSION, version=VERSION), True)
 
-cmd_source = cmd_version # alias
-
+def cmd_changelog(ev):
+	if os.path.exists(FILENAME_CHANGELOG):
+		changelog = open(FILENAME_CHANGELOG, "r")
+		caption = ""
+		sections = {}
+		for line in changelog.readlines():
+			line = line.strip(" \n\r")
+			if line != "":
+				if re.match("^=.*=$", line):
+					caption = line.strip(" =")
+					sections[caption] = []
+				elif re.match("^\* ", line):
+					sections[caption].append(line.lstrip(" *"))
+				else:
+					sections[caption].append(line)
+		send_answer(ev, rp.Reply(rp.types.PROGRAM_CHANGELOG, versions=sections, count=-1), True)
+	else:
+		send_answer(ev, rp.Reply(rp.types.ERR_NO_CHANGELOG), True)
 
 @takesArgument()
 def cmd_modsay(ev, arg):

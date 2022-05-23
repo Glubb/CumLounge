@@ -1,9 +1,12 @@
 # catlounge-ng-meow
 Fork of [secretlounge-ng](https://github.com/secretlounge/secretlounge-ng), a bot to make an anonymous group chat on Telegram.
 
+<<<<<<< HEAD
 ## Changes
 You can find a general list of modifications in our sequencially-updated [changelog](changelog.txt) document.
 
+=======
+>>>>>>> test2
 ## Setup
 ```
 $ pip3 install -r requirements.txt

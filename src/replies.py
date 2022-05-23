@@ -71,6 +71,8 @@ types = NumericEnum([
 	"ERR_INVALID_TRIP_FORMAT",
 	"ERR_NO_TRIPCODE",
 	"ERR_MEDIA_LIMIT",
+	"ERR_NO_CHANGELOG",
+	"ERR_POLL_NOT_FORWARDED",
 
 	"USER_INFO",
 	"USER_INFO_MOD",
@@ -78,6 +80,7 @@ types = NumericEnum([
 	"USERS_INFO_EXTENDED",
 
 	"PROGRAM_VERSION",
+	"PROGRAM_CHANGELOG",
 	"HELP",
 ])
 
@@ -140,7 +143,7 @@ format_strs = {
 		em( "You've been blacklisted" + (reason and " for {reason!x}" or "") )+
 		( em("\ncontact:") + " {contact}" if contact else "" ),
 	types.ERR_ALREADY_VOTED_UP: em("You have already given pats for this message"),
-	types.ERR_ALREADY_VOTED_DOWN: em("You have already stolen pats for this message"),
+	types.ERR_ALREADY_VOTED_DOWN: em("You have already removed a pat for this message"),
 	types.ERR_VOTE_OWN_MESSAGE: em("You cannot give or take yourself pats"),
 	types.ERR_SPAMMY: em("Your message has not been sent. Avoid sending messages too fast, try again later."),
 	types.ERR_SPAMMY_SIGN: em("Your message has not been sent. Avoid using /sign too often, try again later."),
@@ -156,6 +159,8 @@ format_strs = {
 		"<code>name#pass</code>" + em("."),
 	types.ERR_NO_TRIPCODE: em("You don't have a tripcode set."),
 	types.ERR_MEDIA_LIMIT: em("You can't send media or forward messages at this time, try again later."),
+	types.ERR_NO_CHANGELOG: em("Changelog not found"),
+	types.ERR_POLL_NOT_FORWARDED: em("Only forwarded polls are supported"),
 
 	types.USER_INFO: lambda warnings, cooldown, **_:
 		"<b>id</b>: {id}, <b>username</b>: {username!x}, <b>rank</b>: {rank_i} ({rank})\n"+
@@ -177,7 +182,24 @@ format_strs = {
 		"<b>{active}</b> <i>active</i>, {inactive} <i>inactive and</i> "+
 		"{blacklisted} <i>blacklisted users</i> (<i>total</i>: {total})",
 
-	types.PROGRAM_VERSION: "<b>catloungebot</b> <i>is a fork of the original secretloungebot. View our changes and source code in @catloungeadmin or on github (https://github.com/CatLounge/catlounge-ng-meow/)</i>",
+	types.PROGRAM_VERSION: "<b>catlounge v{version}</b> <i>is a fork of the original secretloungebot. " +
+		"View our changes and source code in @catloungeadmin</i>",
+	types.PROGRAM_CHANGELOG: lambda versions, count=-1, **_:
+		"\n\n".join(["<b><u>" + version + "</u></b>\n" +
+			"\n".join(
+				"• " + (
+					"<b>%s:</b> %s" % (
+						parts[0].strip(), ":".join(
+							parts[slice(1, len(parts))]
+						).strip()
+					) if len(
+						parts := change.split(":")
+					) >= 2 else "%s" % change
+				) for change in changes
+			) for index, (version, changes) in enumerate(
+				versions.items()
+			) if (count < 0) or (index >= len(versions) - count)
+		]),
 	types.HELP: lambda rank, **_:
 		"<b><u>Important commands</u></b>\n"+
 		"	/start" +              " - <i>Join the chat</i>\n"+
@@ -187,6 +209,7 @@ format_strs = {
 		"\n<b><u>Additional commands</u></b>\n"+
 		"	/users" +              " - <i>Show number of users</i>\n"+
 		"	/version" +            " - <i>Show bot version</i>\n"+
+		"	/changelog" +            " - <i>Show changelog</i>\n"+
 		"	/rules" +               " - <i>Show rules</i>\n"+
 		"	/toggledebug" +        " - <i>Toggle debug message</i>\n"+
 		"	/s TEXT" +             " - <i>Sign a message with your username</i>\n"+
