@@ -11,7 +11,7 @@
 
 = Version 0.2 =
 * Added: You can now downvote with -1
-* Changed: Cooldown is 10 minutes for downvote another message
+* Changed: Defult cooldown is 1 minute for downvote another message
 
 = Version 0.3 =
 * Changed: /version and readme has been updated

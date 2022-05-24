@@ -110,9 +110,9 @@ format_strs = {
 		"<b>{description!x}</b>: " + (enabled and "enabled" or "disabled"),
 
 	types.CHAT_JOIN: em("You joined the {bot_name} lounge!"),
-	types.CHAT_LEAVE: em("You left the cat lounge!"),
-	types.USER_IN_CHAT: em("You're already in the cat lounge."),
-	types.USER_NOT_IN_CHAT: em("You're not in the cat lounge yet. Use /start to join!"),
+	types.CHAT_LEAVE: em("You left the {bot_name} lounge!"),
+	types.USER_IN_CHAT: em("You're already in the {bot_name} lounge."),
+	types.USER_NOT_IN_CHAT: em("You're not in the {bot_name} lounge yet. Use /start to join!"),
 	types.GIVEN_COOLDOWN: lambda deleted, **_:
 		em( "You've been handed a cooldown of {duration!d} for this message"+
 			(deleted and " (message also deleted)" or "") ),
@@ -121,8 +121,8 @@ format_strs = {
 			"given this time, but refrain from posting it again." ),
 	types.PROMOTED_MOD: em("You've been promoted to moderator, run /help for a list of commands."),
 	types.PROMOTED_ADMIN: em("You've been promoted to admin, run /help for a list of commands."),
-	types.KARMA_VOTED_UP: em("You just gave this cat a pat, awesome!"),
-	types.KARMA_VOTED_DOWN: em("You just removed a pat from this cat!"),
+	types.KARMA_VOTED_UP: em("You just gave this {bot_name} a pat, awesome!"),
+	types.KARMA_VOTED_DOWN: em("You just removed a pat from this {bot_name}!"),
 	types.KARMA_NOTIFICATION: lambda count, **_:
 		em( "You have just " + ("been given" if count > 0 else "lost") +" a pat! (check /info to see your pats"+
 			" or /togglepats to turn these notifications off)" ),

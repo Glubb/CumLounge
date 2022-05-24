@@ -96,7 +96,7 @@ def requireUser(func):
 			try:
 				user = db.getUser(id=c_user.id)
 			except KeyError as e:
-				return rp.Reply(rp.types.USER_NOT_IN_CHAT)
+				return rp.Reply(rp.types.USER_NOT_IN_CHAT, bot_name=bot_name)
 
 		# keep db entry up to date
 		with db.modifyUser(id=user.id) as user:
@@ -106,7 +106,7 @@ def requireUser(func):
 		if user.isBlacklisted():
 			return rp.Reply(rp.types.ERR_BLACKLISTED, reason=user.blacklistReason, contact=blacklist_contact)
 		elif not user.isJoined():
-			return rp.Reply(rp.types.USER_NOT_IN_CHAT)
+			return rp.Reply(rp.types.USER_NOT_IN_CHAT, bot_name=bot_name)
 
 		# call original function
 		return func(user, *args, **kwargs)
@@ -202,7 +202,7 @@ def user_join(c_user):
 		if user.isBlacklisted():
 			err = rp.Reply(rp.types.ERR_BLACKLISTED, reason=user.blacklistReason, contact=blacklist_contact)
 		elif user.isJoined():
-			err = rp.Reply(rp.types.USER_IN_CHAT)
+			err = rp.Reply(rp.types.USER_IN_CHAT, bot_name=bot_name)
 		if err is not None:
 			with db.modifyUser(id=user.id) as user:
 				updateUserFromEvent(user, c_user)
@@ -212,7 +212,7 @@ def user_join(c_user):
 			updateUserFromEvent(user, c_user)
 			user.setLeft(False)
 		logging.info("%s rejoined chat", user)
-		return rp.Reply(rp.types.CHAT_JOIN)
+		return rp.Reply(rp.types.CHAT_JOIN, bot_name=bot_name)
 
 	# create new user
 	user = User()
@@ -224,7 +224,7 @@ def user_join(c_user):
 
 	logging.info("%s joined chat", user)
 	db.addUser(user)
-	ret = [rp.Reply(rp.types.CHAT_JOIN)]
+	ret = [rp.Reply(rp.types.CHAT_JOIN, bot_name=bot_name)]
 
 	motd = db.getSystemConfig().motd
 	if motd != "":
@@ -244,7 +244,7 @@ def user_leave(user):
 	force_user_leave(user.id, blocked=False)
 	logging.info("%s left chat", user)
 
-	return rp.Reply(rp.types.CHAT_LEAVE)
+	return rp.Reply(rp.types.CHAT_LEAVE, bot_name=bot_name)
 
 @requireUser
 def get_info(user):
@@ -565,9 +565,9 @@ def modify_karma(user, msid, amount):
 	if not user2.hideKarma:
 		_push_system_message(rp.Reply(rp.types.KARMA_NOTIFICATION, count=amount), who=user2, reply_to=msid)
 	if amount > 0:
-		return rp.Reply(rp.types.KARMA_VOTED_UP)
+		return rp.Reply(rp.types.KARMA_VOTED_UP, bot_name=bot_name)
 	elif amount < 0:
-		return rp.Reply(rp.types.KARMA_VOTED_DOWN)
+		return rp.Reply(rp.types.KARMA_VOTED_DOWN, bot_name=bot_name)
 
 @requireUser
 def prepare_user_message(user: User, msg_score, *, is_media=False, signed=False, tripcode=False):
