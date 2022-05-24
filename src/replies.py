@@ -109,7 +109,7 @@ format_strs = {
 	types.BOOLEAN_CONFIG: lambda enabled, **_:
 		"<b>{description!x}</b>: " + (enabled and "enabled" or "disabled"),
 
-	types.CHAT_JOIN: em("You joined the cat lounge!"),
+	types.CHAT_JOIN: em("You joined the {bot_name} lounge!"),
 	types.CHAT_LEAVE: em("You left the cat lounge!"),
 	types.USER_IN_CHAT: em("You're already in the cat lounge."),
 	types.USER_NOT_IN_CHAT: em("You're not in the cat lounge yet. Use /start to join!"),
@@ -119,8 +119,8 @@ format_strs = {
 	types.MESSAGE_DELETED:
 		em( "Your message has been deleted. No cooldown has been "
 			"given this time, but refrain from posting it again." ),
-	types.PROMOTED_MOD: em("You've been promoted to moderator, run /modhelp for a list of commands."),
-	types.PROMOTED_ADMIN: em("You've been promoted to admin, run /adminhelp for a list of commands."),
+	types.PROMOTED_MOD: em("You've been promoted to moderator, run /help for a list of commands."),
+	types.PROMOTED_ADMIN: em("You've been promoted to admin, run /help for a list of commands."),
 	types.KARMA_VOTED_UP: em("You just gave this cat a pat, awesome!"),
 	types.KARMA_VOTED_DOWN: em("You just removed a pat from this cat!"),
 	types.KARMA_NOTIFICATION: lambda count, **_:

@@ -406,7 +406,8 @@ def resend_message(chat_id, ev, reply_to=None, force_caption: FormattedMessage=N
 	elif ev.content_type == "sticker":
 		return bot.send_sticker(chat_id, ev.sticker.file_id, **kwargs)
 	elif ev.content_type == "poll":
-		return send_answer(ev, rp.Reply(rp.types.ERR_POLL_NOT_FORWARDED), True)		#FIXME Error message gets send 5 times 
+	#	return send_answer(ev, rp.Reply(rp.types.ERR_POLL_NOT_FORWARDED), True)		#FIXME Error message gets send 5 times 
+		return
 	else:
 		raise NotImplementedError("content_type = %s" % ev.content_type)
 
