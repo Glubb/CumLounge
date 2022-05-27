@@ -2,6 +2,7 @@
 config.yaml
 # Any database files
 *.db
+*.sqlite
 # Directories
 venv
 __pycache__
