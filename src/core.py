@@ -15,6 +15,7 @@ sign_last_used = {} # uid -> datetime
 vote_up_last_used = {} # uid -> datetime
 vote_down_last_used = {} # uid -> datetime
 
+log_channel = None
 bot_name = None
 blacklist_contact = None
 enable_signing = None
@@ -25,11 +26,12 @@ vote_up_interval = None
 vote_down_interval = None
 
 def init(config, _db, _ch):
-	global db, ch, spam_scores, blacklist_contact, bot_name, enable_signing, allow_remove_command, media_limit_period, sign_interval, vote_up_interval, vote_down_interval
+	global db, ch, spam_scores, log_channel, blacklist_contact, bot_name, enable_signing, allow_remove_command, media_limit_period, sign_interval, vote_up_interval, vote_down_interval
 	db = _db
 	ch = _ch
 	spam_scores = ScoreKeeper()
 
+	log_channel = config.get("log_channel", "")
 	bot_name = config.get("bot_name", "")
 	blacklist_contact = config.get("blacklist_contact", "")
 	enable_signing = config["enable_signing"]
