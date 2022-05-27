@@ -550,11 +550,11 @@ class MyReceiver(core.Receiver):
 class ChannelHandler(StreamHandler):
 	__slots__ = ("channel_id")
 
-    def __init__(self, channel_id):
-        super().__init__()
+	def __init__(self, channel_id):
+		super().__init__()
 		self.channel_id = channel_id
 
-    def emit(self, record):
+	def emit(self, record):
 		#super().emit(record)
 		msg = self.format(record)
 		if bot is not None:
