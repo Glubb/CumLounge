@@ -545,6 +545,23 @@ class MyReceiver(core.Receiver):
 
 ####
 
+# Custom logger mapping to specified channel
+
+class ChannelHandler(StreamHandler):
+	__slots__ = ("channel_id")
+
+    def __init__(self, channel_id):
+        super().__init__()
+		self.channel_id = channel_id
+
+    def emit(self, record):
+		#super().emit(record)
+		msg = self.format(record)
+		if bot is not None:
+			bot.send_message(self.channel_id, msg)
+
+####
+
 cmd_start = wrap_core(core.user_join)
 cmd_stop = wrap_core(core.user_leave)
 
