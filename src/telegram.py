@@ -547,7 +547,7 @@ class MyReceiver(core.Receiver):
 
 # Custom logger mapping to specified channel
 
-class ChannelHandler(StreamHandler):
+class ChannelHandler(logging.StreamHandler):
 	__slots__ = ("channel_id")
 
 	def __init__(self, channel_id):
