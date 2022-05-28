@@ -4,5 +4,7 @@ config.yaml
 *.db
 *.sqlite
 # Directories
+doglounge
+catlounge
 venv
 __pycache__

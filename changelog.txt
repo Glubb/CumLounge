@@ -19,3 +19,6 @@
 * Added: Mod command /cooldown Xs Xm Xh Xd Xw to spicify a cooldown and assign a warning
 * Added: Support for /delete Xs Xm Xh Xd Xw to specify a cooldown
 * Added: User command /changelog
+
+= Version 0.4 =
+* Added: Telegram log channel support for cmd logs
