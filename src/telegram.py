@@ -548,17 +548,10 @@ class MyReceiver(core.Receiver):
 # Custom logger mapping to specified channel
 
 class ChannelHandler(logging.StreamHandler):
-	__slots__ = ("channel_id")
-
-	def __init__(self, channel_id):
-		super().__init__()
-		self.channel_id = channel_id
-
 	def emit(self, record):
-		#super().emit(record)
 		msg = self.format(record)
-		if bot is not None:
-			bot.send_message(self.channel_id, msg)
+		if (bot is not None) and core.log_channel:
+			bot.send_message(core.log_channel, msg)
 
 ####
 

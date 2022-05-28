@@ -31,7 +31,7 @@ def init(config, _db, _ch):
 	ch = _ch
 	spam_scores = ScoreKeeper()
 
-	log_channel = config.get("log_channel", "")
+	log_channel = config.get("log_channel", False)
 	bot_name = config.get("bot_name", "")
 	blacklist_contact = config.get("blacklist_contact", "")
 	enable_signing = config["enable_signing"]
