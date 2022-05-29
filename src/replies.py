@@ -73,6 +73,7 @@ types = NumericEnum([
 	"ERR_MEDIA_LIMIT",
 	"ERR_NO_CHANGELOG",
 	"ERR_POLL_NOT_FORWARDED",
+	"ERR_REG_CLOSED",
 
 	"USER_INFO",
 	"USER_INFO_MOD",
@@ -161,6 +162,7 @@ format_strs = {
 	types.ERR_MEDIA_LIMIT: em("You can't send media or forward messages at this time, try again later."),
 	types.ERR_NO_CHANGELOG: em("Changelog not found"),
 	types.ERR_POLL_NOT_FORWARDED: em("Only forwarded polls are supported"),
+	types.ERR_REG_CLOSED: em("Registrations are closed"),
 
 	types.USER_INFO: lambda warnings, cooldown, **_:
 		"<b>id</b>: {id}, <b>username</b>: {username!x}, <b>rank</b>: {rank_i} ({rank})\n"+

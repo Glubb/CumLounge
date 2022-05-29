@@ -15,6 +15,7 @@ sign_last_used = {} # uid -> datetime
 vote_up_last_used = {} # uid -> datetime
 vote_down_last_used = {} # uid -> datetime
 
+reg_open = None
 log_channel = None
 bot_name = None
 blacklist_contact = None
@@ -26,11 +27,12 @@ vote_up_interval = None
 vote_down_interval = None
 
 def init(config, _db, _ch):
-	global db, ch, spam_scores, log_channel, blacklist_contact, bot_name, enable_signing, allow_remove_command, media_limit_period, sign_interval, vote_up_interval, vote_down_interval
+	global db, ch, spam_scores, reg_open, log_channel, blacklist_contact, bot_name, enable_signing, allow_remove_command, media_limit_period, sign_interval, vote_up_interval, vote_down_interval
 	db = _db
 	ch = _ch
 	spam_scores = ScoreKeeper()
 
+	reg_open = config.get("reg_open", "")
 	log_channel = config.get("log_channel", False)
 	bot_name = config.get("bot_name", "")
 	blacklist_contact = config.get("blacklist_contact", "")
@@ -205,6 +207,8 @@ def user_join(c_user):
 			err = rp.Reply(rp.types.ERR_BLACKLISTED, reason=user.blacklistReason, contact=blacklist_contact)
 		elif user.isJoined():
 			err = rp.Reply(rp.types.USER_IN_CHAT, bot_name=bot_name)
+		elif not reg_open:
+			err = rp.Reply(rp.types.ERR_REG_CLOSED)
 		if err is not None:
 			with db.modifyUser(id=user.id) as user:
 				updateUserFromEvent(user, c_user)

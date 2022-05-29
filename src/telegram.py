@@ -73,7 +73,7 @@ def init(config, _db, _ch):
 		"warn", "delete", "deleteall", "remove", "removeall",
 		"cooldown", "uncooldown",
 		"blacklist",
-		"s", "sign", "tripcode", "t", "tsign"
+		"s", "sign", "tripcode", "t", "tsign", "p"
 	]
 	for c in cmds: # maps /<c> to the function cmd_<c>
 		c = c.lower()
@@ -299,6 +299,10 @@ def formatter_tripcoded_message(user: core.User, fmt: FormattedMessageBuilder):
 	fmt.prepend("</b> <code>", True)
 	fmt.prepend(tripname)
 	fmt.prepend("<b>", True)
+
+# Add pat message formatting for User `user` to `fmt`
+def formatter_pat_message(user: core.User, fmt: FormattedMessageBuilder):
+	fmt.append("~~example text", True)
 
 ###
 
@@ -786,6 +790,11 @@ def relay_inner(ev, *, caption_text=None, signed=False, tripcode=False):
 
 		send_to_single(ev_tosend, msid, user2,
 			reply_msid=reply_msid, force_caption=force_caption)
+
+@takesArgument()
+def cmd_p(ev, arg):
+	ev.text = arg
+	relay_inner(ev, pat=True)
 
 @takesArgument()
 def cmd_sign(ev, arg):

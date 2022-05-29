@@ -5,6 +5,9 @@ bot_token: "BOT_TOKEN_HERE"
 # both take a single argument which is the database path
 database: [sqlite, "path/to/secretlounge.db"]
 
+#Registration open for new users?
+reg_open: true
+
 # relay contacts
 allow_contacts: false
 # relay arbitrary documents/files (GIFs always work)
