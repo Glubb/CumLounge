@@ -506,7 +506,7 @@ def uncooldown_user(user, oid2=None, username2=None):
 	return rp.Reply(rp.types.SUCCESS)
 
 @requireUser
-@requireRank(RANKS.admin)
+@requireRank(RANKS.mod)
 def blacklist_user(user, msid, reason, del_all=False):
 	cm = ch.getMessage(msid)
 	if cm is None or cm.user_id is None:

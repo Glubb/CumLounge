@@ -229,7 +229,8 @@ format_strs = {
 			"	/cooldown xs xm xh xd xw" +   " (reply) - <i>give a spicific cooldown+warn</i>\n"+
 			"	/delete" +     	    " (reply) - <i>Warn a user and delete the message</i>\n"+
 			"	/delete xs xm xh xd xw" +     " (reply) - <i>delete+warn and give a spicific cooldown</i>\n"+
-			"	/deleteall" +              " (reply) - <i>Warn a user and delete all messages</i>\n"
+			"	/deleteall" +              " (reply) - <i>Warn a user and delete all messages</i>\n"+
+			"	/blacklist REASON" + " (reply) - <i>Blacklist a user and delete all messages</i>\n"
 		if rank >= RANKS.mod else "")+
 		(
 			"\n<b><u>Admin commands</u></b>\n"+
@@ -237,8 +238,7 @@ format_strs = {
 			"	/rules TEXT" +               " - <i>Define rules (HTML)</i>\n"+
 			"	/uncooldown ID/USERNAME" +   " - <i>Remove cooldown from a user</i>\n"+
 			"	/mod USERNAME" +             " - <i>Promote a user to mod</i>\n"+
-			"	/admin USERNAME" +           " - <i>Promote a user to admin</i>\n"+
-			"	/blacklist REASON" + " (reply) - <i>Blacklist a user and delete all messages</i>\n"
+			"	/admin USERNAME" +           " - <i>Promote a user to admin</i>\n"
 		if rank >= RANKS.admin else "")
 }
 
