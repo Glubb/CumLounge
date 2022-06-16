@@ -72,7 +72,7 @@ types = NumericEnum([
 	"ERR_NO_TRIPCODE",
 	"ERR_MEDIA_LIMIT",
 	"ERR_NO_CHANGELOG",
-	"ERR_POLL_NOT_FORWARDED",
+	"ERR_POLL_NOT_ANONYMOUS",
 	"ERR_REG_CLOSED",
 
 	"USER_INFO",
@@ -161,7 +161,7 @@ format_strs = {
 	types.ERR_NO_TRIPCODE: em("You don't have a tripcode set."),
 	types.ERR_MEDIA_LIMIT: em("You can't send media or forward messages at this time, try again later."),
 	types.ERR_NO_CHANGELOG: em("Changelog not found"),
-	types.ERR_POLL_NOT_FORWARDED: em("Only forwarded polls are supported"),
+	types.ERR_POLL_NOT_ANONYMOUS: em("Poll or quiz must be anonymous"),
 	types.ERR_REG_CLOSED: em("Registrations are closed"),
 
 	types.USER_INFO: lambda warnings, cooldown, **_:
