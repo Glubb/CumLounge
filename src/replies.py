@@ -72,6 +72,8 @@ types = NumericEnum([
 	"ERR_NO_TRIPCODE",
 	"ERR_MEDIA_LIMIT",
 	"ERR_NO_CHANGELOG",
+	"ERR_POLL_NOT_ANONYMOUS",
+	"ERR_REG_CLOSED",
 
 	"USER_INFO",
 	"USER_INFO_MOD",
@@ -108,20 +110,20 @@ format_strs = {
 	types.BOOLEAN_CONFIG: lambda enabled, **_:
 		"<b>{description!x}</b>: " + (enabled and "enabled" or "disabled"),
 
-	types.CHAT_JOIN: em("You joined the cat lounge!"),
-	types.CHAT_LEAVE: em("You left the cat lounge!"),
-	types.USER_IN_CHAT: em("You're already in the cat lounge."),
-	types.USER_NOT_IN_CHAT: em("You're not in the cat lounge yet. Use /start to join!"),
+	types.CHAT_JOIN: em("You joined the {bot_name} lounge!"),
+	types.CHAT_LEAVE: em("You left the {bot_name} lounge!"),
+	types.USER_IN_CHAT: em("You're already in the {bot_name} lounge."),
+	types.USER_NOT_IN_CHAT: em("You're not in the {bot_name} lounge yet. Use /start to join!"),
 	types.GIVEN_COOLDOWN: lambda deleted, **_:
 		em( "You've been handed a cooldown of {duration!d} for this message"+
 			(deleted and " (message also deleted)" or "") ),
 	types.MESSAGE_DELETED:
 		em( "Your message has been deleted. No cooldown has been "
 			"given this time, but refrain from posting it again." ),
-	types.PROMOTED_MOD: em("You've been promoted to moderator, run /modhelp for a list of commands."),
-	types.PROMOTED_ADMIN: em("You've been promoted to admin, run /adminhelp for a list of commands."),
-	types.KARMA_VOTED_UP: em("You just gave this cat a pat, awesome!"),
-	types.KARMA_VOTED_DOWN: em("You just removed a pat from this cat!"),
+	types.PROMOTED_MOD: em("You've been promoted to moderator, run /help for a list of commands."),
+	types.PROMOTED_ADMIN: em("You've been promoted to admin, run /help for a list of commands."),
+	types.KARMA_VOTED_UP: em("You just gave this {bot_name} a pat, awesome!"),
+	types.KARMA_VOTED_DOWN: em("You just removed a pat from this {bot_name}!"),
 	types.KARMA_NOTIFICATION: lambda count, **_:
 		em( "You have just " + ("been given" if count > 0 else "lost") +" a pat! (check /info to see your pats"+
 			" or /togglepats to turn these notifications off)" ),
@@ -142,7 +144,7 @@ format_strs = {
 		em( "You've been blacklisted" + (reason and " for {reason!x}" or "") )+
 		( em("\ncontact:") + " {contact}" if contact else "" ),
 	types.ERR_ALREADY_VOTED_UP: em("You have already given pats for this message"),
-	types.ERR_ALREADY_VOTED_DOWN: em("You have already stolen pats for this message"),
+	types.ERR_ALREADY_VOTED_DOWN: em("You have already removed a pat for this message"),
 	types.ERR_VOTE_OWN_MESSAGE: em("You cannot give or take yourself pats"),
 	types.ERR_SPAMMY: em("Your message has not been sent. Avoid sending messages too fast, try again later."),
 	types.ERR_SPAMMY_SIGN: em("Your message has not been sent. Avoid using /sign too often, try again later."),
@@ -159,6 +161,8 @@ format_strs = {
 	types.ERR_NO_TRIPCODE: em("You don't have a tripcode set."),
 	types.ERR_MEDIA_LIMIT: em("You can't send media or forward messages at this time, try again later."),
 	types.ERR_NO_CHANGELOG: em("Changelog not found"),
+	types.ERR_POLL_NOT_ANONYMOUS: em("Poll or quiz must be anonymous"),
+	types.ERR_REG_CLOSED: em("Registrations are closed"),
 
 	types.USER_INFO: lambda warnings, cooldown, **_:
 		"<b>id</b>: {id}, <b>username</b>: {username!x}, <b>rank</b>: {rank_i} ({rank})\n"+
@@ -180,8 +184,8 @@ format_strs = {
 		"<b>{active}</b> <i>active</i>, {inactive} <i>inactive and</i> "+
 		"{blacklisted} <i>blacklisted users</i> (<i>total</i>: {total})",
 
-	types.PROGRAM_VERSION: "<b>catloungebot</b> <i>is a fork of the original secretloungebot. " +
-		"View our changes and source code in @catloungeadmin or on github (https://github.com/CatLounge/catlounge-ng-meow/)</i>",
+	types.PROGRAM_VERSION: "<b>catlounge v{version}</b> <i>is a fork of the original secretloungebot. " +
+		"View our changes and source code in @catloungeadmin</i>",
 	types.PROGRAM_CHANGELOG: lambda versions, count=-1, **_:
 		"\n\n".join(["<b><u>" + version + "</u></b>\n" +
 			"\n".join(
@@ -225,7 +229,8 @@ format_strs = {
 			"	/cooldown xs xm xh xd xw" +   " (reply) - <i>give a spicific cooldown+warn</i>\n"+
 			"	/delete" +     	    " (reply) - <i>Warn a user and delete the message</i>\n"+
 			"	/delete xs xm xh xd xw" +     " (reply) - <i>delete+warn and give a spicific cooldown</i>\n"+
-			"	/deleteall" +              " (reply) - <i>Warn a user and delete all messages</i>\n"
+			"	/deleteall" +              " (reply) - <i>Warn a user and delete all messages</i>\n"+
+			"	/blacklist REASON" + " (reply) - <i>Blacklist a user and delete all messages</i>\n"
 		if rank >= RANKS.mod else "")+
 		(
 			"\n<b><u>Admin commands</u></b>\n"+
@@ -233,8 +238,7 @@ format_strs = {
 			"	/rules TEXT" +               " - <i>Define rules (HTML)</i>\n"+
 			"	/uncooldown ID/USERNAME" +   " - <i>Remove cooldown from a user</i>\n"+
 			"	/mod USERNAME" +             " - <i>Promote a user to mod</i>\n"+
-			"	/admin USERNAME" +           " - <i>Promote a user to admin</i>\n"+
-			"	/blacklist REASON" + " (reply) - <i>Blacklist a user and delete all messages</i>\n"
+			"	/admin USERNAME" +           " - <i>Promote a user to admin</i>\n"
 		if rank >= RANKS.admin else "")
 }
 

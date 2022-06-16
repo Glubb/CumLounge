@@ -61,7 +61,7 @@ def init(config, _db, _ch):
 		types += ["contact"]
 	if allow_documents:
 		types += ["document"]
-	types += ["animation", "audio", "photo", "sticker", "video", "video_note", "voice"]
+	types += ["animation", "audio", "photo", "sticker", "video", "video_note", "voice", "poll"]
 
 	cmds = [
 		"start", "stop",
@@ -73,7 +73,7 @@ def init(config, _db, _ch):
 		"warn", "delete", "deleteall", "remove", "removeall",
 		"cooldown", "uncooldown",
 		"blacklist",
-		"s", "sign", "tripcode", "t", "tsign"
+		"s", "sign", "tripcode", "t", "tsign",
 	]
 	for c in cmds: # maps /<c> to the function cmd_<c>
 		c = c.lower()
@@ -300,6 +300,7 @@ def formatter_tripcoded_message(user: core.User, fmt: FormattedMessageBuilder):
 	fmt.prepend(tripname)
 	fmt.prepend("<b>", True)
 
+
 ###
 
 # Message sending (queue-related)
@@ -352,8 +353,9 @@ def should_hide_forward(ev):
 def resend_message(chat_id, ev, reply_to=None, force_caption: FormattedMessage=None):
 	if should_hide_forward(ev):
 		pass
-	elif is_forward(ev):
+	elif is_forward(ev) and (ev.content_type != "poll"):
 		# forward message instead of re-sending the contents
+
 		return bot.forward_message(chat_id, ev.chat.id, ev.message_id)
 
 	kwargs = {}
@@ -404,6 +406,10 @@ def resend_message(chat_id, ev, reply_to=None, force_caption: FormattedMessage=N
 		return bot.send_contact(chat_id, **kwargs)
 	elif ev.content_type == "sticker":
 		return bot.send_sticker(chat_id, ev.sticker.file_id, **kwargs)
+	elif ev.content_type == "poll":
+		if not ev.poll.is_anonymous:
+			return send_answer(ev, rp.Reply(rp.types.ERR_POLL_NOT_ANONYMOUS))
+		return bot.forward_message(chat_id, ev.chat.id, ev.message_id)
 	else:
 		raise NotImplementedError("content_type = %s" % ev.content_type)
 
@@ -450,7 +456,9 @@ def send_to_single(ev, msid, user, *, reply_msid=None, force_caption=None):
 					continue
 				return
 			break
-		ch.saveMapping(user_id, msid, ev2.message_id)
+		# have to check this here, otherwise error when posting non-anon poll...
+		if ev2 is not None:
+			ch.saveMapping(user_id, msid, ev2.message_id)
 	put_into_queue(user, msid, f)
 
 # look at given Exception `e`, force-leave user if bot was blocked
@@ -538,6 +546,16 @@ class MyReceiver(core.Receiver):
 				return False
 			return cm.user_id == user.id
 		message_queue.delete(f)
+
+####
+
+# Custom logger mapping to specified channel
+
+class ChannelHandler(logging.StreamHandler):
+	def emit(self, record):
+		msg = self.format(record)
+		if (bot is not None) and core.log_channel:
+			bot.send_message(core.log_channel, msg)
 
 ####
 
@@ -773,6 +791,7 @@ def relay_inner(ev, *, caption_text=None, signed=False, tripcode=False):
 
 		send_to_single(ev_tosend, msid, user2,
 			reply_msid=reply_msid, force_caption=force_caption)
+
 
 @takesArgument()
 def cmd_sign(ev, arg):

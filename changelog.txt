@@ -11,7 +11,7 @@
 
 = Version 0.2 =
 * Added: You can now downvote with -1
-* Changed: Cooldown is 10 minutes for downvote another message
+* Changed: Defult cooldown is 1 minute for downvote another message
 
 = Version 0.3 =
 * Changed: /version and readme has been updated
@@ -19,3 +19,6 @@
 * Added: Mod command /cooldown Xs Xm Xh Xd Xw to spicify a cooldown and assign a warning
 * Added: Support for /delete Xs Xm Xh Xd Xw to specify a cooldown
 * Added: User command /changelog
+
+= Version 0.4 =
+* Added: Telegram log channel support for cmd logs

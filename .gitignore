@@ -2,6 +2,9 @@
 config.yaml
 # Any database files
 *.db
+*.sqlite
 # Directories
+doglounge
+catlounge
 venv
 __pycache__

@@ -15,6 +15,9 @@ sign_last_used = {} # uid -> datetime
 vote_up_last_used = {} # uid -> datetime
 vote_down_last_used = {} # uid -> datetime
 
+reg_open = None
+log_channel = None
+bot_name = None
 blacklist_contact = None
 enable_signing = None
 allow_remove_command = None
@@ -24,11 +27,14 @@ vote_up_interval = None
 vote_down_interval = None
 
 def init(config, _db, _ch):
-	global db, ch, spam_scores, blacklist_contact, enable_signing, allow_remove_command, media_limit_period, sign_interval, vote_up_interval, vote_down_interval
+	global db, ch, spam_scores, reg_open, log_channel, blacklist_contact, bot_name, enable_signing, allow_remove_command, media_limit_period, sign_interval, vote_up_interval, vote_down_interval
 	db = _db
 	ch = _ch
 	spam_scores = ScoreKeeper()
 
+	reg_open = config.get("reg_open", "")
+	log_channel = config.get("log_channel", False)
+	bot_name = config.get("bot_name", "")
 	blacklist_contact = config.get("blacklist_contact", "")
 	enable_signing = config["enable_signing"]
 	allow_remove_command = config["allow_remove_command"]
@@ -94,7 +100,7 @@ def requireUser(func):
 			try:
 				user = db.getUser(id=c_user.id)
 			except KeyError as e:
-				return rp.Reply(rp.types.USER_NOT_IN_CHAT)
+				return rp.Reply(rp.types.USER_NOT_IN_CHAT, bot_name=bot_name)
 
 		# keep db entry up to date
 		with db.modifyUser(id=user.id) as user:
@@ -104,7 +110,7 @@ def requireUser(func):
 		if user.isBlacklisted():
 			return rp.Reply(rp.types.ERR_BLACKLISTED, reason=user.blacklistReason, contact=blacklist_contact)
 		elif not user.isJoined():
-			return rp.Reply(rp.types.USER_NOT_IN_CHAT)
+			return rp.Reply(rp.types.USER_NOT_IN_CHAT, bot_name=bot_name)
 
 		# call original function
 		return func(user, *args, **kwargs)
@@ -200,7 +206,7 @@ def user_join(c_user):
 		if user.isBlacklisted():
 			err = rp.Reply(rp.types.ERR_BLACKLISTED, reason=user.blacklistReason, contact=blacklist_contact)
 		elif user.isJoined():
-			err = rp.Reply(rp.types.USER_IN_CHAT)
+			err = rp.Reply(rp.types.USER_IN_CHAT, bot_name=bot_name)
 		if err is not None:
 			with db.modifyUser(id=user.id) as user:
 				updateUserFromEvent(user, c_user)
@@ -210,7 +216,10 @@ def user_join(c_user):
 			updateUserFromEvent(user, c_user)
 			user.setLeft(False)
 		logging.info("%s rejoined chat", user)
-		return rp.Reply(rp.types.CHAT_JOIN)
+		return rp.Reply(rp.types.CHAT_JOIN, bot_name=bot_name)
+
+	if not reg_open:
+		return rp.Reply(rp.types.ERR_REG_CLOSED)
 
 	# create new user
 	user = User()
@@ -222,7 +231,7 @@ def user_join(c_user):
 
 	logging.info("%s joined chat", user)
 	db.addUser(user)
-	ret = [rp.Reply(rp.types.CHAT_JOIN)]
+	ret = [rp.Reply(rp.types.CHAT_JOIN, bot_name=bot_name)]
 
 	motd = db.getSystemConfig().motd
 	if motd != "":
@@ -242,7 +251,7 @@ def user_leave(user):
 	force_user_leave(user.id, blocked=False)
 	logging.info("%s left chat", user)
 
-	return rp.Reply(rp.types.CHAT_LEAVE)
+	return rp.Reply(rp.types.CHAT_LEAVE, bot_name=bot_name)
 
 @requireUser
 def get_info(user):
@@ -498,7 +507,7 @@ def uncooldown_user(user, oid2=None, username2=None):
 	return rp.Reply(rp.types.SUCCESS)
 
 @requireUser
-@requireRank(RANKS.admin)
+@requireRank(RANKS.mod)
 def blacklist_user(user, msid, reason, del_all=False):
 	cm = ch.getMessage(msid)
 	if cm is None or cm.user_id is None:
@@ -563,9 +572,9 @@ def modify_karma(user, msid, amount):
 	if not user2.hideKarma:
 		_push_system_message(rp.Reply(rp.types.KARMA_NOTIFICATION, count=amount), who=user2, reply_to=msid)
 	if amount > 0:
-		return rp.Reply(rp.types.KARMA_VOTED_UP)
+		return rp.Reply(rp.types.KARMA_VOTED_UP, bot_name=bot_name)
 	elif amount < 0:
-		return rp.Reply(rp.types.KARMA_VOTED_DOWN)
+		return rp.Reply(rp.types.KARMA_VOTED_DOWN, bot_name=bot_name)
 
 @requireUser
 def prepare_user_message(user: User, msg_score, *, is_media=False, signed=False, tripcode=False):
