@@ -412,7 +412,6 @@ def resend_message(chat_id, ev, reply_to=None, force_caption: FormattedMessage=N
 	elif ev.content_type == "poll":
 		if not ev.poll.is_anonymous:
 			return send_answer(ev, rp.Reply(rp.types.ERR_POLL_NOT_ANONYMOUS))
-			#return rp.Reply(rp.types.ERR_POLL_NOT_ANONYMOUS)
 		return bot.forward_message(chat_id, ev.chat.id, ev.message_id)
 	else:
 		raise NotImplementedError("content_type = %s" % ev.content_type)
@@ -460,7 +459,9 @@ def send_to_single(ev, msid, user, *, reply_msid=None, force_caption=None):
 					continue
 				return
 			break
-		ch.saveMapping(user_id, msid, ev2.message_id)
+		# have to check this here, otherwise error when posting non-anon poll...
+		if ev2 is not None:
+			ch.saveMapping(user_id, msid, ev2.message_id)
 	put_into_queue(user, msid, f)
 
 # look at given Exception `e`, force-leave user if bot was blocked
