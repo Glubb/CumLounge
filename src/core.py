@@ -207,8 +207,6 @@ def user_join(c_user):
 			err = rp.Reply(rp.types.ERR_BLACKLISTED, reason=user.blacklistReason, contact=blacklist_contact)
 		elif user.isJoined():
 			err = rp.Reply(rp.types.USER_IN_CHAT, bot_name=bot_name)
-		elif not reg_open:
-			err = rp.Reply(rp.types.ERR_REG_CLOSED)
 		if err is not None:
 			with db.modifyUser(id=user.id) as user:
 				updateUserFromEvent(user, c_user)
@@ -219,6 +217,9 @@ def user_join(c_user):
 			user.setLeft(False)
 		logging.info("%s rejoined chat", user)
 		return rp.Reply(rp.types.CHAT_JOIN, bot_name=bot_name)
+
+	if not reg_open:
+		return rp.Reply(rp.types.ERR_REG_CLOSED)
 
 	# create new user
 	user = User()
