@@ -411,7 +411,8 @@ def resend_message(chat_id, ev, reply_to=None, force_caption: FormattedMessage=N
 		return bot.send_sticker(chat_id, ev.sticker.file_id, **kwargs)
 	elif ev.content_type == "poll":
 		if not ev.poll.is_anonymous:
-			return rp.Reply(rp.types.ERR_POLL_NOT_ANONYMOUS)
+			return send_answer(ev, rp.Reply(rp.types.ERR_POLL_NOT_ANONYMOUS))
+			#return rp.Reply(rp.types.ERR_POLL_NOT_ANONYMOUS)
 		return bot.forward_message(chat_id, ev.chat.id, ev.message_id)
 	else:
 		raise NotImplementedError("content_type = %s" % ev.content_type)
