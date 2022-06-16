@@ -410,6 +410,7 @@ def resend_message(chat_id, ev, reply_to=None, force_caption: FormattedMessage=N
 	elif ev.content_type == "sticker":
 		return bot.send_sticker(chat_id, ev.sticker.file_id, **kwargs)
 	elif ev.content_type == "poll":
+		print(ev)
 		return bot.forward_message(chat_id, ev.chat.id, ev.message_id)
 	else:
 		raise NotImplementedError("content_type = %s" % ev.content_type)
