@@ -22,3 +22,7 @@
 
 = Version 0.4 =
 * Added: Telegram log channel support for cmd logs
+* Added: bot_name to config
+* Added: reg_open to config
+* Added: support for anonymous polls
+* Changed: /blacklist is now mod a command
