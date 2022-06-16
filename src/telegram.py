@@ -356,7 +356,7 @@ def should_hide_forward(ev):
 def resend_message(chat_id, ev, reply_to=None, force_caption: FormattedMessage=None):
 	if should_hide_forward(ev):
 		pass
-	elif is_forward(ev):
+	elif is_forward(ev) and not (ev.content_type == "poll"):
 		# forward message instead of re-sending the contents
 
 		return bot.forward_message(chat_id, ev.chat.id, ev.message_id)
