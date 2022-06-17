@@ -458,9 +458,7 @@ def send_to_single(ev, msid, user, *, reply_msid=None, force_caption=None):
 					continue
 				return
 			break
-		# have to check this here, otherwise error when posting non-anon poll...
-		#if ev2 is not None:
-			ch.saveMapping(user_id, msid, ev2.message_id)
+		ch.saveMapping(user_id, msid, ev2.message_id)
 	put_into_queue(user, msid, f)
 
 # look at given Exception `e`, force-leave user if bot was blocked
