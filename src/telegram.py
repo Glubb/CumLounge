@@ -33,10 +33,11 @@ registered_commands = {}
 
 # settings
 allow_documents = None
+allow_polls = None
 linked_network: dict = None
 
 def init(config, _db, _ch):
-	global bot, db, ch, message_queue, allow_documents, linked_network
+	global bot, db, ch, message_queue, allow_documents, allow_polls, linked_network
 	if config["bot_token"] == "":
 		logging.error("No telegram token specified.")
 		exit(1)
@@ -51,6 +52,7 @@ def init(config, _db, _ch):
 
 	allow_contacts = config["allow_contacts"]
 	allow_documents = config["allow_documents"]
+	allow_polls = config["allow_polls"]
 	linked_network = config.get("linked_network")
 	if linked_network is not None and not isinstance(linked_network, dict):
 		logging.error("Wrong type for 'linked_network'")
@@ -61,7 +63,9 @@ def init(config, _db, _ch):
 		types += ["contact"]
 	if allow_documents:
 		types += ["document"]
-	types += ["animation", "audio", "photo", "sticker", "video", "video_note", "voice", "poll"]
+	if allow_polls:
+		types += ["poll"]
+	types += ["animation", "audio", "photo", "sticker", "video", "video_note", "voice"]
 
 	cmds = [
 		"start", "stop",
@@ -407,8 +411,6 @@ def resend_message(chat_id, ev, reply_to=None, force_caption: FormattedMessage=N
 	elif ev.content_type == "sticker":
 		return bot.send_sticker(chat_id, ev.sticker.file_id, **kwargs)
 	elif ev.content_type == "poll":
-		if not ev.poll.is_anonymous:
-			return send_answer(ev, rp.Reply(rp.types.ERR_POLL_NOT_ANONYMOUS))
 		return bot.forward_message(chat_id, ev.chat.id, ev.message_id)
 	else:
 		raise NotImplementedError("content_type = %s" % ev.content_type)
@@ -457,7 +459,7 @@ def send_to_single(ev, msid, user, *, reply_msid=None, force_caption=None):
 				return
 			break
 		# have to check this here, otherwise error when posting non-anon poll...
-		if ev2 is not None:
+		#if ev2 is not None:
 			ch.saveMapping(user_id, msid, ev2.message_id)
 	put_into_queue(user, msid, f)
 
@@ -724,6 +726,10 @@ def relay(ev):
 			return reaction(ev, +1)
 		elif ev.text.strip() == "-1":
 			return reaction(ev, -1)
+	# prohibit non-anonymous polls
+	if ev.content_type == "poll":
+		if not ev.poll.is_anonymous:
+			return send_answer(ev, rp.Reply(rp.types.ERR_POLL_NOT_ANONYMOUS))
 	# manually handle signing / tripcodes for media since captions don't count for commands
 	if not is_forward(ev) and ev.content_type in CAPTIONABLE_TYPES and (ev.caption or "").startswith("/"):
 		c, arg = split_command(ev.caption)
@@ -777,8 +783,9 @@ def relay_inner(ev, *, caption_text=None, signed=False, tripcode=False):
 	reply_msid = None
 	if ev.reply_to_message is not None:
 		reply_msid = ch.lookupMapping(ev.from_user.id, data=ev.reply_to_message.message_id)
-		if reply_msid is None:
-			logging.warning("Message replied to not found in cache")
+		# There is no benefit of having this logged in the console/channel...
+		#if reply_msid is None:
+		#	logging.warning("Message replied to not found in cache")
 
 	# relay message to all other users
 	logging.debug("relay(): msid=%d reply_msid=%r", msid, reply_msid)

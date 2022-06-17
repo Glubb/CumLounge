@@ -5,13 +5,16 @@ bot_token: "BOT_TOKEN_HERE"
 # both take a single argument which is the database path
 database: [sqlite, "path/to/secretlounge.db"]
 
-#Registration open for new users?
-reg_open: true
+# registration open for new users?
+# defaults to true
+#reg_open: true
 
 # relay contacts
 allow_contacts: false
 # relay arbitrary documents/files (GIFs always work)
 allow_documents: true
+# relay (anonymous) polls
+allow_polls: true
 
 # allow mods to remove message without issuing a cooldown
 allow_remove_command: false
