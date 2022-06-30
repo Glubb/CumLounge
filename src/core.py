@@ -280,7 +280,7 @@ def get_info_mod(user, msid):
 		"username": user2.getFormattedName(),
 		"rank": user2.rank,
 		"karma": user2.karma,
-		"joined": user2.joined,
+		"joined": user2.joined if user.rank == RANKS.admin else None,
 		"warnings": user2.warnings,
 		"warnExpiry": user2.warnExpiry,
 		"cooldown": user2.cooldownUntil if user2.isInCooldown() else None,
