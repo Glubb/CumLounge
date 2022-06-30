@@ -279,7 +279,7 @@ def get_info_mod(user, msid):
 		"id": user2.getObfuscatedId(),
 		"username": user2.getFormattedName(),
 		"rank": user2.rank,
-		"karma": user2.karma,
+		"karma": user2.karma if user.rank == RANKS.admin else user2.getObfuscatedKarma(),
 		"joined": user2.joined if user.rank == RANKS.admin else None,
 		"warnings": user2.warnings,
 		"warnExpiry": user2.warnExpiry,
