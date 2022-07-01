@@ -173,7 +173,7 @@ format_strs = {
 		( cooldown and "yes, until {cooldown!t}" or "no" ),
 	types.USER_INFO_MOD: lambda warnings, cooldown, joined, **_:
 		"<b>id</b>: {id} (<b>rank</b>: {rank})\n"+
-		"<b>~pats</b>: {karma}\n"+
+		"<b>pats</b>: ~{karma}\n"+
 		("<b>joined</b>: {joined!t}\n" if joined else "")+
 		"<b>warnings</b>: {warnings} " +
 		(" (one warning will be removed on {warnExpiry!t})" if warnings > 0 else "")+"\n"+
