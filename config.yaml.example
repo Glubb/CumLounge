@@ -35,6 +35,11 @@ enable_signing: false
 # bot needs to be admin in channel
 #log_channel: false
 
+# amounts for karma add/remove
+# defaults to 1
+#karma_amount_add: 1
+#karma_amount_remove: 1
+
 # name of your bot (will be displayed as .... lounge)
 bot_name: anon
 

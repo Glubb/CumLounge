@@ -17,6 +17,8 @@ vote_down_last_used = {} # uid -> datetime
 
 reg_open = None
 log_channel = None
+karma_amount_add = None
+karma_amount_remove = None
 bot_name = None
 blacklist_contact = None
 enable_signing = None
@@ -27,13 +29,15 @@ vote_up_interval = None
 vote_down_interval = None
 
 def init(config, _db, _ch):
-	global db, ch, spam_scores, reg_open, log_channel, blacklist_contact, bot_name, enable_signing, allow_remove_command, media_limit_period, sign_interval, vote_up_interval, vote_down_interval
+	global db, ch, spam_scores, reg_open, log_channel, karma_amount_add, karma_amount_remove, blacklist_contact, bot_name, enable_signing, allow_remove_command, media_limit_period, sign_interval, vote_up_interval, vote_down_interval
 	db = _db
 	ch = _ch
 	spam_scores = ScoreKeeper()
 
 	reg_open = config.get("reg_open", "")
 	log_channel = config.get("log_channel", False)
+	karma_amount_add = config.get("karma_amount_add", 1)
+	karma_amount_remove = config.get("karma_amount_remove", 1)
 	bot_name = config.get("bot_name", "")
 	blacklist_contact = config.get("blacklist_contact", "")
 	enable_signing = config["enable_signing"]
