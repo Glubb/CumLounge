@@ -552,20 +552,20 @@ class MyReceiver(core.Receiver):
 # Custom logger mapping to specified channel
 
 class ChannelHandler(logging.StreamHandler):
-	__slots__ = ('logging')
+	#__slots__ = ('logging')
 
 	def emit(self, record):
-		if not self.logging:
-			self.logging = True
-			try:
+		#if not self.logging:
+			#self.logging = True
+			#try:
 				try:
 					msg = self.format(record)
 					if (bot is not None) and core.log_channel:
 						bot.send_message(core.log_channel, msg)
 				except:
 					pass
-			finally:
-				self.logging = False
+			#finally:
+				#self.logging = False
 
 ####
 
