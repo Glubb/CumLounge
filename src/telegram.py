@@ -726,7 +726,7 @@ def relay(ev):
 		elif ev.text.strip() == "+1":
 			return reaction(ev, karma_amount_add)
 		elif ev.text.strip() == "-1":
-			return reaction(ev, karma_amount_remove)
+			return reaction(ev, -karma_amount_remove)
 	# prohibit non-anonymous polls
 	if ev.content_type == "poll":
 		if not ev.poll.is_anonymous:
