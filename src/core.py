@@ -433,7 +433,7 @@ def warn_user(user, msid, delete=False, del_all=False, duration=""):
 					if not (duration[i].lower() in cooldown_keys):
 						return rp.Reply(rp.types.ERR_INVALID_DURATION)
 					key = cooldown_keys[duration[i]]
-					if cooldown[key] != 0:
+					if (cooldown[key] != 0) or not n.isnumeric():
 						return rp.Reply(rp.types.ERR_INVALID_DURATION)
 					cooldown[key] = int(n)
 					i += 1
