@@ -115,7 +115,7 @@ format_strs = {
 	types.USER_IN_CHAT: em("You're already in the {bot_name} lounge."),
 	types.USER_NOT_IN_CHAT: em("You're not in the {bot_name} lounge yet. Use /start to join!"),
 	types.GIVEN_COOLDOWN: lambda deleted, **_:
-		em( "You've been handed a cooldown of {duration!d} for this message"+
+		em( "You've been handed a cooldown of {duration!d} for this message. Please read the /rules!"+
 			(deleted and " (message also deleted)" or "") ),
 	types.MESSAGE_DELETED:
 		em( "Your message has been deleted. No cooldown has been "
@@ -145,7 +145,7 @@ format_strs = {
 		( em("\ncontact:") + " {contact}" if contact else "" ),
 	types.ERR_ALREADY_VOTED_UP: em("You have already given pats for this message"),
 	types.ERR_ALREADY_VOTED_DOWN: em("You have already removed a pat for this message"),
-	types.ERR_VOTE_OWN_MESSAGE: em("You cannot give or take yourself pats"),
+	types.ERR_VOTE_OWN_MESSAGE: em("You cannot give or remove yourself pats"),
 	types.ERR_SPAMMY: em("Your message has not been sent. Avoid sending messages too fast, try again later."),
 	types.ERR_SPAMMY_SIGN: em("Your message has not been sent. Avoid using /sign too often, try again later."),
 	types.ERR_SPAMMY_VOTE_UP:
