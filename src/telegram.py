@@ -602,11 +602,12 @@ def cmd_tripcode(ev, arg):
 
 def cmd_help(ev):
 	c_user = UserContainer(ev.from_user)
+	user = None
 	try:
 		user = db.getUser(id=c_user.id)
 	except KeyError as e:
-		send_answer(ev, rp.Reply(rp.types.HELP, rank=None), True)
-	send_answer(ev, rp.Reply(rp.types.HELP, rank=user.rank), True)
+		pass
+	send_answer(ev, rp.Reply(rp.types.HELP, rank=(user.rank if (user is not None) and user.isJoined() else None)), True)
 
 def cmd_version(ev):
 	send_answer(ev, rp.Reply(rp.types.PROGRAM_VERSION, version=VERSION), True)
