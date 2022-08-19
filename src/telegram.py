@@ -605,7 +605,7 @@ def cmd_help(ev):
 	try:
 		user = db.getUser(id=c_user.id)
 	except KeyError as e:
-		send_answer(ev, rp.Reply(rp.types.USER_NOT_IN_CHAT, bot_name=bot_name), True)
+		send_answer(ev, rp.Reply(rp.types.HELP, rank=None), True)
 	send_answer(ev, rp.Reply(rp.types.HELP, rank=user.rank), True)
 
 def cmd_version(ev):

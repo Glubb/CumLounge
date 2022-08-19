@@ -207,16 +207,23 @@ format_strs = {
 	types.HELP: lambda rank, **_:
 		"<b><u>Important commands</u></b>\n"+
 		"	/start" +              " - <i>Join the chat</i>\n"+
+		(
 		"	/stop" +               " - <i>Leave the chat</i>\n"+
-		"	/info" +               " - <i>Show info about you</i>\n"+
+		"	/info" +               " - <i>Show info about you</i>\n"
+		if rank is not None else "")+
 		"	/help" +               " - <i>Show available commands</i>\n"+
 		"\n<b><u>Additional commands</u></b>\n"+
-		"	/users" +              " - <i>Show number of users</i>\n"+
+		(
+		"	/users" +              " - <i>Show number of users</i>\n"
+		if rank is not None else "")+
 		"	/version" +            " - <i>Show bot version</i>\n"+
 		"	/changelog" +            " - <i>Show changelog</i>\n"+
+		(
 		"	/rules" +               " - <i>Show rules</i>\n"+
 		"	/toggledebug" +        " - <i>Toggle debug message</i>\n"+
-		"	/s TEXT" +             " - <i>Sign a message with your username</i>\n"+
+		"	/s TEXT" +             " - <i>Sign a message with your username</i>\n"
+		if rank is not None else "")+
+		(
 		"\n<b><u>Pat commands</u></b>\n"+
 		"	+1" +          " (reply) - <i>Give a pat</i>\n"+
 		"	-1" +          " (reply) - <i>Remove a pat</i>\n"+
@@ -242,6 +249,7 @@ format_strs = {
 			"	/mod USERNAME" +             " - <i>Promote a user to mod</i>\n"+
 			"	/admin USERNAME" +           " - <i>Promote a user to admin</i>\n"
 		if rank >= RANKS.admin else "")
+		if rank is not None else "")
 }
 
 localization = {}
