@@ -50,6 +50,7 @@ types = NumericEnum([
 	"TRIPCODE_INFO",
 	"TRIPCODE_SET",
 
+	"ERR_NO_ARG",
 	"ERR_COMMAND_DISABLED",
 	"ERR_NO_REPLY",
 	"ERR_NOT_IN_CACHE",
