@@ -139,6 +139,7 @@ def takesArgument(optional=False):
 		def wrap(ev):
 			_, arg = split_command(ev.text)
 			if arg == "" and not optional:
+				send_answer(ev, rp.Reply(rp.types.ERR_NO_ARG), True)
 				return
 			return func(ev, arg)
 		return wrap
@@ -601,7 +602,10 @@ def cmd_tripcode(ev, arg):
 
 def cmd_help(ev):
 	c_user = UserContainer(ev.from_user)
-	user = db.getUser(id=c_user.id)
+	try:
+		user = db.getUser(id=c_user.id)
+	except KeyError as e:
+		send_answer(ev, rp.Reply(rp.types.USER_NOT_IN_CHAT, bot_name=bot_name), True)
 	send_answer(ev, rp.Reply(rp.types.HELP, rank=user.rank), True)
 
 def cmd_version(ev):
@@ -799,7 +803,6 @@ def relay_inner(ev, *, caption_text=None, signed=False, tripcode=False):
 
 		send_to_single(ev_tosend, msid, user2,
 			reply_msid=reply_msid, force_caption=force_caption)
-
 
 @takesArgument()
 def cmd_sign(ev, arg):
