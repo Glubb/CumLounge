@@ -380,7 +380,7 @@ def resend_message(chat_id, ev, reply_to=None, force_caption: FormattedMessage=N
 	# Check if the message is either voice or video and if the user has disabled them
 	#if (ev.content_type in ("video_note", "voice")) and tchat.has_restricted_voice_and_video_messages:
 	#	return bot.send_message(chat_id, rp.formatForTelegram(rp.Reply(rp.types.ERR_VOICE_AND_VIDEO_PRIVACY_RESTRICTION)), **kwargs)
-	bot.send_message(chat_id, tchat.has_restricted_voice_and_video_messages, **kwargs)
+	bot.send_message(chat_id, str(tchat.has_restricted_voice_and_video_messages), **kwargs)
 
 	# re-send message based on content type
 	if ev.content_type == "text":
