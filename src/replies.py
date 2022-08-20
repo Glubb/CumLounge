@@ -102,12 +102,12 @@ def smiley(n):
 format_strs = {
 	types.CUSTOM: "{text}",
 	types.SUCCESS: "☑",
-	types.SUCCESS_DELETE: "☑ The message by <b>{id}</b> has been deleted",
-    types.SUCCESS_DELETEALL: "☑ All {count} messages by <b>{id}</b> have been deleted",
-	types.SUCCESS_WARN_DELETE: "☑ <b>{id}</b> has been warned and the message was deleted",
-	types.SUCCESS_WARN_DELETEALL: "☑ <b>{id}</b> has been warned and all {count} messages were deleted",
-	types.SUCCESS_BLACKLIST: "☑ <b>{id}</b> has been blacklisted and the message was deleted",
-	types.SUCCESS_BLACKLIST_DELETEALL: "☑ <b>{id}</b> has been blacklisted and all {count} messages were deleted",
+	types.SUCCESS_DELETE: "☑ <i>The message by</i> <b>{id}</b> <i>has been deleted</i>",
+    types.SUCCESS_DELETEALL: "☑ <i>All</i> {count} <i>messages by</i> <b>{id}</b> <i>have been deleted</i>",
+	types.SUCCESS_WARN_DELETE: "☑ <b>{id}</b> <i>has been warned and the message was deleted</i>",
+	types.SUCCESS_WARN_DELETEALL: "☑ <b>{id}</b> <i>has been warned and all {count} messages were deleted</i>",
+	types.SUCCESS_BLACKLIST: "☑ <b>{id}</b> <i>has been blacklisted and the message was deleted</i>",
+	types.SUCCESS_BLACKLIST_DELETEALL: "☑ <b>{id}</b> <i>has been blacklisted and all {count} messages were deleted</i>",
 	types.BOOLEAN_CONFIG: lambda enabled, **_:
 		"<b>{description!x}</b>: " + (enabled and "enabled" or "disabled"),
 
