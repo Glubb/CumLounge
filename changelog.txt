@@ -11,7 +11,7 @@
 
 = Version 0.2 =
 * Added: You can now downvote with -1
-* Changed: Defult cooldown is 1 minute for downvote another message
+* Changed: Default cooldown is 1 minute for downvoting a message
 
 = Version 0.3 =
 * Changed: /version and readme has been updated
@@ -25,4 +25,10 @@
 * Added: bot_name to config
 * Added: reg_open to config
 * Added: Support for anonymous polls
-* Changed: /blacklist is now mod a command
+* Changed: /blacklist is now a mod command
+
+= Version 0.5 =
+* Changed: /help shows correct commands for inactive users
+* Fixed: Possible crash with modded clients before first join
+* Fixed: Clients with disabled voice/video privacy setting now receive notifications
+* Fixed: Commands return an error message if a required argument is missing
