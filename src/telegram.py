@@ -378,9 +378,8 @@ def resend_message(chat_id, ev, reply_to=None, force_caption: FormattedMessage=N
 	# We need the full Chat object here, because some properties are not available in the ev.chat trait
 	tchat = bot.get_chat(ev.from_user.id)
 	# Check if the message is either voice or video and if the user has disabled them
-	#if (ev.content_type in ("video_note", "voice")) and tchat.has_restricted_voice_and_video_messages:
-	#	return bot.send_message(chat_id, rp.formatForTelegram(rp.Reply(rp.types.ERR_VOICE_AND_VIDEO_PRIVACY_RESTRICTION)), **kwargs)
-	bot.send_message(chat_id, str(tchat.has_restricted_voice_and_video_messages), **kwargs)
+	if (ev.content_type in ("video_note", "voice")) and not tchat.has_restricted_voice_and_video_messages:
+		return bot.send_message(chat_id, rp.formatForTelegram(rp.Reply(rp.types.ERR_VOICE_AND_VIDEO_PRIVACY_RESTRICTION)), **kwargs)
 
 	# re-send message based on content type
 	if ev.content_type == "text":
