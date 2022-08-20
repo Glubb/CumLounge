@@ -166,7 +166,7 @@ format_strs = {
 	types.ERR_NO_CHANGELOG: em("Changelog not found"),
 	types.ERR_POLL_NOT_ANONYMOUS: em("Poll or quiz must be anonymous!"),
 	types.ERR_REG_CLOSED: em("Registrations are closed"),
-	types.ERR_VOICE_AND_VIDEO_PRIVACY_RESTRICTION: em("This message cannot be displayed on premium accounts with restricted access to voice or video messages"),
+	types.ERR_VOICE_AND_VIDEO_PRIVACY_RESTRICTION: "<i>This message cannot be displayed on premium accounts with restricted access to voice or video messages</i>",
 
 	types.USER_INFO: lambda warnings, cooldown, **_:
 		"<b>id</b>: {id}, <b>username</b>: {username!x}, <b>rank</b>: {rank_i} ({rank})\n"+
