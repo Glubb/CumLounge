@@ -7,7 +7,7 @@
 * Added: Mod command /deleteall and /removeall to delete all cached messages from a user
 * Changed: /blacklist also deletes all messages from the cache of the selected user
 * Changed: Cooldown time has been increased
-* Added: /info now shows the real rank, karma value and join date
+* Added: admin /info now shows the real rank, karma value and join date
 
 = Version 0.2 =
 * Added: You can now downvote with -1
