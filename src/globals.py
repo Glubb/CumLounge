@@ -30,7 +30,7 @@ def format_timedelta(d):
 			s += (" " if len(s) != 0 else "") + ("%d%c" % (n, name))
 			remainder -= u * n
 	if remainder != 0:
-	    s += (" " if len(s) != 0 else "") + ("%ds" % remainder.total_seconds())
+		s += (" " if len(s) != 0 else "") + ("%ds" % remainder.total_seconds())
 	return s
 
 ## for debugging ##
@@ -67,7 +67,7 @@ WARN_EXPIRE_HOURS = 7 * 24
 
 # Karma related
 KARMA_PLUS_ONE = 1
-KARMA_WARN_PENALTY = 10
+KARMA_WARN_PENALTY = 0 # Since we have downvote capability, we don't need/want this
 
 # Spam limits
 SPAM_LIMIT = 3
@@ -76,6 +76,7 @@ SPAM_INTERVAL_SECONDS = 5
 
 # Spam score calculation
 SCORE_STICKER = 1.5
+SCORE_PHOTO = 0.3
 SCORE_BASE_MESSAGE = 0.75
 SCORE_BASE_FORWARD = 1.25
 SCORE_TEXT_CHARACTER = 0.002
