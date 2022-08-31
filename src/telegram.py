@@ -565,12 +565,12 @@ class MyReceiver(core.Receiver):
 
 class ChannelHandler(logging.StreamHandler):
 	def emit(self, record):
-		#try:
+		try:
 			msg = self.format(record)
 			if (bot is not None) and core.log_channel:
 				bot.send_message(core.log_channel, msg)
-		#except:
-		#	pass
+		except:
+			pass
 
 ####
 
