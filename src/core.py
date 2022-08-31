@@ -36,6 +36,8 @@ def init(config, _db, _ch):
 
 	reg_open = config.get("reg_open", "")
 	log_channel = config.get("log_channel", False)
+	if log_channel:
+		logging.info("Log channel initialized: %d", log_channel)
 	karma_amount_add = config.get("karma_amount_add", 1)
 	karma_amount_remove = config.get("karma_amount_remove", 1)
 	bot_name = config.get("bot_name", "")
