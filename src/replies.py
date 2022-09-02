@@ -254,7 +254,7 @@ format_strs = {
 			"	/mod USERNAME" +             " - <i>Promote a user to mod</i>\n"+
 			"	/admin USERNAME" +           " - <i>Promote a user to admin</i>\n"
 		if rank >= RANKS.admin else "")
-		if rank is not None else "")
+		if rank is not None else ""),
 	types.BOT_INFO:
 		"<b>Python version:</b> {python_ver}\n" +
 		"<b>OS:</b> {os}\n" +
