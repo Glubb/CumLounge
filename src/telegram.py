@@ -358,6 +358,14 @@ def should_hide_forward(ev):
 	return False
 
 def resend_message(chat_id, ev, reply_to=None, force_caption: FormattedMessage=None):
+	# Check if the message is either voice or video
+	if ev.content_type in ("video_note", "voice"):
+		# We need the full Chat object here, because some properties are not available in the ev.chat trait
+		tchat = bot.get_chat(chat_id)
+		# Check if the user has disabled them
+		if not tchat.has_restricted_voice_and_video_messages:
+			return bot.send_message(chat_id, rp.formatForTelegram(rp.Reply(rp.types.ERR_VOICE_AND_VIDEO_PRIVACY_RESTRICTION)), parse_mode="HTML")
+
 	if should_hide_forward(ev):
 		pass
 	elif is_forward(ev) and (ev.content_type != "poll"):
@@ -377,56 +385,46 @@ def resend_message(chat_id, ev, reply_to=None, force_caption: FormattedMessage=N
 		else:
 			kwargs["caption"] = ev.caption
 
-	if True:
-	#try:
-		# Check if the message is either voice or video
-		if ev.content_type in ("video_note", "voice"):
-			# We need the full Chat object here, because some properties are not available in the ev.chat trait
-			tchat = bot.get_chat(chat_id)
-			# Check if the user has disabled them
-			if not tchat.has_restricted_voice_and_video_messages:
-				return bot.send_message(chat_id, rp.formatForTelegram(rp.Reply(rp.types.ERR_VOICE_AND_VIDEO_PRIVACY_RESTRICTION)), parse_mode="HTML")
-	#finally:
-		# re-send message based on content type
-		if ev.content_type == "text":
-			return bot.send_message(chat_id, ev.text, **kwargs)
-		elif ev.content_type == "photo":
-			photo = sorted(ev.photo, key=lambda e: e.width*e.height, reverse=True)[0]
-			return bot.send_photo(chat_id, photo.file_id, **kwargs)
-		elif ev.content_type == "audio":
-			for prop in ("performer", "title"):
-				kwargs[prop] = getattr(ev.audio, prop)
-			return bot.send_audio(chat_id, ev.audio.file_id, **kwargs)
-		elif ev.content_type == "animation":
-			return bot.send_animation(chat_id, ev.animation.file_id, **kwargs)
-		elif ev.content_type == "document":
-			return bot.send_document(chat_id, ev.document.file_id, **kwargs)
-		elif ev.content_type == "video":
-			return bot.send_video(chat_id, ev.video.file_id, **kwargs)
-		elif ev.content_type == "voice":
-			return bot.send_voice(chat_id, ev.voice.file_id, **kwargs)
-		elif ev.content_type == "video_note":
-			return bot.send_video_note(chat_id, ev.video_note.file_id, **kwargs)
-		elif ev.content_type == "location":
-			kwargs["latitude"] = ev.location.latitude
-			kwargs["longitude"] = ev.location.longitude
-			return bot.send_location(chat_id, **kwargs)
-		elif ev.content_type == "venue":
-			kwargs["latitude"] = ev.venue.location.latitude
-			kwargs["longitude"] = ev.venue.location.longitude
-			for prop in VENUE_PROPS:
-				kwargs[prop] = getattr(ev.venue, prop)
-			return bot.send_venue(chat_id, **kwargs)
-		elif ev.content_type == "contact":
-			for prop in ("phone_number", "first_name", "last_name"):
-				kwargs[prop] = getattr(ev.contact, prop)
-			return bot.send_contact(chat_id, **kwargs)
-		elif ev.content_type == "sticker":
-			return bot.send_sticker(chat_id, ev.sticker.file_id, **kwargs)
-		elif ev.content_type == "poll":
-			return bot.forward_message(chat_id, ev.chat.id, ev.message_id)
-		else:
-			raise NotImplementedError("content_type = %s" % ev.content_type)
+	# re-send message based on content type
+	if ev.content_type == "text":
+		return bot.send_message(chat_id, ev.text, **kwargs)
+	elif ev.content_type == "photo":
+		photo = sorted(ev.photo, key=lambda e: e.width*e.height, reverse=True)[0]
+		return bot.send_photo(chat_id, photo.file_id, **kwargs)
+	elif ev.content_type == "audio":
+		for prop in ("performer", "title"):
+			kwargs[prop] = getattr(ev.audio, prop)
+		return bot.send_audio(chat_id, ev.audio.file_id, **kwargs)
+	elif ev.content_type == "animation":
+		return bot.send_animation(chat_id, ev.animation.file_id, **kwargs)
+	elif ev.content_type == "document":
+		return bot.send_document(chat_id, ev.document.file_id, **kwargs)
+	elif ev.content_type == "video":
+		return bot.send_video(chat_id, ev.video.file_id, **kwargs)
+	elif ev.content_type == "voice":
+		return bot.send_voice(chat_id, ev.voice.file_id, **kwargs)
+	elif ev.content_type == "video_note":
+		return bot.send_video_note(chat_id, ev.video_note.file_id, **kwargs)
+	elif ev.content_type == "location":
+		kwargs["latitude"] = ev.location.latitude
+		kwargs["longitude"] = ev.location.longitude
+		return bot.send_location(chat_id, **kwargs)
+	elif ev.content_type == "venue":
+		kwargs["latitude"] = ev.venue.location.latitude
+		kwargs["longitude"] = ev.venue.location.longitude
+		for prop in VENUE_PROPS:
+			kwargs[prop] = getattr(ev.venue, prop)
+		return bot.send_venue(chat_id, **kwargs)
+	elif ev.content_type == "contact":
+		for prop in ("phone_number", "first_name", "last_name"):
+			kwargs[prop] = getattr(ev.contact, prop)
+		return bot.send_contact(chat_id, **kwargs)
+	elif ev.content_type == "sticker":
+		return bot.send_sticker(chat_id, ev.sticker.file_id, **kwargs)
+	elif ev.content_type == "poll":
+		return bot.forward_message(chat_id, ev.chat.id, ev.message_id)
+	else:
+		raise NotImplementedError("content_type = %s" % ev.content_type)
 
 # send a message `ev` (multiple types possible) to Telegram ID `chat_id`
 # returns the sent Telegram message

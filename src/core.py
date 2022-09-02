@@ -301,7 +301,7 @@ def get_info_mod(user, msid):
 
 @requireUser
 @requireRank(RANKS.admin)
-def get_bot_info():
+def get_bot_info(user):
 	params = {
 		"python_ver": sys.version,
 		"os": sys.platform,
