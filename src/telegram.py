@@ -71,7 +71,7 @@ def init(config, _db, _ch):
 		"start", "stop",
 		"users", "info", "rules",
 		"toggledebug", "togglepats",
-		"version", "changelog", "help",
+		"version", "changelog", "help", "botinfo",
 		"modsay", "adminsay",
 		"mod", "admin",
 		"warn", "delete", "deleteall", "remove", "removeall",
@@ -377,15 +377,16 @@ def resend_message(chat_id, ev, reply_to=None, force_caption: FormattedMessage=N
 		else:
 			kwargs["caption"] = ev.caption
 
-	try:
+	if True:
+	#try:
 		# Check if the message is either voice or video
 		if ev.content_type in ("video_note", "voice"):
 			# We need the full Chat object here, because some properties are not available in the ev.chat trait
 			tchat = bot.get_chat(chat_id)
 			# Check if the user has disabled them
-			if tchat.has_restricted_voice_and_video_messages:
+			if not tchat.has_restricted_voice_and_video_messages:
 				return bot.send_message(chat_id, rp.formatForTelegram(rp.Reply(rp.types.ERR_VOICE_AND_VIDEO_PRIVACY_RESTRICTION)), parse_mode="HTML")
-	finally:
+	#finally:
 		# re-send message based on content type
 		if ev.content_type == "text":
 			return bot.send_message(chat_id, ev.text, **kwargs)
@@ -619,6 +620,9 @@ def cmd_help(ev):
 	except KeyError as e:
 		pass
 	send_answer(ev, rp.Reply(rp.types.HELP, rank=(user.rank if (user is not None) and user.isJoined() else None)), True)
+
+def cmd_botinfo(ev):
+	return send_answer(ev, core.get_bot_info(), True)
 
 def cmd_version(ev):
 	send_answer(ev, rp.Reply(rp.types.PROGRAM_VERSION, version=VERSION), True)

@@ -1,4 +1,5 @@
 import logging
+import sys
 from datetime import datetime, timedelta
 from threading import Lock
 
@@ -7,6 +8,8 @@ from src.globals import *
 from src.database import User, SystemConfig
 from src.cache import CachedMessage
 from src.util import genTripcode
+
+launched = None
 
 db = None
 ch = None
@@ -30,6 +33,9 @@ vote_down_interval = None
 
 def init(config, _db, _ch):
 	global db, ch, spam_scores, reg_open, log_channel, karma_amount_add, karma_amount_remove, blacklist_contact, bot_name, enable_signing, allow_remove_command, media_limit_period, sign_interval, vote_up_interval, vote_down_interval
+
+	launched = datetime.now()
+
 	db = _db
 	ch = _ch
 	spam_scores = ScoreKeeper()
@@ -292,6 +298,17 @@ def get_info_mod(user, msid):
 		"cooldown": user2.cooldownUntil if user2.isInCooldown() else None,
 	}
 	return rp.Reply(rp.types.USER_INFO_MOD, **params)
+
+@requireUser
+@requireRank(RANKS.admin)
+def get_bot_info():
+	params = {
+		"python_ver": sys.version,
+		"os": sys.platform,
+		"launched": launched,
+		"time": datetime.now(),
+	}
+	return rp.Reply(rp.types.BOT_INFO, **params)
 
 @requireUser
 def get_users(user):

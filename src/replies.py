@@ -86,6 +86,7 @@ types = NumericEnum([
 	"PROGRAM_VERSION",
 	"PROGRAM_CHANGELOG",
 	"HELP",
+	"BOT_INFO",
 ])
 
 # formatting of these as user-readable text
@@ -254,6 +255,11 @@ format_strs = {
 			"	/admin USERNAME" +           " - <i>Promote a user to admin</i>\n"
 		if rank >= RANKS.admin else "")
 		if rank is not None else "")
+	types.BOT_INFO:
+		"<b>Python version:</b> {python_ver}\n" +
+		"<b>OS:</b> {os}\n" +
+		"<b>Launched:</b> {launched!t}\n" +
+		"<b>Local time:</b> {time!t}"
 }
 
 localization = {}
