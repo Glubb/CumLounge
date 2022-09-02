@@ -620,7 +620,8 @@ def cmd_help(ev):
 	send_answer(ev, rp.Reply(rp.types.HELP, rank=(user.rank if (user is not None) and user.isJoined() else None)), True)
 
 def cmd_botinfo(ev):
-	return send_answer(ev, core.get_bot_info(), True)
+	c_user = UserContainer(ev.from_user)
+	return send_answer(ev, core.get_bot_info(c_user), True)
 
 def cmd_version(ev):
 	send_answer(ev, rp.Reply(rp.types.PROGRAM_VERSION, version=VERSION), True)
