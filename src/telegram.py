@@ -621,7 +621,7 @@ def cmd_help(ev):
 
 def cmd_botinfo(ev):
 	c_user = UserContainer(ev.from_user)
-	return send_answer(ev, core.get_bot_info(c_user), True)
+	send_answer(ev, core.get_bot_info(c_user), True)
 
 def cmd_version(ev):
 	send_answer(ev, rp.Reply(rp.types.PROGRAM_VERSION, version=VERSION), True)

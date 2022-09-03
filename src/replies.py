@@ -250,6 +250,7 @@ format_strs = {
 			"\n<b><u>Admin commands</u></b>\n"+
 			"	/adminsay TEXT" +            " - <i>Post admin message</i>\n"+
 			"	/rules TEXT" +               " - <i>Define rules (HTML)</i>\n"+
+			"	/botinfo" +                  " - <i>Show bot system info</i>\n"+
 			"	/uncooldown ID/USERNAME" +   " - <i>Remove cooldown from a user</i>\n"+
 			"	/mod USERNAME" +             " - <i>Promote a user to mod</i>\n"+
 			"	/admin USERNAME" +           " - <i>Promote a user to admin</i>\n"
@@ -259,7 +260,7 @@ format_strs = {
 		"<b>Python version:</b> {python_ver}\n" +
 		"<b>OS:</b> {os}\n" +
 		"<b>Launched:</b> {launched!t}\n" +
-		"<b>Local time:</b> {time!t}"
+		"<b>Local time:</b> {time}" # Must not use "t" conversion
 }
 
 localization = {}

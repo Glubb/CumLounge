@@ -10,9 +10,12 @@ def escape_html(s):
 		ret += c
 	return ret
 
-def format_datetime(t):
-	tzinfo = __import__("datetime").timezone.utc
-	return t.replace(tzinfo=tzinfo).strftime("%Y-%m-%d %H:%M UTC")
+def format_datetime(t, local=False):
+	if local:
+		return t.strftime("%Y-%m-%d %H:%M")
+	else:
+		tzinfo = __import__("datetime").timezone.utc
+		return t.replace(tzinfo=tzinfo).strftime("%Y-%m-%d %H:%M UTC")
 
 def format_timedelta(d):
 	timedelta = __import__("datetime").timedelta

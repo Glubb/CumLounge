@@ -306,7 +306,7 @@ def get_bot_info(user):
 		"python_ver": sys.version,
 		"os": sys.platform,
 		"launched": launched,
-		"time": datetime.now(),
+		"time": format_datetime(datetime.now(), True),
 	}
 	return rp.Reply(rp.types.BOT_INFO, **params)
 
