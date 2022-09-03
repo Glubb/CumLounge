@@ -32,7 +32,7 @@ vote_up_interval = None
 vote_down_interval = None
 
 def init(config, _db, _ch):
-	global db, ch, spam_scores, reg_open, log_channel, karma_amount_add, karma_amount_remove, blacklist_contact, bot_name, enable_signing, allow_remove_command, media_limit_period, sign_interval, vote_up_interval, vote_down_interval
+	global launched, db, ch, spam_scores, reg_open, log_channel, karma_amount_add, karma_amount_remove, blacklist_contact, bot_name, enable_signing, allow_remove_command, media_limit_period, sign_interval, vote_up_interval, vote_down_interval
 
 	launched = datetime.now()
 
