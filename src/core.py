@@ -322,7 +322,7 @@ def get_users(user):
 			active += 1
 	if user.rank < RANKS.mod:
 		return rp.Reply(rp.types.USERS_INFO,
-        	active=active, inactive=inactive, total=active + inactive)
+        	active=active, inactive=inactive + black, total=active + inactive + black)
 	return rp.Reply(rp.types.USERS_INFO_EXTENDED,
 		active=active, inactive=inactive, blacklisted=black,
 		total=active + inactive + black)
