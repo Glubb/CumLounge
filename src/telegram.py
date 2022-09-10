@@ -77,7 +77,7 @@ def init(config, _db, _ch):
 		"warn", "delete", "deleteall", "remove", "removeall",
 		"cooldown", "uncooldown",
 		"blacklist",
-		"s", "sign", "tripcode", "t", "tsign",
+		"s", "sign", "tripcode", "t", "tsign", "psign"
 	]
 	for c in cmds: # maps /<c> to the function cmd_<c>
 		c = c.lower()
@@ -296,6 +296,11 @@ def formatter_signed_message(user: core.User, fmt: FormattedMessageBuilder):
 	fmt.append(" <a href=\"tg://user?id=%d\">" % user.id, True)
 	fmt.append("~~" + user.getFormattedName())
 	fmt.append("</a>", True)
+
+# Add signed message formatting for User `user` to `fmt`
+def formatter_psigned_message(user: core.User, fmt: FormattedMessageBuilder):
+	fmt.append("<b>~~" + user.getFormattedName())
+	fmt.append("</b>", True)
 
 # Add tripcode message formatting for User `user` to `fmt`
 def formatter_tripcoded_message(user: core.User, fmt: FormattedMessageBuilder):
@@ -788,7 +793,9 @@ def relay_inner(ev, *, caption_text=None, signed=False, tripcode=False):
 		fmt = FormattedMessageBuilder(caption_text, ev.caption, ev.text)
 		formatter_replace_links(ev, fmt)
 		formatter_network_links(fmt)
-		if signed:
+		if psigned:
+			formatter_psigned_message(user, fmt)
+		elif signed:
 			formatter_signed_message(user, fmt)
 		elif tripcode:
 			formatter_tripcoded_message(user, fmt)
@@ -825,6 +832,11 @@ def cmd_sign(ev, arg):
 	relay_inner(ev, signed=True)
 
 cmd_s = cmd_sign # alias
+
+@takesArgument()
+def cmd_psign(ev, arg):
+	ev.text = arg
+	relay_inner(ev, psigned=True)
 
 @takesArgument()
 def cmd_tsign(ev, arg):

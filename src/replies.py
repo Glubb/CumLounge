@@ -189,8 +189,8 @@ format_strs = {
 		(cooldown and "yes, until {cooldown!t}" or "no" ),
 	types.USERS_INFO: "<b>{active}</b> <i>active and</i> {inactive} <i>inactive users</i> (<i>total</i>: {total})",
 	types.USERS_INFO_EXTENDED:
-		"<b>{active}</b> <i>active</i>, {inactive} <i>inactive and</i> "+
-		"{blacklisted} <i>blacklisted users</i> (<i>total</i>: {total})",
+		"<b>{active}</b> <i>active</i>, {inactive} <i>inactive users and </i> "+
+		"{blacklisted} <i>of them blacklisted</i> (<i>total</i>: {total})",
 
 	types.PROGRAM_VERSION: "<b>catlounge v{version}</b> <i>is a fork of the original secretloungebot. " +
 		"View our changes and source code in @catloungeadmin</i>",

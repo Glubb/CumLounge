@@ -324,7 +324,7 @@ def get_users(user):
 		return rp.Reply(rp.types.USERS_INFO,
         	active=active, inactive=inactive + black, total=active + inactive + black)
 	return rp.Reply(rp.types.USERS_INFO_EXTENDED,
-		active=active, inactive=inactive, blacklisted=black,
+		active=active, inactive=inactive + black, blacklisted=black,
 		total=active + inactive + black)
 
 @requireUser
