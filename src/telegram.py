@@ -299,7 +299,9 @@ def formatter_signed_message(user: core.User, fmt: FormattedMessageBuilder):
 
 # Add signed message formatting for User `user` to `fmt`
 def formatter_psigned_message(user: core.User, fmt: FormattedMessageBuilder):
-	fmt.append(" <b>~~" + user.getFormattedName(), True)
+	patlevel = patlevel
+	fmt.append(" <b>t. ", True)
+	fmt.append(patlevel)
 	fmt.append("</b>", True)
 
 # Add tripcode message formatting for User `user` to `fmt`
