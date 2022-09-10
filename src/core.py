@@ -103,6 +103,9 @@ def getUserByOid(oid):
 			return user
 	return None
 
+def getKarmaLevel(karma):
+	return "" #TODO
+
 def requireUser(func):
 	def wrapper(c_user, *args, **kwargs):
 		if isinstance(c_user, User):

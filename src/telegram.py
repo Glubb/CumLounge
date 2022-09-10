@@ -77,7 +77,7 @@ def init(config, _db, _ch):
 		"warn", "delete", "deleteall", "remove", "removeall",
 		"cooldown", "uncooldown",
 		"blacklist",
-		"s", "sign", "tripcode", "t", "tsign", "psign"
+		"s", "sign", "tripcode", "t", "tsign", "psign", "ps"
 	]
 	for c in cmds: # maps /<c> to the function cmd_<c>
 		c = c.lower()
@@ -299,7 +299,7 @@ def formatter_signed_message(user: core.User, fmt: FormattedMessageBuilder):
 
 # Add signed message formatting for User `user` to `fmt`
 def formatter_psigned_message(user: core.User, fmt: FormattedMessageBuilder):
-	patlevel = patlevel
+	patlevel = core.getKarmaLevel(user.karma)
 	fmt.append(" <b>t. ", True)
 	fmt.append(patlevel)
 	fmt.append("</b>", True)
@@ -839,6 +839,8 @@ cmd_s = cmd_sign # alias
 def cmd_psign(ev, arg):
 	ev.text = arg
 	relay_inner(ev, psigned=True)
+
+cmd_ps = cmd_psign # alias
 
 @takesArgument()
 def cmd_tsign(ev, arg):
