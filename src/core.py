@@ -600,11 +600,11 @@ def modify_karma(user, msid, amount):
 		return rp.Reply(rp.types.KARMA_VOTED_DOWN, bot_name=bot_name)
 
 @requireUser
-def prepare_user_message(user: User, msg_score, *, is_media=False, signed=False, tripcode=False):
+def prepare_user_message(user: User, msg_score, *, is_media=False, signed=False, tripcode=False, psigned=False):
 	# prerequisites
 	if user.isInCooldown():
 		return rp.Reply(rp.types.ERR_COOLDOWN, until=user.cooldownUntil)
-	if (signed or tripcode) and not enable_signing:
+	if (signed or tripcode or psigned) and not enable_signing:
 		return rp.Reply(rp.types.ERR_COMMAND_DISABLED)
 	if tripcode and user.tripcode is None:
 		return rp.Reply(rp.types.ERR_NO_TRIPCODE)
@@ -617,7 +617,7 @@ def prepare_user_message(user: User, msg_score, *, is_media=False, signed=False,
 		return rp.Reply(rp.types.ERR_SPAMMY)
 
 	# enforce signing cooldown
-	if signed and sign_interval.total_seconds() > 1:
+	if (signed or psigned) and sign_interval.total_seconds() > 1:
 		last_used = sign_last_used.get(user.id, None)
 		if last_used and (datetime.now() - last_used) < sign_interval:
 			return rp.Reply(rp.types.ERR_SPAMMY_SIGN)

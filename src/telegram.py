@@ -771,7 +771,7 @@ def relay(ev):
 def relay_inner(ev, *, caption_text=None, signed=False, tripcode=False, psigned=False):
 	is_media = is_forward(ev) or ev.content_type in MEDIA_FILTER_TYPES
 	msid = core.prepare_user_message(UserContainer(ev.from_user), calc_spam_score(ev),
-		is_media=is_media, signed=signed, tripcode=tripcode)
+		is_media=is_media, signed=signed, tripcode=tripcode, psigned=psigned)
 	if msid is None or isinstance(msid, rp.Reply):
 		return send_answer(ev, msid) # don't relay message, instead reply
 
