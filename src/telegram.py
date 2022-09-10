@@ -768,7 +768,7 @@ def relay(ev):
 # relay the message `ev` to other users in the chat
 # `caption_text` can be a FormattedMessage that overrides the caption of media
 # `signed` and `tripcode` indicate if the message is signed or tripcoded respectively
-def relay_inner(ev, *, caption_text=None, signed=False, tripcode=False, psign=False):
+def relay_inner(ev, *, caption_text=None, signed=False, tripcode=False, psigned=False):
 	is_media = is_forward(ev) or ev.content_type in MEDIA_FILTER_TYPES
 	msid = core.prepare_user_message(UserContainer(ev.from_user), calc_spam_score(ev),
 		is_media=is_media, signed=signed, tripcode=tripcode)
