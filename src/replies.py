@@ -261,7 +261,8 @@ format_strs = {
 		"<b>Python version:</b> {python_ver}\n" +
 		"<b>OS:</b> {os}\n" +
 		"<b>Launched:</b> {launched!t}\n" +
-		"<b>Local time:</b> {time}" # Must not use "t" conversion
+		"<b>Local time:</b> {time}" + # Must not use "t" conversion
+		"<b>Cached messages</b>: {cached_msgs:n}"
 }
 
 localization = {}
