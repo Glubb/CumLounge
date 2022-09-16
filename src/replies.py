@@ -106,12 +106,12 @@ def smiley(n):
 
 def progress(n, min_value, max_value, length=10):
 	assert min_value < max_value
-	done = str("\u9648")
-	left = str("\u9649")
+	done = "\u9648"
+	left = "\u9649"
 	if n < min_value:
-		return length * left
+		return left * length
 	if n > max_value:
-		return length * done
+		return done * length
 	step = (max_value - 1) - (min_value + 1) / (length - 2)
 	return done * math.ceil((n - min_value) / step) + left * math.floor((max_value - n) / step)
 
@@ -276,7 +276,7 @@ format_strs = {
 		"<b>Next level:</b> <i>{next_level_name}</i>\n" +
 		"\n" +
 		"{karma}/" + ("{next_level_karma}" if next_level_karma is not None else "{level_karma}") + "\n" +
-		progress(karma, level_karma if level_karma is not None else karma, next_level_karma if next_level_karma is not None else level_karma),
+		progress(karma, level_karma if level_karma is not None else karma, next_level_karma if next_level_karma is not None else karma),
 	types.BOT_INFO:
 		"<b>Python version:</b> {python_ver}\n" +
 		"<b>OS:</b> {os}\n" +
