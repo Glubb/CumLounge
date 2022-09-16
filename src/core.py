@@ -115,12 +115,15 @@ def getRecentlyActiveUsers():
 	return count
 
 def getKarmaLevel(karma):
+	karma_level = 0
+	while (karma_level < len(KARMA_LEVELS)) and (karma >= KARMA_LEVELS[karma_level]):
+		karma_level += 1
+	return karma_level
+
+def getKarmaLevelName(karma):
 	if karma_level_names is not None:
 		assert len(karma_level_names) == len(KARMA_LEVELS) + 1
-		karma_level = 0
-		while (karma_level < len(KARMA_LEVELS)) and (karma >= KARMA_LEVELS[karma_level]):
-			karma_level += 1
-		return karma_level_names[karma_level]
+		return karma_level_names[getKarmaLevel(karma)]
 	return ""
 
 def requireUser(func):
@@ -293,7 +296,7 @@ def get_info(user):
 		"rank_i": user.rank,
 		"rank": RANKS.reverse[user.rank],
 		"karma": user.karma,
-		"karmalevel": getKarmaLevel(user.karma),
+		"karmalevel": getKarmaLevelName(user.karma),
 		"warnings": user.warnings,
 		"warnExpiry": user.warnExpiry,
 		"cooldown": user.cooldownUntil if user.isInCooldown() else None,
@@ -319,6 +322,20 @@ def get_info_mod(user, msid):
 		"cooldown": user2.cooldownUntil if user2.isInCooldown() else None,
 	}
 	return rp.Reply(rp.types.USER_INFO_MOD, **params)
+
+@requireUser
+def get_karma_info(user):
+	karma = user.karma
+	karma_level = getKarmaLevel(karma)
+	next_level_karma = KARMA_LEVELS[karma_level] if karma_level <= len(KARMA_LEVELS) else None
+	params = {
+		"karma": karma,
+		"level_name": getKarmaLevelName(karma),
+		"level_karma": KARMA_LEVELS[karma_level - 1] if karma_level > 0 else None,
+		"next_level_name": getKarmaLevelName(next_level_karma) if next_level_karma is not None else "???",
+		"next_level_karma": next_level_karma
+	}
+	return rp.Reply(rp.types.KARMA_INFO, **params)
 
 @requireUser
 @requireRank(RANKS.admin)

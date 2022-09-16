@@ -71,7 +71,7 @@ def init(config, _db, _ch):
 		"start", "stop",
 		"users", "info", "rules",
 		"toggledebug", "togglepats",
-		"version", "changelog", "help", "botinfo",
+		"version", "changelog", "help", "patinfo", "botinfo",
 		"modsay", "adminsay",
 		"mod", "admin",
 		"warn", "delete", "deleteall", "remove", "removeall",
@@ -625,6 +625,10 @@ def cmd_help(ev):
 	except KeyError as e:
 		pass
 	send_answer(ev, rp.Reply(rp.types.HELP, rank=(user.rank if (user is not None) and user.isJoined() else None)), True)
+
+def cmd_patinfo(ev):
+	c_user = UserContainer(ev.from_user)
+	send_answer(ev, core.get_karma_info(c_user), True)
 
 def cmd_botinfo(ev):
 	c_user = UserContainer(ev.from_user)

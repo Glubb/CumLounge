@@ -1,4 +1,5 @@
 import re
+import math
 from string import Formatter
 
 from src.globals import *
@@ -86,6 +87,7 @@ types = NumericEnum([
 	"PROGRAM_VERSION",
 	"PROGRAM_CHANGELOG",
 	"HELP",
+	"KARMA_INFO",
 	"BOT_INFO",
 ])
 
@@ -101,6 +103,17 @@ def smiley(n):
 	elif n == 1: return ":|"
 	elif n <= 3: return ":/"
 	else: return ":("
+
+def progress(n, min_value, max_value, length=10):
+	assert min_value < max_value
+	done = "\u9648"
+	left = "\u9649"
+	if n < min_value:
+		return length * left
+	if n > max_value:
+		return length * done
+	step = (max_value - 1) - (min_value + 1) / (length - 2)
+	return done * math.ceil((n - min_value) / step) + left * math.floor((max_value - n) / step)
 
 format_strs = {
 	types.CUSTOM: "{text}",
@@ -258,6 +271,12 @@ format_strs = {
 			"	/admin USERNAME" +           " - <i>Promote a user to admin</i>\n"
 		if rank >= RANKS.admin else "")
 		if rank is not None else ""),
+	types.KARMA_INFO: lambda karma, level_karma, next_level_karma, **_:
+		"<b>Your level:</b> <i>{level}</i>\n" +
+		"<b>Next level:</b> <i>{next_level_name}</i>\n" +
+		"\n" +
+		"{karma}/" + ("{next_level_karma}" if next_level_karma is not None else "{level_karma}") "\n" +
+		progress(karma, level_karma if level_karma is not None else karma, next_level_karma if next_level_karma is not None else level_karma)
 	types.BOT_INFO:
 		"<b>Python version:</b> {python_ver}\n" +
 		"<b>OS:</b> {os}\n" +
