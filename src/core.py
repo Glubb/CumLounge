@@ -103,6 +103,15 @@ def getUserByOid(oid):
 			return user
 	return None
 
+def getRecentlyActiveUsers():
+	users = db.iterateUsers()
+	cache_start_datetime = max(launched, datetime.now() - timedelta(hours=24))
+	count = 0
+	for user in users:
+		if (user.lastActive is not None) and (user.lastActive > cache_start_datetime):
+			count += 1
+	return count
+
 def getKarmaLevel(karma):
 	return "" #TODO
 
@@ -311,6 +320,7 @@ def get_bot_info(user):
 		"launched": launched,
 		"time": format_datetime(datetime.now(), True),
 		"cached_msgs": len(ch.msgs)
+		"active_users": getRecentlyActiveUsers()
 	}
 	return rp.Reply(rp.types.BOT_INFO, **params)
 
