@@ -22,6 +22,7 @@ reg_open = None
 log_channel = None
 karma_amount_add = None
 karma_amount_remove = None
+karma_level_names = None
 bot_name = None
 blacklist_contact = None
 enable_signing = None
@@ -32,7 +33,7 @@ vote_up_interval = None
 vote_down_interval = None
 
 def init(config, _db, _ch):
-	global launched, db, ch, spam_scores, reg_open, log_channel, karma_amount_add, karma_amount_remove, blacklist_contact, bot_name, enable_signing, allow_remove_command, media_limit_period, sign_interval, vote_up_interval, vote_down_interval
+	global launched, db, ch, spam_scores, reg_open, log_channel, karma_amount_add, karma_amount_remove, karma_level_names, blacklist_contact, bot_name, enable_signing, allow_remove_command, media_limit_period, sign_interval, vote_up_interval, vote_down_interval
 
 	launched = datetime.now()
 
@@ -46,6 +47,7 @@ def init(config, _db, _ch):
 		logging.info("Log channel: %d", log_channel)
 	karma_amount_add = config.get("karma_amount_add", 1)
 	karma_amount_remove = config.get("karma_amount_remove", 1)
+	karma_level_names = config.get("karma_amount_remove", None)
 	bot_name = config.get("bot_name", "")
 	blacklist_contact = config.get("blacklist_contact", "")
 	enable_signing = config["enable_signing"]
@@ -113,7 +115,13 @@ def getRecentlyActiveUsers():
 	return count
 
 def getKarmaLevel(karma):
-	return "" #TODO
+	if karma_level_names is not None:
+		assert len(karma_level_names) = len(KARMA_LEVELS) + 1
+		karma_level = 0
+		while (karma_level < len(KARMA_LEVELS)) and (karma >= KARMA_LEVELS[karma_level]):
+			karma_level += 1
+		return karma_level_names[karma_level]
+	return ""
 
 def requireUser(func):
 	def wrapper(c_user, *args, **kwargs):

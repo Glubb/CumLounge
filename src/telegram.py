@@ -301,7 +301,7 @@ def formatter_signed_message(user: core.User, fmt: FormattedMessageBuilder):
 def formatter_psigned_message(user: core.User, fmt: FormattedMessageBuilder):
 	karma_level = core.getKarmaLevel(user.karma)
 	fmt.append(" <b>t. ", True)
-	fmt.append(karma_level)
+	fmt.append(karma_level if karma_level != "" else "???")
 	fmt.append("</b>", True)
 
 # Add tripcode message formatting for User `user` to `fmt`

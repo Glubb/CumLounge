@@ -71,6 +71,7 @@ WARN_EXPIRE_HOURS = 7 * 24
 # Karma related
 KARMA_PLUS_ONE = 1
 KARMA_WARN_PENALTY = 0 # Since we have downvote capability, we don't need/want this
+KARMA_LEVELS = [-49, -4, 15, 50, 100, 200, 300, 500] # Minimum karma for different levels
 
 # Spam limits
 SPAM_LIMIT = 3
