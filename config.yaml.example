@@ -35,6 +35,8 @@ enable_signing: false
 # bot needs to be admin in channel
 #log_channel: false
 
+karma_level_names: ["-2", "-1", "0", "1", "2", "3", "4", "5", "6"]
+
 # amounts for karma add/remove
 # defaults to 1
 #karma_amount_add: 1

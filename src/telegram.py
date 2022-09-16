@@ -300,9 +300,9 @@ def formatter_signed_message(user: core.User, fmt: FormattedMessageBuilder):
 # Add signed message formatting for User `user` to `fmt`
 def formatter_psigned_message(user: core.User, fmt: FormattedMessageBuilder):
 	karma_level = core.getKarmaLevel(user.karma)
-	fmt.append(" <b>t. ", True)
+	fmt.append(" <i><b>t. ", True)
 	fmt.append(karma_level if karma_level != "" else "???")
-	fmt.append("</b>", True)
+	fmt.append("</b></i>", True)
 
 # Add tripcode message formatting for User `user` to `fmt`
 def formatter_tripcoded_message(user: core.User, fmt: FormattedMessageBuilder):
