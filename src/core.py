@@ -116,7 +116,7 @@ def getRecentlyActiveUsers():
 
 def getKarmaLevel(karma):
 	if karma_level_names is not None:
-		assert len(karma_level_names) = len(KARMA_LEVELS) + 1
+		assert len(karma_level_names) == len(KARMA_LEVELS) + 1
 		karma_level = 0
 		while (karma_level < len(KARMA_LEVELS)) and (karma >= KARMA_LEVELS[karma_level]):
 			karma_level += 1
