@@ -276,7 +276,7 @@ format_strs = {
 		"<b>Next level:</b> <i>{next_level_name}</i>\n" +
 		"\n" +
 		"{karma}/" + ("{next_level_karma}" if next_level_karma is not None else "{level_karma}") + "\n" +
-		progress(karma, level_karma if level_karma is not None else karma, next_level_karma if next_level_karma is not None else level_karma)
+		progress(karma, level_karma if level_karma is not None else karma, next_level_karma if next_level_karma is not None else level_karma),
 	types.BOT_INFO:
 		"<b>Python version:</b> {python_ver}\n" +
 		"<b>OS:</b> {os}\n" +
