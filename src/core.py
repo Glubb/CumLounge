@@ -47,7 +47,7 @@ def init(config, _db, _ch):
 		logging.info("Log channel: %d", log_channel)
 	karma_amount_add = config.get("karma_amount_add", 1)
 	karma_amount_remove = config.get("karma_amount_remove", 1)
-	karma_level_names = config.get("karma_amount_remove", None)
+	karma_level_names = config.get("karma_level_names", None)
 	bot_name = config.get("bot_name", "")
 	blacklist_contact = config.get("blacklist_contact", "")
 	enable_signing = config["enable_signing"]
