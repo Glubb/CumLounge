@@ -293,6 +293,7 @@ def get_info(user):
 		"rank_i": user.rank,
 		"rank": RANKS.reverse[user.rank],
 		"karma": user.karma,
+		"karmalevel": getKarmaLevel(user.karma),
 		"warnings": user.warnings,
 		"warnExpiry": user.warnExpiry,
 		"cooldown": user.cooldownUntil if user.isInCooldown() else None,

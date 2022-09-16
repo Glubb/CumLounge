@@ -174,7 +174,7 @@ format_strs = {
 
 	types.USER_INFO: lambda warnings, cooldown, **_:
 		"<b>id</b>: {id}, <b>username</b>: {username!x}, <b>rank</b>: {rank_i} ({rank})\n"+
-		"<b>pats</b>: {karma}\n"+
+		"<b>pats</b>: {karma} ({karmalevel})\n"+
 		"<b>warnings</b>: {warnings} " + smiley(warnings)+
 		( " (one warning will be removed on {warnExpiry!t})" if warnings > 0 else "" ) + ", "+
 		"<b>cooldown</b>: "+
@@ -234,6 +234,7 @@ format_strs = {
 		"	+1" +          " (reply) - <i>Give a pat</i>\n"+
 		"	-1" +          " (reply) - <i>Remove a pat</i>\n"+
 		"	/togglepats" +         " - <i>Toggle pat notifications</i>\n"+
+		"	/psign TEXT" +         " - <i>Sign a message with your pat level\n"+
 		(
 			"\n<b><u>Mod commands</u></b>\n"+
 			"	/info" +                   " (reply) - <i>Show info about a user</i>\n"+

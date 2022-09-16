@@ -49,7 +49,7 @@ def dump(obj, name=None, r=False):
 			print("%s%s = %r" % (name, e, ev))
 
 # Program version
-VERSION = "0.5"
+VERSION = "0.6"
 
 # File names
 FILENAME_CHANGELOG = os.path.join(".", "changelog.txt")

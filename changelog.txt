@@ -32,3 +32,9 @@
 * Fixed: Possible crash with modded clients before first join
 * Fixed: Clients with disabled voice/video privacy setting now receive notifications
 * Fixed: Commands return an error message if a required argument is missing
+
+= Version 0.6 =
+* Added: /psign signs a message with your karma/pat level
+* Karmalevels can be dfined in config
+* Added: Admin command /botinfo
+* Added: User command /patinfo
