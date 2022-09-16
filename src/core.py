@@ -319,7 +319,7 @@ def get_bot_info(user):
 		"os": sys.platform,
 		"launched": launched,
 		"time": format_datetime(datetime.now(), True),
-		"cached_msgs": len(ch.msgs)
+		"cached_msgs": len(ch.msgs),
 		"active_users": getRecentlyActiveUsers()
 	}
 	return rp.Reply(rp.types.BOT_INFO, **params)
