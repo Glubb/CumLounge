@@ -327,7 +327,7 @@ def get_info_mod(user, msid):
 def get_karma_info(user):
 	karma = user.karma
 	karma_level = getKarmaLevel(karma)
-	next_level_karma = KARMA_LEVELS[karma_level] if karma_level <= len(KARMA_LEVELS) else None
+	next_level_karma = KARMA_LEVELS[karma_level] if karma_level < len(KARMA_LEVELS) else None
 	params = {
 		"karma": karma,
 		"level_name": getKarmaLevelName(karma),

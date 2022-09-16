@@ -106,8 +106,8 @@ def smiley(n):
 
 def progress(n, min_value, max_value, length=10):
 	assert min_value < max_value
-	done = "\u9648"
-	left = "\u9649"
+	done = str("\u9648")
+	left = str("\u9649")
 	if n < min_value:
 		return length * left
 	if n > max_value:
