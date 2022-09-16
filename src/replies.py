@@ -272,7 +272,7 @@ format_strs = {
 		if rank >= RANKS.admin else "")
 		if rank is not None else ""),
 	types.KARMA_INFO: lambda karma, level_karma, next_level_karma, **_:
-		"<b>Your level:</b> <i>{level}</i>\n" +
+		"<b>Your level:</b> <i>{level_name}</i>\n" +
 		"<b>Next level:</b> <i>{next_level_name}</i>\n" +
 		"\n" +
 		"{karma}/" + ("{next_level_karma}" if next_level_karma is not None else "{level_karma}") + "\n" +
