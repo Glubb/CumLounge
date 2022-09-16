@@ -106,14 +106,14 @@ def smiley(n):
 
 def progress(n, min_value, max_value, length=10):
 	assert min_value < max_value
-	done = "\u9648"
-	left = "\u9649"
+	done = "\u25B0"
+	left = "\u25B1"
 	if n < min_value:
 		return left * length
 	if n > max_value:
 		return done * length
 	step = (max_value - 1) - (min_value + 1) / (length - 2)
-	return done * math.ceil((n - min_value) / step) + left * math.floor((max_value - n) / step)
+	return done * math.ceil((n - min_value) / length) + left * math.floor((max_value - n) / length)
 
 format_strs = {
 	types.CUSTOM: "{text}",
