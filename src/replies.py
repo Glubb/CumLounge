@@ -226,51 +226,51 @@ format_strs = {
 		]),
 	types.HELP: lambda rank, **_:
 		"<b><u>Important commands</u></b>\n"+
-		"	/start" +              " - <i>Join the chat</i>\n"+
+		"	/start" +                  " - <i>Join the chat</i>\n"+
 		(
-		"	/stop" +               " - <i>Leave the chat</i>\n"+
-		"	/info" +               " - <i>Show info about you</i>\n"
+		"	/stop" +                   " - <i>Leave the chat</i>\n"+
+		"	/info" +                   " - <i>Show info about you</i>\n"
 		if rank is not None else "")+
-		"	/help" +               " - <i>Show available commands</i>\n"+
+		"	/help" +                   " - <i>Show available commands</i>\n"+
 		"\n<b><u>Additional commands</u></b>\n"+
 		(
-		"	/users" +              " - <i>Show number of users</i>\n"
+		"	/users" +                  " - <i>Show number of users</i>\n"
 		if rank is not None else "")+
-		"	/version" +            " - <i>Show bot version</i>\n"+
-		"	/changelog" +            " - <i>Show changelog</i>\n"+
+		"	/version" +                " - <i>Show bot version</i>\n"+
+		"	/changelog" +              " - <i>Show changelog</i>\n"+
 		(
-		"	/rules" +               " - <i>Show rules</i>\n"+
-		"	/toggledebug" +        " - <i>Toggle debug message</i>\n"+
-		"	/s TEXT" +             " - <i>Sign a message with your username</i>\n"
+		"	/rules" +                  " - <i>Show rules</i>\n"+
+		"	/toggledebug" +            " - <i>Toggle debug message</i>\n"+
+		"	/sign <i>or</i> /s TEXT" + " - <i>Sign message with your username</i>\n"
 		if rank is not None else "")+
 		(
 		"\n<b><u>Pat commands</u></b>\n"+
-		"	+1" +          " (reply) - <i>Give a pat</i>\n"+
-		"	-1" +          " (reply) - <i>Remove a pat</i>\n"+
-		"	/togglepats" +         " - <i>Toggle pat notifications</i>\n"+
-		"	/psign TEXT" +         " - <i>Sign a message with your pat level</i>\n"+
-		"	/patinfo" +            " - <i>Show info about your pat level</i>\n"+
+		"	+1" +                " (reply) - <i>Give a pat</i>\n"+
+		"	-1" +                " (reply) - <i>Remove a pat</i>\n"+
+		"	/togglepats" +               " - <i>Toggle pat notifications</i>\n"+
+		"	/psign <i>or</i> /ps TEXT" + " - <i>Sign message with your pat level</i>\n"+
+		"	/patinfo" +                  " - <i>Show info about your pat level</i>\n"+
 		(
 			"\n<b><u>Mod commands</u></b>\n"+
-			"	/info" +                   " (reply) - <i>Show info about a user</i>\n"+
-			"	/modsay TEXT" +            " - <i>Post mod message</i>\n"+
-			"	/warn" +       	    " (reply) - <i>Warn a user</i>\n"+
-			"	/remove" +      	    " (reply) - <i>Delete the message</i>\n"+
-			"	/removeall" +   	    " (reply) - <i>Delete all messages from a user</i>\n"+
-			"	/cooldown xs xm xh xd xw" +   " (reply) - <i>give a spicific cooldown+warn</i>\n"+
-			"	/delete" +     	    " (reply) - <i>Warn a user and delete the message</i>\n"+
-			"	/delete xs xm xh xd xw" +     " (reply) - <i>delete+warn and give a spicific cooldown</i>\n"+
-			"	/deleteall" +              " (reply) - <i>Warn a user and delete all messages</i>\n"+
-			"	/blacklist REASON" + " (reply) - <i>Blacklist a user and delete all messages</i>\n"
+			"	/info" +              " (reply) - <i>Show info about a user</i>\n"+
+			"	/modsay TEXT" +               " - <i>Post mod message</i>\n"+
+			"	/warn" +       	      " (reply) - <i>Warn a user</i>\n"+
+			"	/remove" +      	  " (reply) - <i>Delete the message</i>\n"+
+			"	/removeall" +   	  " (reply) - <i>Delete all messages from a user</i>\n"+
+			"	/cooldown DURATION" + " (reply) - <i>Give spicific cooldown and warn</i>\n"+
+			"	/delete" +     	      " (reply) - <i>Warn a user and delete the message</i>\n"+
+			"	/delete DURATION" +   " (reply) - <i>Delete, warn and give spicific cooldown</i>\n"+
+			"	/deleteall" +         " (reply) - <i>Warn a user and delete all messages</i>\n"+
+			"	/blacklist REASON" +  " (reply) - <i>Blacklist a user and delete all messages</i>\n"
 		if rank >= RANKS.mod else "")+
 		(
 			"\n<b><u>Admin commands</u></b>\n"+
-			"	/adminsay TEXT" +            " - <i>Post admin message</i>\n"+
-			"	/rules TEXT" +               " - <i>Define rules (HTML)</i>\n"+
-			"	/botinfo" +                  " - <i>Show bot system info</i>\n"+
-			"	/uncooldown ID/USERNAME" +   " - <i>Remove cooldown from a user</i>\n"+
-			"	/mod USERNAME" +             " - <i>Promote a user to mod</i>\n"+
-			"	/admin USERNAME" +           " - <i>Promote a user to admin</i>\n"
+			"	/adminsay TEXT" +          " - <i>Post admin message</i>\n"+
+			"	/rules TEXT" +             " - <i>Define rules (HTML)</i>\n"+
+			"	/botinfo" +                " - <i>Show bot system info</i>\n"+
+			"	/uncooldown ID/USERNAME" + " - <i>Remove cooldown from a user</i>\n"+
+			"	/mod USERNAME" +           " - <i>Promote a user to mod</i>\n"+
+			"	/admin USERNAME" +         " - <i>Promote a user to admin</i>\n"
 		if rank >= RANKS.admin else "")
 		if rank is not None else ""),
 	types.KARMA_INFO: lambda karma, level_karma, next_level_karma, **_:
