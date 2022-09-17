@@ -569,14 +569,16 @@ class MyReceiver(core.Receiver):
 
 # Custom logger mapping to specified channel
 
+def log_into_channel(msg):
+	try:
+		if (bot is not None) and core.log_channel:
+			bot.send_message(core.log_channel, msg)
+	except:
+		pass
+
 class ChannelHandler(logging.StreamHandler):
 	def emit(self, record):
-		try:
-			msg = self.format(record)
-			if (bot is not None) and core.log_channel:
-				bot.send_message(core.log_channel, msg)
-		except:
-			pass
+		log_into_channel(self.format(record))
 
 ####
 
