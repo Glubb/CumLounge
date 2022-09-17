@@ -22,6 +22,7 @@ reg_open = None
 log_channel = None
 karma_amount_add = None
 karma_amount_remove = None
+karma_level_names = None
 bot_name = None
 blacklist_contact = None
 enable_signing = None
@@ -32,7 +33,7 @@ vote_up_interval = None
 vote_down_interval = None
 
 def init(config, _db, _ch):
-	global launched, db, ch, spam_scores, reg_open, log_channel, karma_amount_add, karma_amount_remove, blacklist_contact, bot_name, enable_signing, allow_remove_command, media_limit_period, sign_interval, vote_up_interval, vote_down_interval
+	global launched, db, ch, spam_scores, reg_open, log_channel, karma_amount_add, karma_amount_remove, karma_level_names, blacklist_contact, bot_name, enable_signing, allow_remove_command, media_limit_period, sign_interval, vote_up_interval, vote_down_interval
 
 	launched = datetime.now()
 
@@ -46,6 +47,7 @@ def init(config, _db, _ch):
 		logging.info("Log channel: %d", log_channel)
 	karma_amount_add = config.get("karma_amount_add", 1)
 	karma_amount_remove = config.get("karma_amount_remove", 1)
+	karma_level_names = config.get("karma_level_names", None)
 	bot_name = config.get("bot_name", "")
 	blacklist_contact = config.get("blacklist_contact", "")
 	enable_signing = config["enable_signing"]
@@ -102,6 +104,27 @@ def getUserByOid(oid):
 		if user.getObfuscatedId() == oid:
 			return user
 	return None
+
+def getRecentlyActiveUsers():
+	users = db.iterateUsers()
+	cache_start_datetime = max(launched, datetime.now() - timedelta(hours=24))
+	count = 0
+	for user in users:
+		if (user.lastActive is not None) and (user.lastActive > cache_start_datetime):
+			count += 1
+	return count
+
+def getKarmaLevel(karma):
+	karma_level = 0
+	while (karma_level < len(KARMA_LEVELS)) and (karma >= KARMA_LEVELS[karma_level]):
+		karma_level += 1
+	return karma_level
+
+def getKarmaLevelName(karma):
+	if karma_level_names is not None:
+		assert len(karma_level_names) == len(KARMA_LEVELS) + 1
+		return karma_level_names[getKarmaLevel(karma)]
+	return ""
 
 def requireUser(func):
 	def wrapper(c_user, *args, **kwargs):
@@ -273,6 +296,7 @@ def get_info(user):
 		"rank_i": user.rank,
 		"rank": RANKS.reverse[user.rank],
 		"karma": user.karma,
+		"karmalevel": getKarmaLevelName(user.karma),
 		"warnings": user.warnings,
 		"warnExpiry": user.warnExpiry,
 		"cooldown": user.cooldownUntil if user.isInCooldown() else None,
@@ -300,6 +324,20 @@ def get_info_mod(user, msid):
 	return rp.Reply(rp.types.USER_INFO_MOD, **params)
 
 @requireUser
+def get_karma_info(user):
+	karma = user.karma
+	karma_level = getKarmaLevel(karma)
+	next_level_karma = KARMA_LEVELS[karma_level] if karma_level < len(KARMA_LEVELS) else None
+	params = {
+		"karma": karma,
+		"level_name": getKarmaLevelName(karma),
+		"level_karma": KARMA_LEVELS[karma_level - 1] if karma_level > 0 else None,
+		"next_level_name": getKarmaLevelName(next_level_karma) if next_level_karma is not None else "???",
+		"next_level_karma": next_level_karma
+	}
+	return rp.Reply(rp.types.KARMA_INFO, **params)
+
+@requireUser
 @requireRank(RANKS.admin)
 def get_bot_info(user):
 	params = {
@@ -307,6 +345,8 @@ def get_bot_info(user):
 		"os": sys.platform,
 		"launched": launched,
 		"time": format_datetime(datetime.now(), True),
+		"cached_msgs": len(ch.msgs),
+		"active_users": getRecentlyActiveUsers()
 	}
 	return rp.Reply(rp.types.BOT_INFO, **params)
 
@@ -324,7 +364,7 @@ def get_users(user):
 		return rp.Reply(rp.types.USERS_INFO,
         	active=active, inactive=inactive + black, total=active + inactive + black)
 	return rp.Reply(rp.types.USERS_INFO_EXTENDED,
-		active=active, inactive=inactive, blacklisted=black,
+		active=active, inactive=inactive + black, blacklisted=black,
 		total=active + inactive + black)
 
 @requireUser
@@ -600,11 +640,11 @@ def modify_karma(user, msid, amount):
 		return rp.Reply(rp.types.KARMA_VOTED_DOWN, bot_name=bot_name)
 
 @requireUser
-def prepare_user_message(user: User, msg_score, *, is_media=False, signed=False, tripcode=False):
+def prepare_user_message(user: User, msg_score, *, is_media=False, signed=False, tripcode=False, psigned=False):
 	# prerequisites
 	if user.isInCooldown():
 		return rp.Reply(rp.types.ERR_COOLDOWN, until=user.cooldownUntil)
-	if (signed or tripcode) and not enable_signing:
+	if (signed or tripcode or psigned) and not enable_signing:
 		return rp.Reply(rp.types.ERR_COMMAND_DISABLED)
 	if tripcode and user.tripcode is None:
 		return rp.Reply(rp.types.ERR_NO_TRIPCODE)
@@ -617,7 +657,7 @@ def prepare_user_message(user: User, msg_score, *, is_media=False, signed=False,
 		return rp.Reply(rp.types.ERR_SPAMMY)
 
 	# enforce signing cooldown
-	if signed and sign_interval.total_seconds() > 1:
+	if (signed or psigned) and sign_interval.total_seconds() > 1:
 		last_used = sign_last_used.get(user.id, None)
 		if last_used and (datetime.now() - last_used) < sign_interval:
 			return rp.Reply(rp.types.ERR_SPAMMY_SIGN)

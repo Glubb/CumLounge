@@ -71,13 +71,13 @@ def init(config, _db, _ch):
 		"start", "stop",
 		"users", "info", "rules",
 		"toggledebug", "togglepats",
-		"version", "changelog", "help", "botinfo",
+		"version", "changelog", "help", "patinfo", "botinfo",
 		"modsay", "adminsay",
 		"mod", "admin",
 		"warn", "delete", "deleteall", "remove", "removeall",
 		"cooldown", "uncooldown",
 		"blacklist",
-		"s", "sign", "tripcode", "t", "tsign",
+		"s", "sign", "tripcode", "t", "tsign", "psign", "ps"
 	]
 	for c in cmds: # maps /<c> to the function cmd_<c>
 		c = c.lower()
@@ -296,6 +296,13 @@ def formatter_signed_message(user: core.User, fmt: FormattedMessageBuilder):
 	fmt.append(" <a href=\"tg://user?id=%d\">" % user.id, True)
 	fmt.append("~~" + user.getFormattedName())
 	fmt.append("</a>", True)
+
+# Add signed message formatting for User `user` to `fmt`
+def formatter_psigned_message(user: core.User, fmt: FormattedMessageBuilder):
+	karma_level = core.getKarmaLevel(user.karma)
+	fmt.append(" <i><b>t. ", True)
+	fmt.append(karma_level if karma_level != "" else "???")
+	fmt.append("</b></i>", True)
 
 # Add tripcode message formatting for User `user` to `fmt`
 def formatter_tripcoded_message(user: core.User, fmt: FormattedMessageBuilder):
@@ -562,14 +569,16 @@ class MyReceiver(core.Receiver):
 
 # Custom logger mapping to specified channel
 
+def log_into_channel(msg, html=False):
+	try:
+		if (bot is not None) and core.log_channel:
+			bot.send_message(core.log_channel, msg, parse_mode= "HTML" if html else None)
+	except:
+		pass
+
 class ChannelHandler(logging.StreamHandler):
 	def emit(self, record):
-		try:
-			msg = self.format(record)
-			if (bot is not None) and core.log_channel:
-				bot.send_message(core.log_channel, msg)
-		except:
-			pass
+		log_into_channel(self.format(record))
 
 ####
 
@@ -618,6 +627,10 @@ def cmd_help(ev):
 	except KeyError as e:
 		pass
 	send_answer(ev, rp.Reply(rp.types.HELP, rank=(user.rank if (user is not None) and user.isJoined() else None)), True)
+
+def cmd_patinfo(ev):
+	c_user = UserContainer(ev.from_user)
+	send_answer(ev, core.get_karma_info(c_user), True)
 
 def cmd_botinfo(ev):
 	c_user = UserContainer(ev.from_user)
@@ -763,10 +776,10 @@ def relay(ev):
 # relay the message `ev` to other users in the chat
 # `caption_text` can be a FormattedMessage that overrides the caption of media
 # `signed` and `tripcode` indicate if the message is signed or tripcoded respectively
-def relay_inner(ev, *, caption_text=None, signed=False, tripcode=False):
+def relay_inner(ev, *, caption_text=None, signed=False, tripcode=False, psigned=False):
 	is_media = is_forward(ev) or ev.content_type in MEDIA_FILTER_TYPES
 	msid = core.prepare_user_message(UserContainer(ev.from_user), calc_spam_score(ev),
-		is_media=is_media, signed=signed, tripcode=tripcode)
+		is_media=is_media, signed=signed, tripcode=tripcode, psigned=psigned)
 	if msid is None or isinstance(msid, rp.Reply):
 		return send_answer(ev, msid) # don't relay message, instead reply
 
@@ -788,7 +801,9 @@ def relay_inner(ev, *, caption_text=None, signed=False, tripcode=False):
 		fmt = FormattedMessageBuilder(caption_text, ev.caption, ev.text)
 		formatter_replace_links(ev, fmt)
 		formatter_network_links(fmt)
-		if signed:
+		if psigned:
+			formatter_psigned_message(user, fmt)
+		elif signed:
 			formatter_signed_message(user, fmt)
 		elif tripcode:
 			formatter_tripcoded_message(user, fmt)
@@ -825,6 +840,13 @@ def cmd_sign(ev, arg):
 	relay_inner(ev, signed=True)
 
 cmd_s = cmd_sign # alias
+
+@takesArgument()
+def cmd_psign(ev, arg):
+	ev.text = arg
+	relay_inner(ev, psigned=True)
+
+cmd_ps = cmd_psign # alias
 
 @takesArgument()
 def cmd_tsign(ev, arg):
