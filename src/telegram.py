@@ -569,10 +569,10 @@ class MyReceiver(core.Receiver):
 
 # Custom logger mapping to specified channel
 
-def log_into_channel(msg):
+def log_into_channel(msg, html=False):
 	try:
 		if (bot is not None) and core.log_channel:
-			bot.send_message(core.log_channel, msg)
+			bot.send_message(core.log_channel, msg, parse_mode= "HTML" if html else None)
 	except:
 		pass
 
