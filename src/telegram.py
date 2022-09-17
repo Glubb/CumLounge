@@ -363,7 +363,7 @@ def resend_message(chat_id, ev, reply_to=None, force_caption: FormattedMessage=N
 		# We need the full Chat object here, because some properties are not available in the ev.chat trait
 		tchat = bot.get_chat(chat_id)
 		# Check if the user has disabled them
-		if not tchat.has_restricted_voice_and_video_messages:
+		if tchat.has_restricted_voice_and_video_messages:
 			return bot.send_message(chat_id, rp.formatForTelegram(rp.Reply(rp.types.ERR_VOICE_AND_VIDEO_PRIVACY_RESTRICTION)), parse_mode="HTML")
 
 	if should_hide_forward(ev):
