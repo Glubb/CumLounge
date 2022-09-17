@@ -49,7 +49,7 @@ def dump(obj, name=None, r=False):
 			print("%s%s = %r" % (name, e, ev))
 
 # Program version
-VERSION = "0.5"
+VERSION = "0.6"
 
 # File names
 FILENAME_CHANGELOG = os.path.join(".", "changelog.txt")
@@ -71,6 +71,7 @@ WARN_EXPIRE_HOURS = 7 * 24
 # Karma related
 KARMA_PLUS_ONE = 1
 KARMA_WARN_PENALTY = 0 # Since we have downvote capability, we don't need/want this
+KARMA_LEVELS = [-49, -4, 15, 40, 100, 200, 300, 500] # Minimum karma for different levels
 
 # Spam limits
 SPAM_LIMIT = 3

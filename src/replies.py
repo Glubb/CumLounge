@@ -1,4 +1,5 @@
 import re
+import math
 from string import Formatter
 
 from src.globals import *
@@ -86,6 +87,7 @@ types = NumericEnum([
 	"PROGRAM_VERSION",
 	"PROGRAM_CHANGELOG",
 	"HELP",
+	"KARMA_INFO",
 	"BOT_INFO",
 ])
 
@@ -102,6 +104,18 @@ def smiley(n):
 	elif n <= 3: return ":/"
 	else: return ":("
 
+def progress(n, min_value, max_value, length=10):
+	assert min_value < max_value
+	done = "\u25B0"
+	left = "\u25B1"
+	if n < min_value:
+		return left * length
+	if n > max_value:
+		return done * length
+	step = (max_value - 1) - (min_value + 1) / (length - 2)
+	offset = -min(0, min_value)
+	return done * math.ceil((n - min_value + offset) / length) + left * math.floor((max_value + offset - n) / length)
+
 format_strs = {
 	types.CUSTOM: "{text}",
 	types.SUCCESS: "☑",
@@ -111,7 +125,8 @@ format_strs = {
 	types.SUCCESS_WARN_DELETEALL: "☑ <b>{id}</b> <i>has been warned and all {count} messages were deleted</i>",
 	types.SUCCESS_BLACKLIST: "☑ <b>{id}</b> <i>has been blacklisted and the message was deleted</i>",
 	types.SUCCESS_BLACKLIST_DELETEALL: "☑ <b>{id}</b> <i>has been blacklisted and all {count} messages were deleted</i>",
-	types.LOG_CHANNEL: "This is the log channel for: <b>{bot_name}</b>",
+	types.LOG_CHANNEL: "catlounge-ng-meow v{version} started\n"+
+						"This is the log channel for: <b>{bot_name}</b>",
 	types.BOOLEAN_CONFIG: lambda enabled, **_:
 		"<b>{description!x}</b>: " + (enabled and "enabled" or "disabled"),
 
@@ -130,7 +145,7 @@ format_strs = {
 	types.KARMA_VOTED_UP: em("You just gave this {bot_name} a pat, awesome!"),
 	types.KARMA_VOTED_DOWN: em("You just removed a pat from this {bot_name}!"),
 	types.KARMA_NOTIFICATION: lambda count, **_:
-		em( "You have just " + ("been given" if count > 0 else "lost") +" a pat! (check /info to see your pats"+
+		em( "You have just " + ("been given" if count > 0 else "lost") +" a pat! (check /patinfo to see your pats and patlevel"+
 			" or /togglepats to turn these notifications off)" ),
 	types.TRIPCODE_INFO: lambda tripcode, **_:
 		"<b>tripcode</b>: " + ("<code>{tripcode!x}</code>" if tripcode is not None else "unset"),
@@ -173,7 +188,7 @@ format_strs = {
 
 	types.USER_INFO: lambda warnings, cooldown, **_:
 		"<b>id</b>: {id}, <b>username</b>: {username!x}, <b>rank</b>: {rank_i} ({rank})\n"+
-		"<b>pats</b>: {karma}\n"+
+		"<b>pats</b>: {karma} ({karmalevel})\n"+
 		"<b>warnings</b>: {warnings} " + smiley(warnings)+
 		( " (one warning will be removed on {warnExpiry!t})" if warnings > 0 else "" ) + ", "+
 		"<b>cooldown</b>: "+
@@ -188,8 +203,8 @@ format_strs = {
 		(cooldown and "yes, until {cooldown!t}" or "no" ),
 	types.USERS_INFO: "<b>{active}</b> <i>active and</i> {inactive} <i>inactive users</i> (<i>total</i>: {total})",
 	types.USERS_INFO_EXTENDED:
-		"<b>{active}</b> <i>active</i>, {inactive} <i>inactive and</i> "+
-		"{blacklisted} <i>blacklisted users</i> (<i>total</i>: {total})",
+		"<b>{active}</b> <i>active</i>, {inactive} <i>inactive users and </i> "+
+		"{blacklisted} <i>of them blacklisted</i> (<i>total</i>: {total})",
 
 	types.PROGRAM_VERSION: "<b>catlounge v{version}</b> <i>is a fork of the original secretloungebot. " +
 		"View our changes and source code in @catloungeadmin</i>",
@@ -233,6 +248,8 @@ format_strs = {
 		"	+1" +          " (reply) - <i>Give a pat</i>\n"+
 		"	-1" +          " (reply) - <i>Remove a pat</i>\n"+
 		"	/togglepats" +         " - <i>Toggle pat notifications</i>\n"+
+		"	/psign TEXT" +         " - <i>Sign a message with your pat level</i>\n"+
+		"	/patinfo" +            " - <i>Show info about your pat level</i>\n"+
 		(
 			"\n<b><u>Mod commands</u></b>\n"+
 			"	/info" +                   " (reply) - <i>Show info about a user</i>\n"+
@@ -256,11 +273,20 @@ format_strs = {
 			"	/admin USERNAME" +           " - <i>Promote a user to admin</i>\n"
 		if rank >= RANKS.admin else "")
 		if rank is not None else ""),
+	types.KARMA_INFO: lambda karma, level_karma, next_level_karma, **_:
+		"<b>Your level:</b> <i>{level_name}</i>\n" +
+		"<b>Next level:</b> <i>{next_level_name}</i>\n" +
+		"\n" +
+		"{karma}/" + ("{next_level_karma}" if next_level_karma is not None else "{level_karma}"), #+ "\n" +
+		#progress(karma, level_karma if level_karma is not None else karma, next_level_karma if next_level_karma is not None else karma - 1),
 	types.BOT_INFO:
 		"<b>Python version:</b> {python_ver}\n" +
 		"<b>OS:</b> {os}\n" +
 		"<b>Launched:</b> {launched!t}\n" +
-		"<b>Local time:</b> {time}" # Must not use "t" conversion
+		"<b>Local time:</b> {time}\n" + # Must not use "t" conversion
+		"\n" +
+		"<b>Cached messages:</b> {cached_msgs:n}\n" +
+		"<b>Recently-active users:</b> {active_users:n}"
 }
 
 localization = {}
