@@ -113,7 +113,8 @@ def progress(n, min_value, max_value, length=10):
 	if n > max_value:
 		return done * length
 	step = (max_value - 1) - (min_value + 1) / (length - 2)
-	return done * math.ceil((n - min_value) / length) + left * math.floor((max_value - n) / length)
+	offset = -min(0, min_value)
+	return done * math.ceil((n - min_value + offset) / length) + left * math.floor((max_value + offset - n) / length)
 
 format_strs = {
 	types.CUSTOM: "{text}",
@@ -276,7 +277,7 @@ format_strs = {
 		"<b>Next level:</b> <i>{next_level_name}</i>\n" +
 		"\n" +
 		"{karma}/" + ("{next_level_karma}" if next_level_karma is not None else "{level_karma}") + "\n" +
-		progress(karma, level_karma if level_karma is not None else karma, next_level_karma if next_level_karma is not None else karma),
+		progress(karma, level_karma if level_karma is not None else karma, next_level_karma if next_level_karma is not None else karma - 1),
 	types.BOT_INFO:
 		"<b>Python version:</b> {python_ver}\n" +
 		"<b>OS:</b> {os}\n" +
