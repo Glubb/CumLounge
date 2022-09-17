@@ -299,7 +299,7 @@ def formatter_signed_message(user: core.User, fmt: FormattedMessageBuilder):
 
 # Add signed message formatting for User `user` to `fmt`
 def formatter_psigned_message(user: core.User, fmt: FormattedMessageBuilder):
-	karma_level = core.getKarmaLevel(user.karma)
+	karma_level = core.getKarmaLevelName(user.karma)
 	fmt.append(" <i><b>t. ", True)
 	fmt.append(karma_level if karma_level != "" else "???")
 	fmt.append("</b></i>", True)
