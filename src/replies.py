@@ -249,7 +249,7 @@ format_strs = {
 		"	-1" +          " (reply) - <i>Remove a pat</i>\n"+
 		"	/togglepats" +         " - <i>Toggle pat notifications</i>\n"+
 		"	/psign TEXT" +         " - <i>Sign a message with your pat level</i>\n"+
-		"	/patinfo" +            " - <i>Show info about your pat level</i>\n"
+		"	/patinfo" +            " - <i>Show info about your pat level</i>\n"+
 		(
 			"\n<b><u>Mod commands</u></b>\n"+
 			"	/info" +                   " (reply) - <i>Show info about a user</i>\n"+
