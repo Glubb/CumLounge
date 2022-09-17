@@ -145,7 +145,7 @@ format_strs = {
 	types.KARMA_VOTED_UP: em("You just gave this {bot_name} a pat, awesome!"),
 	types.KARMA_VOTED_DOWN: em("You just removed a pat from this {bot_name}!"),
 	types.KARMA_NOTIFICATION: lambda count, **_:
-		em( "You have just " + ("been given" if count > 0 else "lost") +" a pat! (check /info to see your pats"+
+		em( "You have just " + ("been given" if count > 0 else "lost") +" a pat! (check /patinfo to see your pats and patlevel"+
 			" or /togglepats to turn these notifications off)" ),
 	types.TRIPCODE_INFO: lambda tripcode, **_:
 		"<b>tripcode</b>: " + ("<code>{tripcode!x}</code>" if tripcode is not None else "unset"),
@@ -249,6 +249,7 @@ format_strs = {
 		"	-1" +          " (reply) - <i>Remove a pat</i>\n"+
 		"	/togglepats" +         " - <i>Toggle pat notifications</i>\n"+
 		"	/psign TEXT" +         " - <i>Sign a message with your pat level</i>\n"+
+		"	/patinfo" +            " - <i>Show info about your pat level</i>\n"
 		(
 			"\n<b><u>Mod commands</u></b>\n"+
 			"	/info" +                   " (reply) - <i>Show info about a user</i>\n"+
