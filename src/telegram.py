@@ -195,11 +195,11 @@ def calc_spam_score(ev):
 	if (ev.forward_from is not None or ev.forward_from_chat is not None
 		or ev.json.get("forward_sender_name") is not None):
 		s = SCORE_BASE_FORWARD
+	elif ev.content_type == "photo":
+		return SCORE_PHOTO
 
 	if ev.content_type == "sticker":
 		return SCORE_STICKER
-	if ev.content_type == "photo":
-		return SCORE_PHOTO
 	elif ev.content_type == "text":
 		pass
 	else:
@@ -502,7 +502,8 @@ def check_telegram_exc(e, user_id):
 	if "Too Many Requests" in e.result.text:
 		d = json.loads(e.result.text)["parameters"]["retry_after"]
 		d = min(d, 30) # supposedly this is in seconds, but you sometimes get 100 or even 2000
-		logging.warning("API rate limit hit, waiting for %ds", d)
+		if d >= 20: # We do not need to log cooldowns of less than 20, this would flood the channel
+			logging.warning("API rate limit hit, waiting for %ds", d)
 		time.sleep(d)
 		return True # retry
 
