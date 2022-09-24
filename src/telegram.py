@@ -76,7 +76,7 @@ def init(config, _db, _ch):
 		"mod", "admin",
 		"warn", "delete", "deleteall", "remove", "removeall",
 		"cooldown", "uncooldown",
-		"blacklist",
+		"blacklist", "cleanup",
 		"s", "sign", "tripcode", "t", "tsign", "psign", "ps"
 	]
 	for c in cmds: # maps /<c> to the function cmd_<c>
@@ -314,7 +314,6 @@ def formatter_tripcoded_message(user: core.User, fmt: FormattedMessageBuilder):
 	fmt.prepend(tripname)
 	fmt.prepend("<b>", True)
 
-
 ###
 
 # Message sending (queue-related)
@@ -377,7 +376,6 @@ def resend_message(chat_id, ev, reply_to=None, force_caption: FormattedMessage=N
 		pass
 	elif is_forward(ev) and (ev.content_type != "poll"):
 		# forward message instead of re-sending the contents
-
 		return bot.forward_message(chat_id, ev.chat.id, ev.message_id)
 
 	kwargs = {}
@@ -479,6 +477,18 @@ def send_to_single(ev, msid, user, *, reply_msid=None, force_caption=None):
 		ch.saveMapping(user_id, msid, ev2.message_id)
 	put_into_queue(user, msid, f)
 
+# delete message with `id` in Telegram chat `user_id`
+def delete_message_inner(user_id, id):
+	while True:
+		try:
+			bot.delete_message(user_id, id)
+		except telebot.apihelper.ApiException as e:
+			retry = check_telegram_exc(e, None)
+			if retry:
+				continue
+			return
+		break
+
 # look at given Exception `e`, force-leave user if bot was blocked
 # returns True if message sending should be retried
 def check_telegram_exc(e, user_id):
@@ -519,43 +529,44 @@ class MyReceiver(core.Receiver):
 				continue
 			send_to_single(m, msid, user, reply_msid=reply_msid)
 	@staticmethod
-	def delete(msid):
-		tmp = ch.getMessage(msid)
-		except_id = None if tmp is None else tmp.user_id
-		message_queue.delete(lambda item, msid=msid: item.msid == msid)
+	def delete(msids):
+		msids_set = set(msids)
+		# first stop actively delivering this message
+		message_queue.delete(lambda item: item.msid in msids_set)
+		# then delete all instances that have already been sent
+		msids_owner = []
+		for msid in msids:
+			tmp = ch.getMessage(msid)
+			msids_owner.append(None if tmp is None else tmp.user_id)
+		assert len(msids_owner) == len(msids)
 		# FIXME: there's a hard to avoid race condition here:
 		# if a message is currently being sent, but finishes after we grab the
 		# message ids it will never be deleted
 		for user in db.iterateUsers():
 			if not user.isJoined():
 				continue
-			if user.id == except_id:
-				continue
 
-			id = ch.lookupMapping(user.id, msid=msid)
-			if id is None:
-				continue
-			user_id = user.id
-			def f(user_id=user_id, id=id):
-				while True:
-					try:
-						bot.delete_message(user_id, id)
-					except telebot.apihelper.ApiException as e:
-						retry = check_telegram_exc(e, None)
-						if retry:
-							continue
-						return
-					break
-			# queued message has msid=None here since this is a deletion, not a message being sent
-			put_into_queue(user, None, f)
+			for j, msid in enumerate(msids):
+				if user.id == msids_owner[j] and not user.debugEnabled:
+					continue
+				id = ch.lookupMapping(user.id, msid=msid)
+				if id is None:
+					continue
+				user_id = user.id
+				def f(user_id=user_id, id=id):
+					delete_message_inner(user_id, id)
+				# msid=None here since this is a deletion, not a message being sent
+				put_into_queue(user, None, f)
 		# drop the mappings for this message so the id doesn't end up used e.g. for replies
-		ch.deleteMappings(msid)
+		for msid in msids_set:
+			ch.deleteMappings(msid)
 	@staticmethod
 	def stop_invoked(user, delete_out):
+		# delete pending messages to be delivered *to* the user
 		message_queue.delete(lambda item, user_id=user.id: item.user_id == user_id)
 		if not delete_out:
 			return
-		# delete all (pending) outgoing messages written by the user
+		# delete all pending messages written *by* the user too
 		def f(item):
 			if item.msid is None:
 				return False
@@ -712,6 +723,8 @@ cmd_removeall = lambda ev: cmd_warn(ev, only_delete=True, delete_all=True)
 @takesArgument()
 def cmd_cooldown(ev, arg):
 	return cmd_warn(ev, delete=False, cooldown_duration=arg)
+
+cmd_cleanup = wrap_core(core.cleanup_messages)
 
 @takesArgument()
 def cmd_uncooldown(ev, arg):

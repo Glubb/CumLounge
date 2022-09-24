@@ -51,6 +51,10 @@ class Cache():
 	def getMessage(self, msid):
 		with self.lock:
 			return self.msgs.get(msid, None)
+	def iterateMessages(self, functor):
+		with self.lock:
+			for msid, cm in self.msgs.items():
+				functor(msid, cm)
 	def getMessages(self, uid):
 		with self.lock:
 			return {msid: msg for msid, msg in self.msgs.items() if msg.user_id == uid}

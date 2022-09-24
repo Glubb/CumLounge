@@ -195,13 +195,13 @@ class ScoreKeeper():
 
 class Receiver():
 	@staticmethod
-	def reply(m, msid, who, except_who, reply_to):
+	def reply(m: rp.Reply, msid: int, who, except_who, reply_to: bool):
 		raise NotImplementedError()
 	@staticmethod
-	def delete(msid):
+	def delete(msids: list[int]):
 		raise NotImplementedError()
 	@staticmethod
-	def stop_invoked(who, delete_out):
+	def stop_invoked(who, delete_out: bool):
 		raise NotImplementedError()
 
 class Sender(Receiver): # flawless class hierachy I know...
@@ -212,10 +212,10 @@ class Sender(Receiver): # flawless class hierachy I know...
 		for r in Sender.receivers:
 			r.reply(m, msid, who, except_who, reply_to)
 	@staticmethod
-	def delete(msid):
-		logging.debug("delete(msid=%d)", msid)
+	def delete(msids):
+		logging.debug("delete(msids=%r)", msids)
 		for r in Sender.receivers:
-			r.delete(msid)
+			r.delete(msids)
 	@staticmethod
 	def stop_invoked(who, delete_out=False):
 		logging.debug("stop_invoked(who=%s)", who)
@@ -506,7 +506,6 @@ def warn_user(user, msid, delete=False, del_all=False, duration=""):
 		user2 = db.getUser(id=cm.user_id)
 		if not delete: # allow deleting already warned messages
 			return rp.Reply(rp.types.ERR_ALREADY_WARNED)
-
 	if delete:
 		if del_all:
 			msgs = ch.getMessages(cm.user_id)
@@ -515,7 +514,7 @@ def warn_user(user, msid, delete=False, del_all=False, duration=""):
 			logging.info("%s warned %s (all messages deleted)", user, user2.getObfuscatedId())
 			return rp.Reply(rp.types.SUCCESS_WARN_DELETEALL, id=user2.getObfuscatedId(), count=len(msgs))
 		else:
-			Sender.delete(msid)
+			Sender.delete([msid])
 			logging.info("%s warned %s (message deleted)", user, user2.getObfuscatedId())
 			return rp.Reply(rp.types.SUCCESS_WARN_DELETE, id=user2.getObfuscatedId())
 	else:
@@ -542,9 +541,27 @@ def delete_message(user, msid, del_all=False):
 		return rp.Reply(rp.types.SUCCESS_DELETEALL, id=user2.getObfuscatedId(), count=len(msgs))
 	else:
 		_push_system_message(rp.Reply(rp.types.MESSAGE_DELETED), who=user2, reply_to=msid)
-		Sender.delete(msid)
+		Sender.delete([msid])
 		logging.info("%s deleted a message from %s", user, user2.getObfuscatedId())
 		return rp.Reply(rp.types.SUCCESS_DELETE, id=user2.getObfuscatedId())
+
+@requireUser
+@requireRank(RANKS.admin)
+def cleanup_messages(user):
+	msids = []
+	def f(msid: int, cm: CachedMessage):
+		if cm.user_id is None:
+			return
+		if 1337 in cm.upvoted: # mark that we've been here before
+			return
+		user2 = db.getUser(id=cm.user_id)
+		if user2.isBlacklisted():
+			msids.append(msid)
+			cm.upvoted.add(1337)
+	ch.iterateMessages(f)
+	logging.info("%s invoked cleanup (matched: %d)", user, len(msids))
+	Sender.delete(msids)
+	return rp.Reply(rp.types.DELETION_QUEUED, count=len(msids))
 
 @requireUser
 @requireRank(RANKS.admin)
@@ -592,7 +609,7 @@ def blacklist_user(user, msid, reason, del_all=False):
 		logging.info("%s was blacklisted by %s and all his messages were deleted for: %s", user2, user, reason)
 		return rp.Reply(rp.types.SUCCESS_BLACKLIST_DELETEALL, id=user2.getObfuscatedId(), count=len(msgs))
 	else:
-		Sender.delete(msid)
+		Sender.delete([msid])
 		logging.info("%s was blacklisted by %s for: %s", user2, user, reason)
 		return rp.Reply(rp.types.SUCCESS_BLACKLIST, id=user2.getObfuscatedId())
 
