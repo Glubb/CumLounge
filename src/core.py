@@ -510,7 +510,7 @@ def warn_user(user, msid, delete=False, del_all=False, duration=""):
 		if del_all:
 			msgs = ch.getMessages(cm.user_id)
 			for cm2 in msgs:
-				Sender.delete(cm2)
+				Sender.delete([cm2])
 			logging.info("%s warned %s (all messages deleted)", user, user2.getObfuscatedId())
 			return rp.Reply(rp.types.SUCCESS_WARN_DELETEALL, id=user2.getObfuscatedId(), count=len(msgs))
 		else:
@@ -536,7 +536,7 @@ def delete_message(user, msid, del_all=False):
 	if del_all:
 		msgs = ch.getMessages(user2.id)
 		for cm2 in msgs:
-			Sender.delete(cm2)
+			Sender.delete([cm2])
 		logging.info("%s deleted all messages from %s", user, user2.getObfuscatedId())
 		return rp.Reply(rp.types.SUCCESS_DELETEALL, id=user2.getObfuscatedId(), count=len(msgs))
 	else:
@@ -605,7 +605,7 @@ def blacklist_user(user, msid, reason, del_all=False):
 	if del_all:
 		msgs = ch.getMessages(cm.user_id)
 		for cm2 in msgs:
-			Sender.delete(cm2)
+			Sender.delete([cm2])
 		logging.info("%s was blacklisted by %s and all his messages were deleted for: %s", user2, user, reason)
 		return rp.Reply(rp.types.SUCCESS_BLACKLIST_DELETEALL, id=user2.getObfuscatedId(), count=len(msgs))
 	else:
