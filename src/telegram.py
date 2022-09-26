@@ -666,7 +666,7 @@ def cmd_changelog(ev):
 					sections[caption].append(line.lstrip(" *"))
 				else:
 					sections[caption].append(line)
-		send_answer(ev, rp.Reply(rp.types.PROGRAM_CHANGELOG, versions=sections, count=-1), True)
+		send_answer(ev, rp.Reply(rp.types.PROGRAM_CHANGELOG, versions=sections, count=3), True)
 	else:
 		send_answer(ev, rp.Reply(rp.types.ERR_NO_CHANGELOG), True)
 

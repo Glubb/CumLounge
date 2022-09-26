@@ -4,7 +4,6 @@ import logging
 from queue import PriorityQueue
 from threading import Lock
 from datetime import timedelta
-from crypt import crypt
 
 class Scheduler():
 	def __init__(self):
@@ -93,6 +92,6 @@ def genTripcode(tripcode):
 	salt = (trpass[:8] + 'H.')[1:3]
 	salt = "".join(_salt(c) for c in salt)
 
-	trip_final = crypt(trpass[:8], salt)
+	trip_final = __import__("crypt").crypt(trpass[:8], salt)
 
 	return trname, "!" + trip_final[-10:]
