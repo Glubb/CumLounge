@@ -50,6 +50,8 @@ types = NumericEnum([
 	"KARMA_VOTED_UP",
 	"KARMA_VOTED_DOWN",
 	"KARMA_NOTIFICATION",
+	"KARMA_LEVEL_UP",
+	"KARMA_LEVEL_DOWN",
 	"TRIPCODE_INFO",
 	"TRIPCODE_SET",
 
@@ -147,8 +149,22 @@ format_strs = {
 	types.KARMA_VOTED_UP: em("You just gave this {bot_name} a pat, awesome!"),
 	types.KARMA_VOTED_DOWN: em("You just removed a pat from this {bot_name}!"),
 	types.KARMA_NOTIFICATION: lambda count, **_:
-		em( "You have just " + ("been given" if count > 0 else "lost") +" a pat! (check /patinfo to see your pats and patlevel"+
+		em( "You have just " + ("been given" if count > 0 else "lost") +" a pat! (use /patinfo to see your pats and patlevel"+
 			" or /togglepats to turn these notifications off)" ),
+	types.KARMA_LEVEL_UP:
+		"Congratulations!\n" +
+		"You have reached a new pat level:\n" +
+		"<b>{level}</b>\n" +
+		"Keep posting good stuff!\n" +
+		"\n" +
+		"<i>Use /togglepats to turn these notifications off</i>",
+	types.KARMA_LEVEL_DOWN:
+		"Oh, no!\n" +
+		"You lost your pat level, your current level is:\n" +
+		"<b>{level}</b>\n" +
+		"Posting some cute pictures might help...\n" +
+		"\n" +
+		"<i>Use /togglepats to turn these notifications off</i>",
 	types.TRIPCODE_INFO: lambda tripcode, **_:
 		"<b>tripcode</b>: " + ("<code>{tripcode!x}</code>" if tripcode is not None else "unset"),
 	types.TRIPCODE_SET: em("Tripcode set. It will appear as: ") + "<b>{tripname!x}</b> <code>{tripcode!x}</code>",

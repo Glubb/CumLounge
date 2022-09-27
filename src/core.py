@@ -648,9 +648,15 @@ def modify_karma(user, msid, amount):
 
 	user2 = db.getUser(id=cm.user_id)
 	with db.modifyUser(id=cm.user_id) as user2:
+		old_level = getKarmaLevel(user2.karma)
 		user2.karma += KARMA_PLUS_ONE * amount
+		new_level = getKarmaLevel(user2.karma)
 	if not user2.hideKarma:
 		_push_system_message(rp.Reply(rp.types.KARMA_NOTIFICATION, count=amount), who=user2, reply_to=msid)
+		if old_level < new_level:
+			_push_system_message(rp.Reply(rp.types.KARMA_LEVEL_UP, level=new_level), who=user2)
+		if old_level > new_level:
+			_push_system_message(rp.Reply(rp.types.KARMA_LEVEL_DOWN, level=new_level), who=user2)
 	if amount > 0:
 		return rp.Reply(rp.types.KARMA_VOTED_UP, bot_name=bot_name)
 	elif amount < 0:
