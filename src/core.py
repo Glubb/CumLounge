@@ -654,9 +654,9 @@ def modify_karma(user, msid, amount):
 	if not user2.hideKarma:
 		_push_system_message(rp.Reply(rp.types.KARMA_NOTIFICATION, count=amount), who=user2, reply_to=msid)
 		if old_level < new_level:
-			_push_system_message(rp.Reply(rp.types.KARMA_LEVEL_UP, level=new_level), who=user2)
+			_push_system_message(rp.Reply(rp.types.KARMA_LEVEL_UP, level=getKarmaLevelName(user2.karma)), who=user2)
 		if old_level > new_level:
-			_push_system_message(rp.Reply(rp.types.KARMA_LEVEL_DOWN, level=new_level), who=user2)
+			_push_system_message(rp.Reply(rp.types.KARMA_LEVEL_DOWN, level=getKarmaLevelName(user2.karma)), who=user2)
 	if amount > 0:
 		return rp.Reply(rp.types.KARMA_VOTED_UP, bot_name=bot_name)
 	elif amount < 0:
