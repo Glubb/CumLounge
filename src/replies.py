@@ -208,8 +208,9 @@ format_strs = {
 		"<b>{active}</b> <i>active</i>, {inactive} <i>inactive users and </i> "+
 		"{blacklisted} <i>of them blacklisted</i> (<i>total</i>: {total})",
 
-	types.PROGRAM_VERSION: "<b>catlounge v{version}</b> <i>is a fork of the original secretloungebot. " +
-		"View our changes and source code in @catloungeadmin</i>",
+	types.PROGRAM_VERSION: "<a href=\"https://github.com/CatLounge/catlounge-ng-meow\"><b>catlounge</b></a>"+
+       "<b> v{version}</b> <i>is a fork of the original <a href=\"https://github.com/secretlounge/secretlounge-ng\">secretloungebot</a>. </i>"+
+	   "<i>For updates check our <a href=\"https://t.me/catloungeadmin\">channel</a> or /changelog.</i>",
 	types.PROGRAM_CHANGELOG: lambda versions, count=-1, **_:
 		"\n\n".join(["<b><u>" + version + "</u></b>\n" +
 			"\n".join(
