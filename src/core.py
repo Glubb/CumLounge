@@ -368,6 +368,13 @@ def get_users(user):
 		total=active + inactive + black)
 
 @requireUser
+@requireRank(RANKS.admin)
+def set_commands(user, arg):
+	cmds = {cmd[0].strip(): cmd[1:].strip() for cmd in [cmd.split("-") for cmd in arg.split("\n")]}
+	logging.info("%s set commands", user)
+	return cmds
+
+@requireUser
 def get_rules(user):
 	motd = db.getSystemConfig().motd
 	if motd == "": return
@@ -379,7 +386,7 @@ def set_rules(user, arg):
 	with db.modifySystemConfig() as config:
 		config.motd = arg
 	logging.info("%s set rules to: %r", user, arg)
-	return rp.Reply(rp.types.SUCCESS)
+	return rp.Reply(rp.types.SUCCESS_RULES, bot_name=bot_name)
 
 @requireUser
 def toggle_debug(user):

@@ -1,3 +1,4 @@
+import cmd
 import re
 import math
 from string import Formatter
@@ -29,6 +30,8 @@ class Reply():
 types = NumericEnum([
 	"CUSTOM",
 	"SUCCESS",
+	"SUCCESS_COMMANDS",
+	"SUCCESS_RULES",
 	"SUCCESS_DELETE",
 	"SUCCESS_DELETEALL",
 	"SUCCESS_WARN_DELETE",
@@ -36,6 +39,7 @@ types = NumericEnum([
 	"SUCCESS_BLACKLIST",
 	"SUCCESS_BLACKLIST_DELETEALL",
 	"LOG_CHANNEL",
+	"COMMANDS",
 	"BOOLEAN_CONFIG",
 
 	"CHAT_JOIN",
@@ -122,6 +126,8 @@ def progress(n, min_value, max_value, length=10):
 format_strs = {
 	types.CUSTOM: "{text}",
 	types.SUCCESS: "☑",
+	types.SUCCESS_COMMANDS: "☑ <i>The commands for {bot_name} lounge have been updated</i>",
+	types.SUCCESS_RULES: "☑ <i>The rules for {bot_name} lounge have been updated</i>",
 	types.SUCCESS_DELETE: "☑ <i>The message by</i> <b>{id}</b> <i>has been deleted</i>",
 	types.SUCCESS_DELETEALL: "☑ <i>All</i> {count} <i>messages by</i> <b>{id}</b> <i>have been deleted</i>",
 	types.SUCCESS_WARN_DELETE: "☑ <b>{id}</b> <i>has been warned and the message was deleted</i>",
@@ -129,7 +135,11 @@ format_strs = {
 	types.SUCCESS_BLACKLIST: "☑ <b>{id}</b> <i>has been blacklisted and the message was deleted</i>",
 	types.SUCCESS_BLACKLIST_DELETEALL: "☑ <b>{id}</b> <i>has been blacklisted and all {count} messages were deleted</i>",
 	types.LOG_CHANNEL: "catlounge-ng-meow v{version} started\n"+
-						"This is the log channel for: <b>{bot_name}</b>",
+						"This is the log channel for: <b>{bot_name}</b> lounge",
+	types.COMMANDS: lambda cmds, **_:
+		"\n".join([
+			"<b>%s:</b> <i>%s</i>" % (cmd.command, cmd.description) for cmd in cmds
+		]),
 	types.BOOLEAN_CONFIG: lambda enabled, **_:
 		"<b>{description!x}</b>: " + (enabled and "enabled" or "disabled"),
 

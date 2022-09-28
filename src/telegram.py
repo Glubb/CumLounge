@@ -68,7 +68,7 @@ def init(config, _db, _ch):
 	types += ["animation", "audio", "photo", "sticker", "video", "video_note", "voice"]
 
 	cmds = [
-		"start", "stop",
+		"start", "stop", "commands",
 		"users", "info", "rules",
 		"toggledebug", "togglepats",
 		"version", "changelog", "help", "patinfo", "botinfo",
@@ -596,6 +596,17 @@ class ChannelHandler(logging.StreamHandler):
 cmd_start = wrap_core(core.user_join)
 cmd_stop = wrap_core(core.user_leave)
 
+@takesArgument(optional=True)
+def cmd_commands(ev, arg):
+	if arg == "":
+		cmds = bot.get_my_commands()
+		send_answer(ev, rp.Reply(rp.types.COMMANDS, cmds=cmds), reply_to=True)
+	else:
+		c_user = UserContainer(ev.from_user)
+		cmds = core.set_commands(c_user, arg)
+		cmds = [telebot.types.BotCommand(cmd, dsc) for cmd, dsc in cmds]
+		bot.set_my_commands(cmds)
+		send_answer(ev, rp.Reply(rp.types.SUCCESS_COMMANDS, bot_name=core.bot_name), reply_to=True)
 
 cmd_users = wrap_core(core.get_users)
 
