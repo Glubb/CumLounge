@@ -603,12 +603,14 @@ def cmd_commands(ev, arg):
 		send_answer(ev, rp.Reply(rp.types.COMMANDS, cmds=cmds), reply_to=True)
 	else:
 		c_user = UserContainer(ev.from_user)
-		cmds = core.set_commands(c_user, arg)
-		if cmds is not None:
-			cmds = [telebot.types.BotCommand(cmd, dsc) for cmd, dsc in cmds.items()]
+		set_commands_result = core.set_commands(c_user, arg)
+		if set_commands_result is not None:
+			if isinstance(set_commands_result, rp.Reply):
+				return send_answer(ev, set_commands_result, reply_to=True)
+			cmds = [telebot.types.BotCommand(cmd, dsc) for cmd, dsc in set_commands_result.items()]
 			bot.set_my_commands(cmds)
 			logging.info("%s set commands", db.getUser(id=c_user.id))
-			send_answer(ev, rp.Reply(rp.types.SUCCESS_COMMANDS, bot_name=core.bot_name), reply_to=True)
+			return send_answer(ev, rp.Reply(rp.types.SUCCESS_COMMANDS, bot_name=core.bot_name), reply_to=True)
 
 cmd_users = wrap_core(core.get_users)
 
