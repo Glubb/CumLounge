@@ -299,7 +299,8 @@ format_strs = {
 			"	/botinfo" +                " - <i>Show bot system info</i>\n"+
 			"	/uncooldown ID/USERNAME" + " - <i>Remove cooldown from a user</i>\n"+
 			"	/mod USERNAME" +           " - <i>Promote a user to mod</i>\n"+
-			"	/admin USERNAME" +         " - <i>Promote a user to admin</i>\n"
+			"	/admin USERNAME" +         " - <i>Promote a user to admin</i>\n"+
+			"	/commands COMMANDS" +      " - <i>Change bot commands</i>\n"
 		if rank >= RANKS.admin else "")
 		if rank is not None else ""),
 	types.KARMA_INFO: lambda karma, level_karma, next_level_karma, **_:
