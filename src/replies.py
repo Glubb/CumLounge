@@ -120,7 +120,7 @@ def progress(value, min_value, max_value, size=10):
         filled = size
     else:
         filled = round((size / (max_value - min_value)) * (value - min_value))
-    return "▰" * filled + "▱" * (size - filled)
+    return "■" * filled + "□" * (size - filled)
 
 format_strs = {
 	types.CUSTOM: "{text}",
@@ -161,11 +161,15 @@ format_strs = {
 		em( "You have just " + ("been given" if count > 0 else "lost") +" a pat! (use /patinfo to see your pats and patlevel"+
 			" or /togglepats to turn these notifications off)" ),
 	types.KARMA_LEVEL_UP:
-		"<i>Congratulations! You have reached a new pat level:</i> <b>{level}</b>\n" +
+		"<i>Congratulations!\n" +
+		"You have reached a new pat level:</i>\n" +
+		"<b>{level}</b>\n" +
 		"<i>Keep posting good stuff!</i>\n" +
 		"<i>(Use /togglepats to turn these notifications off)</i>",
 	types.KARMA_LEVEL_DOWN:
-		"<i>Oh no, you lost your pat level! Your current level is:</i> <b>{level}</b>\n" +
+		"<i>Oh no, you lost your pat level!\n" +
+		"Your current level is:</i>\n" +
+		"<b>{level}</b>\n" +
 		"<i>Posting some cute pictures might help...</i>\n" +
 		"<i>(Use /togglepats to turn these notifications off)</i>",
 	types.TRIPCODE_INFO: lambda tripcode, **_:
