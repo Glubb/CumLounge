@@ -42,3 +42,4 @@
 = Version 0.7 =
 * Added: /commands command to show/change registred bot commands
 * Added: Pat level notifications
+* Added: compatibility for windows (debugging only)

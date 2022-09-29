@@ -162,19 +162,13 @@ format_strs = {
 		em( "You have just " + ("been given" if count > 0 else "lost") +" a pat! (use /patinfo to see your pats and patlevel"+
 			" or /togglepats to turn these notifications off)" ),
 	types.KARMA_LEVEL_UP:
-		"Congratulations!\n" +
-		"You have reached a new pat level:\n" +
-		"<b>{level}</b>\n" +
-		"Keep posting good stuff!\n" +
-		"\n" +
-		"<i>Use /togglepats to turn these notifications off</i>",
+		"<i>Congratulations! You have reached a new pat level:</i> <b>{level}</b>\n" +
+		"<i>Keep posting good stuff!</i>\n" +
+		"<i>(Use /togglepats to turn these notifications off)</i>",
 	types.KARMA_LEVEL_DOWN:
-		"Oh, no!\n" +
-		"You lost your pat level, your current level is:\n" +
-		"<b>{level}</b>\n" +
-		"Posting some cute pictures might help...\n" +
-		"\n" +
-		"<i>Use /togglepats to turn these notifications off</i>",
+		"<i>Oh no, you lost your pat level! Your current level is:</i> <b>{level}</b>\n" +
+		"<i>Posting some cute pictures might help...</i>\n" +
+		"<i>(Use /togglepats to turn these notifications off)</i>",
 	types.TRIPCODE_INFO: lambda tripcode, **_:
 		"<b>tripcode</b>: " + ("<code>{tripcode!x}</code>" if tripcode is not None else "unset"),
 	types.TRIPCODE_SET: em("Tripcode set. It will appear as: ") + "<b>{tripname!x}</b> <code>{tripcode!x}</code>",
@@ -229,10 +223,15 @@ format_strs = {
 		(" (one warning will be removed on {warnExpiry!t})" if warnings > 0 else "")+"\n"+
 		"<b>cooldown</b>: "+
 		(cooldown and "yes, until {cooldown!t}" or "no" ),
-	types.USERS_INFO: "<b>{active}</b> <i>active and</i> {inactive} <i>inactive users</i> (<i>total</i>: {total})",
+	types.USERS_INFO: "<b>Total users:</b> {total}\n"+
+		"<b>• Active:</b> {active}\n"+
+		"<b>• Inactive:</b> {inactive}",
 	types.USERS_INFO_EXTENDED:
-		"<b>{active}</b> <i>active</i>, {inactive} <i>inactive users and </i> "+
-		"{blacklisted} <i>of them blacklisted</i> (<i>total</i>: {total})",
+		"<b>Total users:</b> {total}\n"+
+		"<b>• Active:</b> {active}\n"+
+		"<b>• Inactive:</b> {inactive}\n"+
+		"\n"+
+		"<b>Blacklisted:</b> {blacklisted}",
 
 	types.PROGRAM_VERSION: "<a href=\"https://github.com/CatLounge/catlounge-ng-meow\"><b>catlounge</b></a>"+
        "<b> v{version}</b> <i>is a fork of the original <a href=\"https://github.com/secretlounge/secretlounge-ng\">secretloungebot</a>. </i>"+
