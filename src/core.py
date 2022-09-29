@@ -316,7 +316,7 @@ def get_info_mod(user, msid):
 		"username": user2.getFormattedName(),
 		"rank": user2.rank,
 		"karma": user2.karma if user.rank >= RANKS.admin else user2.getObfuscatedKarma(),
-		"karma_obfuscated": user.rank >= RANKS.admin,
+		"karma_obfuscated": user.rank < RANKS.admin,
 		"joined": user2.joined if user.rank >= RANKS.admin else None,
 		"warnings": user2.warnings,
 		"warnExpiry": user2.warnExpiry,
