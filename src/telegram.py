@@ -604,8 +604,9 @@ def cmd_commands(ev, arg):
 	else:
 		c_user = UserContainer(ev.from_user)
 		cmds = core.set_commands(c_user, arg)
-		cmds = [telebot.types.BotCommand(cmd, dsc) for cmd, dsc in cmds]
+		cmds = [telebot.types.BotCommand(cmd, dsc) for cmd, dsc in cmds.items()]
 		bot.set_my_commands(cmds)
+		logging.info("%s set commands", c_user)
 		send_answer(ev, rp.Reply(rp.types.SUCCESS_COMMANDS, bot_name=core.bot_name), reply_to=True)
 
 cmd_users = wrap_core(core.get_users)

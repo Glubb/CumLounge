@@ -370,8 +370,12 @@ def get_users(user):
 @requireUser
 @requireRank(RANKS.admin)
 def set_commands(user, arg):
-	cmds = {cmd[0].strip().lower(): cmd[1].strip() for cmd in [cmd.split("-", 1) for cmd in arg.split("\n") if cmd.strip() != ""]}
-	logging.info("%s set commands", user)
+	cmds = {
+		cmd[0].strip().lower(): cmd[1].strip() for cmd in [
+			cmd.split("-", 1) for cmd in arg.split("\n")
+			if cmd.strip() != ""
+		]
+	}
 	return cmds
 
 @requireUser
