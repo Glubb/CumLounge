@@ -111,17 +111,16 @@ def smiley(n):
 	elif n <= 3: return ":/"
 	else: return ":("
 
-def progress(n, min_value, max_value, length=10):
-	assert min_value < max_value
-	done = "\u25B0"
-	left = "\u25B1"
-	if n < min_value:
-		return left * length
-	if n > max_value:
-		return done * length
-	step = (max_value - 1) - (min_value + 1) / (length - 2)
-	offset = -min(0, min_value)
-	return done * math.ceil((n - min_value + offset) / length) + left * math.floor((max_value + offset - n) / length)
+def progress(value, min_value, max_value, size=10):
+    assert size > 0, "Invalid size for progress bar"
+    assert min_value < max_value, "Invalid value constraints for progress bar"
+    if value <= min_value:
+        filled = 0
+    elif value >= max_value:
+        filled = size
+    else:
+        filled = round((size / (max_value - min_value)) * (value - min_value))
+    return "▰" * filled + "▱" * (size - filled)
 
 format_strs = {
 	types.CUSTOM: "{text}",
@@ -306,8 +305,8 @@ format_strs = {
 		"<b>Your level:</b> <i>{level_name}</i>\n" +
 		"<b>Next level:</b> <i>{next_level_name}</i>\n" +
 		"\n" +
-		"<b>Pats:</b> {karma}/" + ("{next_level_karma}" if next_level_karma is not None else "{level_karma}"), #+ "\n" +
-		#progress(karma, level_karma if level_karma is not None else karma, next_level_karma if next_level_karma is not None else karma - 1),
+		"<b>Pats:</b> {karma}/" + ("{next_level_karma}" if next_level_karma is not None else "{level_karma}") + "\n" +
+		progress(karma, level_karma if level_karma is not None else karma, next_level_karma if next_level_karma is not None else karma - 1),
 	types.BOT_INFO:
 		"<b>Python version:</b> {python_ver}\n" +
 		"<b>OS:</b> {os}\n" +
