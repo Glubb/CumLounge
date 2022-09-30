@@ -31,6 +31,7 @@ types = NumericEnum([
 	"CUSTOM",
 	"SUCCESS",
 	"SUCCESS_COMMANDS",
+	"SUCCESS_COMMANDS_SETUP",
 	"SUCCESS_RULES",
 	"SUCCESS_DELETE",
 	"SUCCESS_DELETEALL",
@@ -44,6 +45,7 @@ types = NumericEnum([
 	"BOOLEAN_CONFIG",
 
 	"CHAT_JOIN",
+	"CHAT_JOIN_FIRST",
 	"CHAT_LEAVE",
 	"USER_IN_CHAT",
 	"USER_NOT_IN_CHAT",
@@ -63,6 +65,7 @@ types = NumericEnum([
 	"ERR_NO_ARG",
 	"ERR_COMMAND_DISABLED",
 	"ERR_NO_REPLY",
+	"ERR_COMMANDS_ALREADY_SET_UP",
 	"ERR_NOT_IN_CACHE",
 	"ERR_NO_USER",
 	"ERR_NO_USER_BY_ID",
@@ -127,6 +130,11 @@ format_strs = {
 	types.CUSTOM: "{text}",
 	types.SUCCESS: "☑",
 	types.SUCCESS_COMMANDS: "☑ <i>The commands for {bot_name} lounge have been updated</i>",
+	types.SUCCESS_COMMANDS_SETUP: lambda cmds, **_:
+		"☑ <i>Commands for {bot_name} have been set-up. Registered commands:\n" +
+		"\n".join([
+			"• %s" % (cmd) for cmd in cmds
+		]),
 	types.SUCCESS_RULES: "☑ <i>The rules for {bot_name} lounge have been updated</i>",
 	types.SUCCESS_DELETE: "☑ <i>The message by</i> <b>{id}</b> <i>has been deleted</i>",
 	types.SUCCESS_DELETEALL: "☑ <i>All</i> {count} <i>messages by</i> <b>{id}</b> <i>have been deleted</i>",
@@ -148,6 +156,13 @@ format_strs = {
 		"<b>{description!x}</b>: " + (enabled and "enabled" or "disabled"),
 
 	types.CHAT_JOIN: em("You joined the {bot_name} lounge!"),
+	types.CHAT_JOIN_FIRST: em(
+			"Since you are the first user that joined {bot_name}, you were made an admin automatically. Press /help to see all available commands.\n" +
+			"In case you have yet to set up the commands menu for your bot you can simply use /setup_commands once to register a set of default commands.\n" +
+			"\n" +
+			"You can define most necessary settings in the configuration file. Don't forget to set up a welcome message using /rules.\n" +
+			"Have fun using catlounge-ng-meow and don't forget to leave us a star on GitHub! 😉"
+		),
 	types.CHAT_LEAVE: em("You left the {bot_name} lounge!"),
 	types.USER_IN_CHAT: em("You're already in the {bot_name} lounge."),
 	types.USER_NOT_IN_CHAT: em("You're not in the {bot_name} lounge yet. Use /start to join!"),
@@ -184,12 +199,19 @@ format_strs = {
 	types.ERR_NO_ARG: em("This command requires an argument."),
 	types.ERR_COMMAND_DISABLED: em("This command has been disabled."),
 	types.ERR_NO_REPLY: em("You need to reply to a message to use this command."),
-	types.ERR_NOT_IN_CACHE: em("Message not found in cache... (24h passed or bot was restarted)"),
+	types.ERR_COMMANDS_ALREADY_SET_UP: em(
+			"Bot commands have already been set up.\n" +
+			"You can use /commands to view or re-define them."
+		),
+	types.ERR_NOT_IN_CACHE: em(
+			"The message was not found in cache.\n" +
+			"This can be either because it is an automatic bot message, because it is older then 24 hours or because the bot has been restarted."
+		),
 	types.ERR_NO_USER: em("No user found by that name!"),
 	types.ERR_NO_USER_BY_ID: em("No user found by that id! Note that all ids rotate every 24 hours."),
 	types.ERR_COOLDOWN: em("Your cooldown expires at {until!t}"),
 	types.ERR_ALREADY_WARNED: em("A warning has already been issued for this message."),
-	types.ERR_INVALID_DURATION: em("You entered an invalid cooldown duration"),
+	types.ERR_INVALID_DURATION: em("You entered an invalid cooldown duration."),
 	types.ERR_NOT_IN_COOLDOWN: em("This user is not in a cooldown right now."),
 	types.ERR_BLACKLISTED: lambda reason, contact, **_:
 		em( "You've been blacklisted" + (reason and " for {reason!x}" or "") )+

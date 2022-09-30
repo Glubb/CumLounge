@@ -51,6 +51,17 @@ def dump(obj, name=None, r=False):
 # Program version
 VERSION = "0.7"
 
+# Default commands set
+DEFAULT_COMMANDS = {
+	"start": "Join the chat",
+	"stop": "Leave the chat",
+	"help": "Show all available commands",
+	"info": "Get info about your account",
+	"ps": "Sign with your pat level",
+	"users": "Show current user count",
+	"remove": "Delete a message [mod]"
+}
+
 # File names
 FILENAME_CHANGELOG = os.path.join(".", "changelog.txt")
 

@@ -68,7 +68,7 @@ def init(config, _db, _ch):
 	types += ["animation", "audio", "photo", "sticker", "video", "video_note", "voice"]
 
 	cmds = [
-		"start", "stop", "commands",
+		"start", "stop", "setup_commands", "commands",
 		"users", "info", "rules",
 		"toggledebug", "togglepats",
 		"version", "changelog", "help", "patinfo", "botinfo",
@@ -206,6 +206,15 @@ def calc_spam_score(ev):
 		return s
 	s += len(ev.text) * SCORE_TEXT_CHARACTER + ev.text.count("\n") * SCORE_TEXT_LINEBREAK
 	return s
+
+# Create BotCommand objects out of dictionary and register them
+# I know those annotations (or the function) do not belong here, but I haven't found a better way, yet...
+@core.requireUser
+@core.requireRank(RANKS.admin)
+def register_bot_commands(user, cmd_dict: dict):
+		cmds = [telebot.types.BotCommand(cmd, dsc) for cmd, dsc in cmd_dict.items()]
+		bot.set_my_commands(cmds)
+		logging.info("%s set commands", user)
 
 ###
 
@@ -596,6 +605,15 @@ class ChannelHandler(logging.StreamHandler):
 cmd_start = wrap_core(core.user_join)
 cmd_stop = wrap_core(core.user_leave)
 
+def cmd_setup_commands(ev):
+	c_user = UserContainer(ev.from_user)
+	if bot.get_my_commands() != []:
+		return send_answer(ev, rp.Reply(rp.types.ERR_COMMANDS_ALREADY_SET_UP, bot_name=core.bot_name), reply_to=True)
+	register_bot_commands_result = register_bot_commands(c_user, DEFAULT_COMMANDS)
+	if isinstance(register_bot_commands_result, rp.Reply):
+		return send_answer(ev, register_bot_commands_result, reply_to=True)
+	return send_answer(ev, rp.Reply(rp.types.SUCCESS_COMMANDS_SETUP, bot_name=core.bot_name, cmds=DEFAULT_COMMANDS), reply_to=True)
+
 @takesArgument(optional=True)
 def cmd_commands(ev, arg):
 	if arg == "":
@@ -607,9 +625,7 @@ def cmd_commands(ev, arg):
 		if set_commands_result is not None:
 			if isinstance(set_commands_result, rp.Reply):
 				return send_answer(ev, set_commands_result, reply_to=True)
-			cmds = [telebot.types.BotCommand(cmd, dsc) for cmd, dsc in set_commands_result.items()]
-			bot.set_my_commands(cmds)
-			logging.info("%s set commands", db.getUser(id=c_user.id))
+			register_bot_commands(c_user, set_commands_result)
 			return send_answer(ev, rp.Reply(rp.types.SUCCESS_COMMANDS, bot_name=core.bot_name), reply_to=True)
 
 cmd_users = wrap_core(core.get_users)

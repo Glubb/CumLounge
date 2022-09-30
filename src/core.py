@@ -261,12 +261,14 @@ def user_join(c_user):
 	user.defaults()
 	user.id = c_user.id
 	updateUserFromEvent(user, c_user)
+	ret = []
 	if not any(db.iterateUserIds()):
 		user.rank = RANKS.admin
+		ret.append(rp.Reply(rp.types.CHAT_JOIN_FIRST, bot_name=bot_name))
 
 	logging.info("%s joined chat", user)
 	db.addUser(user)
-	ret = [rp.Reply(rp.types.CHAT_JOIN, bot_name=bot_name)]
+	ret.insert(0, rp.Reply(rp.types.CHAT_JOIN, bot_name=bot_name))
 
 	motd = db.getSystemConfig().motd
 	if motd != "":
