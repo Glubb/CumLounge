@@ -2,7 +2,9 @@
 Fork of [secretlounge-ng](https://github.com/secretlounge/secretlounge-ng), a bot to make an anonymous group chat on Telegram.
 
 ## Changes
-You can find a general list of modifications in our sequencially-updated [changelog](changelog.txt) document.
+You can find a general list of modifications in our sequencially-updated [changelog](changelog.txt) document. This however only includes a selection of the most fundamental changes without much detail. Please see our [commit history](..\..\compare) for more detailed information on what has been changed.
+
+From within the bot, you can access a prettified version of the changelog file with the `/changelog` command. It lists the changes of the past three releases by default.
 
 ## Setup
 ```
