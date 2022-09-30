@@ -261,7 +261,7 @@ format_strs = {
 		"<b>• Active:</b> {active}\n" +
 		"<b>• Inactive:</b> {inactive}\n" +
 		"\n" +
-		"<b>Blacklisted:</b> {blacklisted}" +
+		"<b>Blacklisted:</b> {blacklisted}\n" +
 		"<b>In cooldown:</b> {cooldown}",
 
 	types.PROGRAM_VERSION: "<a href=\"https://github.com/CatLounge/catlounge-ng-meow\"><b>catlounge</b></a>"+
