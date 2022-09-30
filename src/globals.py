@@ -32,7 +32,7 @@ def format_timedelta(d):
 			n = remainder // u
 			s += (" " if len(s) != 0 else "") + ("%d%c" % (n, name))
 			remainder -= u * n
-	if remainder != 0:
+	if remainder.total_seconds() != 0:
 		s += (" " if len(s) != 0 else "") + ("%ds" % remainder.total_seconds())
 	return s
 
