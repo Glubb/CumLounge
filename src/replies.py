@@ -134,7 +134,7 @@ format_strs = {
 		"☑ <i>Commands for {bot_name} have been set-up. Registered commands:\n" +
 		"\n".join([
 			"• %s" % (cmd) for cmd in cmds
-		]),
+		]) + '</i>',
 	types.SUCCESS_RULES: "☑ <i>The rules for {bot_name} lounge have been updated</i>",
 	types.SUCCESS_DELETE: "☑ <i>The message by</i> <b>{id}</b> <i>has been deleted</i>",
 	types.SUCCESS_DELETEALL: "☑ <i>All</i> {count} <i>messages by</i> <b>{id}</b> <i>have been deleted</i>",
