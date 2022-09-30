@@ -355,7 +355,7 @@ def get_bot_info(user):
 
 @requireUser
 def get_users(user):
-	active, inactive, black = 0, 0, 0
+	active, inactive, black, cooldown = 0, 0, 0, 0
 	for user2 in db.iterateUsers():
 		if user2.isBlacklisted():
 			black += 1
@@ -363,12 +363,14 @@ def get_users(user):
 			inactive += 1
 		else:
 			active += 1
+		if user2.isInCooldown():
+			cooldown += 1
 	if user.rank < RANKS.mod:
 		return rp.Reply(rp.types.USERS_INFO,
         	active=active, inactive=inactive + black, total=active + inactive + black)
 	return rp.Reply(rp.types.USERS_INFO_EXTENDED,
 		active=active, inactive=inactive + black, blacklisted=black,
-		total=active + inactive + black)
+		total=active + inactive + black, cooldown=cooldown)
 
 @requireUser
 @requireRank(RANKS.admin)

@@ -44,3 +44,6 @@
 * Added: Pat level notifications
 * Added: Compatibility for Windows (except for tripcodes)
 * Added: Progress bar in /patinfo
+* Added: /setup_commands command
+* Added: Info message for the first user
+* Changed: Updated /users command

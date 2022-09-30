@@ -257,11 +257,12 @@ format_strs = {
 		"<b>• Active:</b> {active}\n"+
 		"<b>• Inactive:</b> {inactive}",
 	types.USERS_INFO_EXTENDED:
-		"<b>Total users:</b> {total}\n"+
-		"<b>• Active:</b> {active}\n"+
-		"<b>• Inactive:</b> {inactive}\n"+
-		"\n"+
-		"<b>Blacklisted:</b> {blacklisted}",
+		"<b>Total users:</b> {total}\n" +
+		"<b>• Active:</b> {active}\n" +
+		"<b>• Inactive:</b> {inactive}\n" +
+		"\n" +
+		"<b>Blacklisted:</b> {blacklisted}" +
+		"<b>In cooldown:</b> {cooldown}",
 
 	types.PROGRAM_VERSION: "<a href=\"https://github.com/CatLounge/catlounge-ng-meow\"><b>catlounge</b></a>"+
        "<b> v{version}</b> <i>is a fork of the original <a href=\"https://github.com/secretlounge/secretlounge-ng\">secretloungebot</a>. </i>"+
