@@ -34,6 +34,7 @@ types = NumericEnum([
 	"SUCCESS_RULES",
 	"SUCCESS_DELETE",
 	"SUCCESS_DELETEALL",
+	"SUCCESS_WARN",
 	"SUCCESS_WARN_DELETE",
 	"SUCCESS_WARN_DELETEALL",
 	"SUCCESS_BLACKLIST",
@@ -129,8 +130,12 @@ format_strs = {
 	types.SUCCESS_RULES: "☑ <i>The rules for {bot_name} lounge have been updated</i>",
 	types.SUCCESS_DELETE: "☑ <i>The message by</i> <b>{id}</b> <i>has been deleted</i>",
 	types.SUCCESS_DELETEALL: "☑ <i>All</i> {count} <i>messages by</i> <b>{id}</b> <i>have been deleted</i>",
-	types.SUCCESS_WARN_DELETE: "☑ <b>{id}</b> <i>has been warned and the message was deleted</i>",
-	types.SUCCESS_WARN_DELETEALL: "☑ <b>{id}</b> <i>has been warned and all {count} messages were deleted</i>",
+	types.SUCCESS_WARN: lambda cooldown, **_:
+		"☑ <b>{id}</b> <i>has been warned" + (" (cooldown: {cooldown})" if cooldown is not None else "") + "</i>",
+	types.SUCCESS_WARN_DELETE: lambda cooldown, **_:
+		"☑ <b>{id}</b> <i>has been warned" + (" (cooldown: {cooldown})" if cooldown is not None else "") + " and the message was deleted</i>",
+	types.SUCCESS_WARN_DELETEALL: lambda cooldown, **_:
+		"☑ <b>{id}</b> <i>has been warned" + (" (cooldown: {cooldown})" if cooldown is not None else "") + " and all {count} messages were deleted</i>",
 	types.SUCCESS_BLACKLIST: "☑ <b>{id}</b> <i>has been blacklisted and the message was deleted</i>",
 	types.SUCCESS_BLACKLIST_DELETEALL: "☑ <b>{id}</b> <i>has been blacklisted and all {count} messages were deleted</i>",
 	types.LOG_CHANNEL: "catlounge-ng-meow v{version} started\n"+

@@ -470,6 +470,7 @@ def warn_user(user, msid, delete=False, del_all=False, duration=""):
 	if cm is None or cm.user_id is None:
 		return rp.Reply(rp.types.ERR_NOT_IN_CACHE)
 
+	d = None
 	if not cm.warned:
 		with db.modifyUser(id=cm.user_id) as user2:
 			if duration == "":
@@ -523,15 +524,24 @@ def warn_user(user, msid, delete=False, del_all=False, duration=""):
 			msgs = ch.getMessages(cm.user_id)
 			for cm2 in msgs:
 				Sender.delete([cm2])
-			logging.info("%s warned %s (all messages deleted)", user, user2.getObfuscatedId())
-			return rp.Reply(rp.types.SUCCESS_WARN_DELETEALL, id=user2.getObfuscatedId(), count=len(msgs))
+			if d is not None:
+				logging.info("%s warned %s (cooldown: %s) and deleted all %d messages", user, user2.getObfuscatedId(), d, len(msgs))
+			else:
+				logging.info("%s warned %s and deleted all %d messages", user, user2.getObfuscatedId(), len(msgs))
+			return rp.Reply(rp.types.SUCCESS_WARN_DELETEALL, id=user2.getObfuscatedId(), count=len(msgs), cooldown=d)
 		else:
 			Sender.delete([msid])
-			logging.info("%s warned %s (message deleted)", user, user2.getObfuscatedId())
-			return rp.Reply(rp.types.SUCCESS_WARN_DELETE, id=user2.getObfuscatedId())
+			if d is not None:
+				logging.info("%s warned %s (cooldown: %s) and deleted a message", user, user2.getObfuscatedId(), d)
+			else:
+				logging.info("%s warned %s and deleted a message", user, user2.getObfuscatedId())
+			return rp.Reply(rp.types.SUCCESS_WARN_DELETE, id=user2.getObfuscatedId(), cooldown=d)
 	else:
-		logging.info("%s warned %s", user, user2.getObfuscatedId())
-		return rp.Reply(rp.types.SUCCESS)
+		if d is not None:
+			logging.info("%s warned %s (cooldown: %s)", user, user2.getObfuscatedId(), d)
+		else:
+			logging.info("%s warned %s", user, user2.getObfuscatedId())
+		return rp.Reply(rp.types.SUCCESS_WARN, id=user2.getObfuscatedId(), cooldown=d)
 
 @requireUser
 @requireRank(RANKS.mod)
