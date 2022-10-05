@@ -16,15 +16,17 @@ Make sure you match the system requirements to use this bot framework:
 *) Windows OS support is still in beta. It should generally work as long as tripcodes are not used.
 
 ### Linux setup
-Enter the following commands to set up the bot environent:
-```
-$ pip3 install -r requirements.txt
-$ cp config.yaml.example config.yaml
-Edit config.yaml with your favorite text editor.
-$ ./secretlounge-ng
-```
-
-If the first command fails, you may have to manually install the Python modules listed in `requirements.txt`.
+1. Enter the following commands to set up the bot environent:
+   ```
+   $ pip3 install -r requirements.txt
+   $ cp config.yaml.example config.yaml
+   ```
+   If the first command fails, you may have to manually install the Python modules listed in `requirements.txt`.
+2. Edit `config.yaml` with your favorite text editor
+3. Enter the following command to start the bot:
+   ```
+   $ ./secretlounge-ng
+   ```
 
 ### BotFather setup
 Message [@BotFather](https://t.me/BotFather) to configure your bot as follows:
