@@ -60,7 +60,7 @@ users - Show current user count
 remove - Delete a message [mod]
 ```
 
-Our bot also supports a commands setup with `/setup_commands`. This allows you to set up the commands list from within the bot if you have not already defined any commands. If you need to modify your commands list, please use either BotFather's `/setcommands` or your bot's `/commdands` command; both work nearly identical.
+Our bot also supports a commands setup with `/setup_commands`. This allows you to set up the commands list from within the bot if you have not already defined any commands. If you need to modify your commands list, please use either BotFather's `/setcommands` or your bot's `/commands` command; both work nearly identical.
 
 ### Starting the bot
 Once the bot is running, you can use a telegram client to connect to your bot. The first person that connects automatically becomes an admin. Thereby, it is important that you do not publish the bot URL before first entering it. If you are the first one to join, you should get a nottification message confirming you have been made an automatic admin. Additional admins and mods may be promoted using the `/admin` and `/mod` commands. We recommend defining a welcome message with rules, too, using `/rules <TEXT>`.
