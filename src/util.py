@@ -1,6 +1,7 @@
 import itertools
 import time
 import logging
+import os
 from queue import PriorityQueue
 from threading import Lock
 from datetime import timedelta
@@ -95,3 +96,10 @@ def genTripcode(tripcode):
 	trip_final = __import__("crypt").crypt(trpass[:8], salt)
 
 	return trname, "!" + trip_final[-10:]
+
+def getLastModFile(dir=""):
+	dir = os.path.join(".", dir)
+	files = os.listdir(dir)
+	file = max(files, key=os.path.getmtime)
+	last_mod = os.path.getctime(file)
+	return {"dir": dir, "file": file, "last_mod": last_mod}

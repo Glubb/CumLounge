@@ -66,6 +66,7 @@ types = NumericEnum([
 	"ERR_COMMAND_DISABLED",
 	"ERR_NO_REPLY",
 	"ERR_COMMANDS_ALREADY_SET_UP",
+	"ERR_COMMANDS_REGISTER_FAIL",
 	"ERR_NOT_IN_CACHE",
 	"ERR_NO_USER",
 	"ERR_NO_USER_BY_ID",
@@ -131,7 +132,8 @@ format_strs = {
 	types.SUCCESS: "☑",
 	types.SUCCESS_COMMANDS: "☑ <i>The commands for {bot_name} lounge have been updated</i>",
 	types.SUCCESS_COMMANDS_SETUP: lambda cmds, **_:
-		"☑ <i>Commands for {bot_name} have been set-up. Registered commands:\n" +
+		"☑ <i>Commands for {bot_name} have been set-up.\n" +
+		"Registered commands:\n" +
 		"\n".join([
 			"• %s" % (cmd) for cmd in cmds
 		]) + '</i>',
@@ -203,6 +205,9 @@ format_strs = {
 			"Bot commands have already been set up.\n" +
 			"You can use /commands to view or re-define them."
 		),
+	types.ERR_COMMANDS_REGISTER_FAIL: em(
+			"Failed to register bot commands."
+		),
 	types.ERR_NOT_IN_CACHE: em(
 			"The message was not found in cache.\n" +
 			"This can be either because it is an automatic bot message, because it is older then 24 hours or because the bot has been restarted."
@@ -221,12 +226,14 @@ format_strs = {
 	types.ERR_VOTE_OWN_MESSAGE: em("You cannot give or remove yourself pats"),
 	types.ERR_SPAMMY: em("Your message has not been sent. Avoid sending messages too fast, try again later."),
 	types.ERR_SPAMMY_SIGN: em("Your message has not been sent. Avoid using /sign too often, try again later."),
-	types.ERR_SPAMMY_VOTE_UP:
-		"<i>Your pat was not transmitted.\n" +
-		"Avoid using +1 too often, try again later.</i>",
-	types.ERR_SPAMMY_VOTE_DOWN:
-		"<i>The pat was not removed.\n" +
-		"Avoid using -1 too often, try again later</i>.",
+	types.ERR_SPAMMY_VOTE_UP: em(
+			"Your pat was not transmitted.\n" +
+			"Avoid using +1 too often, try again later."
+		),
+	types.ERR_SPAMMY_VOTE_DOWN: em(
+			"The pat was not removed.\n" +
+			"Avoid using -1 too often, try again later."
+		),
 	types.ERR_SIGN_PRIVACY: em("Your account privacy settings prevent usage of the sign feature. Enable linked forwards first."),
 	types.ERR_INVALID_TRIP_FORMAT:
 		em("Given tripcode is not valid, the format is ")+
@@ -236,25 +243,27 @@ format_strs = {
 	types.ERR_NO_CHANGELOG: em("Changelog not found"),
 	types.ERR_POLL_NOT_ANONYMOUS: em("Poll or quiz must be anonymous!"),
 	types.ERR_REG_CLOSED: em("Registrations are closed"),
-	types.ERR_VOICE_AND_VIDEO_PRIVACY_RESTRICTION: "<i>This message cannot be displayed on premium accounts with restricted access to voice or video messages</i>",
+	types.ERR_VOICE_AND_VIDEO_PRIVACY_RESTRICTION:
+		em("This message can't be displayed on premium accounts with restricted access to voice and video messages"),
 
 	types.USER_INFO: lambda warnings, cooldown, **_:
-		"<b>id</b>: {id}, <b>username</b>: {username!x}, <b>rank</b>: {rank_i} ({rank})\n"+
-		"<b>pats</b>: {karma} ({karmalevel})\n"+
-		"<b>warnings</b>: {warnings} " + smiley(warnings)+
-		( " (one warning will be removed on {warnExpiry!t})" if warnings > 0 else "" ) + ", "+
-		"<b>cooldown</b>: "+
+		"<b>id</b>: {id}, <b>username</b>: {username!x}, <b>rank</b>: {rank_i} ({rank})\n" +
+		"<b>pats</b>: {karma} ({karmalevel})\n" +
+		"<b>warnings</b>: {warnings} " + smiley(warnings) +
+		( " (one warning will be removed on {warnExpiry!t})" if warnings > 0 else "" ) + ", " +
+		"<b>cooldown</b>: " +
 		( cooldown and "yes, until {cooldown!t}" or "no" ),
 	types.USER_INFO_MOD: lambda karma_obfuscated, warnings, cooldown, joined, **_:
 		"<b>id</b>: {id} (<b>rank</b>: {rank})\n"+
 		"<b>pats</b>: " + ("~" if karma_obfuscated else "") + "{karma}\n"+
-		("<b>joined</b>: {joined!t}\n" if joined else "")+
+		("<b>joined</b>: {joined!t}\n" if joined else "") +
 		"<b>warnings</b>: {warnings} " +
-		(" (one warning will be removed on {warnExpiry!t})" if warnings > 0 else "")+"\n"+
-		"<b>cooldown</b>: "+
-		(cooldown and "yes, until {cooldown!t}" or "no" ),
-	types.USERS_INFO: "<b>Total users:</b> {total}\n"+
-		"<b>• Active:</b> {active}\n"+
+		(" (one warning will be removed on {warnExpiry!t})" if warnings > 0 else "") + "\n" +
+		"<b>cooldown</b>: " +
+		(cooldown and "yes, until {cooldown!t}" or "no"),
+	types.USERS_INFO:
+		"<b>Total users:</b> {total}\n" +
+		"<b>• Active:</b> {active}\n" +
 		"<b>• Inactive:</b> {inactive}",
 	types.USERS_INFO_EXTENDED:
 		"<b>Total users:</b> {total}\n" +
@@ -264,8 +273,8 @@ format_strs = {
 		"<b>Blacklisted:</b> {blacklisted}\n" +
 		"<b>In cooldown:</b> {cooldown}",
 
-	types.PROGRAM_VERSION: "<a href=\"https://github.com/CatLounge/catlounge-ng-meow\"><b>catlounge</b></a>"+
-       "<b> v{version}</b> <i>is a fork of the original <a href=\"https://github.com/secretlounge/secretlounge-ng\">secretloungebot</a>. </i>"+
+	types.PROGRAM_VERSION: "<a href=\"{url_catlounge}\"><b>catlounge</b></a>" +
+       "<b>v{version}</b> <i>is a fork of the original <a href=\"{url_secretlounge}\">secretlounge bot</a>.</i>" +
 	   "<i>For updates check our <a href=\"https://t.me/catloungeadmin\">channel</a> or /changelog.</i>",
 	types.PROGRAM_CHANGELOG: lambda versions, count=-1, **_:
 		"\n\n".join(["<b><u>" + version + "</u></b>\n" +
@@ -285,51 +294,51 @@ format_strs = {
 		]),
 	types.HELP: lambda rank, **_:
 		"<b><u>Important commands</u></b>\n"+
-		"	/start" +                  " - <i>Join the chat</i>\n"+
+		"	/start" +                  " - <i>Join the chat</i>\n" +
 		(
-		"	/stop" +                   " - <i>Leave the chat</i>\n"+
+		"	/stop" +                   " - <i>Leave the chat</i>\n" +
 		"	/info" +                   " - <i>Show info about you</i>\n"
-		if rank is not None else "")+
-		"	/help" +                   " - <i>Show available commands</i>\n"+
-		"\n<b><u>Additional commands</u></b>\n"+
+		if rank is not None else "") +
+		"	/help" +                   " - <i>Show available commands</i>\n" +
+		"\n<b><u>Additional commands</u></b>\n" +
 		(
 		"	/users" +                  " - <i>Show number of users</i>\n"
-		if rank is not None else "")+
-		"	/version" +                " - <i>Show bot version</i>\n"+
-		"	/changelog" +              " - <i>Show changelog</i>\n"+
+		if rank is not None else "") +
+		"	/version" +                " - <i>Show bot version</i>\n" +
+		"	/changelog" +              " - <i>Show changelog</i>\n" +
 		(
-		"	/rules" +                  " - <i>Show rules</i>\n"+
-		"	/toggledebug" +            " - <i>Toggle debug message</i>\n"+
+		"	/rules" +                  " - <i>Show rules</i>\n" +
+		"	/toggledebug" +            " - <i>Toggle debug message</i>\n" +
 		"	/sign <i>or</i> /s TEXT" + " - <i>Sign message with your username</i>\n"
-		if rank is not None else "")+
+		if rank is not None else "") +
 		(
-		"\n<b><u>Pat commands</u></b>\n"+
-		"	+1" +                " (reply) - <i>Give a pat</i>\n"+
-		"	-1" +                " (reply) - <i>Remove a pat</i>\n"+
-		"	/togglepats" +               " - <i>Toggle pat notifications</i>\n"+
-		"	/psign <i>or</i> /ps TEXT" + " - <i>Sign message with your pat level</i>\n"+
-		"	/patinfo" +                  " - <i>Show info about your pat level</i>\n"+
+		"\n<b><u>Pat commands</u></b>\n" +
+		"	+1" +                " (reply) - <i>Give a pat</i>\n" +
+		"	-1" +                " (reply) - <i>Remove a pat</i>\n" +
+		"	/togglepats" +               " - <i>Toggle pat notifications</i>\n" +
+		"	/psign <i>or</i> /ps TEXT" + " - <i>Sign message with your pat level</i>\n" +
+		"	/patinfo" +                  " - <i>Show info about your pat level</i>\n" +
 		(
-			"\n<b><u>Mod commands</u></b>\n"+
-			"	/info" +              " (reply) - <i>Show info about a user</i>\n"+
-			"	/modsay TEXT" +               " - <i>Post mod message</i>\n"+
-			"	/warn" +       	      " (reply) - <i>Warn a user</i>\n"+
-			"	/remove" +      	  " (reply) - <i>Delete the message</i>\n"+
-			"	/removeall" +   	  " (reply) - <i>Delete all messages from a user</i>\n"+
-			"	/cooldown DURATION" + " (reply) - <i>Give spicific cooldown and warn</i>\n"+
-			"	/delete" +     	      " (reply) - <i>Warn a user and delete the message</i>\n"+
-			"	/delete DURATION" +   " (reply) - <i>Delete, warn and give spicific cooldown</i>\n"+
-			"	/deleteall" +         " (reply) - <i>Warn a user and delete all messages</i>\n"+
+			"\n<b><u>Mod commands</u></b>\n" +
+			"	/info" +              " (reply) - <i>Show info about a user</i>\n" +
+			"	/modsay TEXT" +               " - <i>Post mod message</i>\n" +
+			"	/warn" +       	      " (reply) - <i>Warn a user</i>\n" +
+			"	/remove" +      	  " (reply) - <i>Delete the message</i>\n" +
+			"	/removeall" +   	  " (reply) - <i>Delete all messages from a user</i>\n" +
+			"	/cooldown DURATION" + " (reply) - <i>Give spicific cooldown and warn</i>\n" +
+			"	/delete" +     	      " (reply) - <i>Warn a user and delete the message</i>\n" +
+			"	/delete DURATION" +   " (reply) - <i>Delete, warn and give spicific cooldown</i>\n" +
+			"	/deleteall" +         " (reply) - <i>Warn a user and delete all messages</i>\n" +
 			"	/blacklist REASON" +  " (reply) - <i>Blacklist a user and delete all messages</i>\n"
-		if rank >= RANKS.mod else "")+
+		if rank >= RANKS.mod else "") +
 		(
-			"\n<b><u>Admin commands</u></b>\n"+
-			"	/adminsay TEXT" +          " - <i>Post admin message</i>\n"+
-			"	/rules TEXT" +             " - <i>Define rules (HTML)</i>\n"+
-			"	/botinfo" +                " - <i>Show bot system info</i>\n"+
-			"	/uncooldown ID/USERNAME" + " - <i>Remove cooldown from a user</i>\n"+
-			"	/mod USERNAME" +           " - <i>Promote a user to mod</i>\n"+
-			"	/admin USERNAME" +         " - <i>Promote a user to admin</i>\n"+
+			"\n<b><u>Admin commands</u></b>\n" +
+			"	/adminsay TEXT" +          " - <i>Post admin message</i>\n" +
+			"	/rules TEXT" +             " - <i>Define rules (HTML)</i>\n" +
+			"	/botinfo" +                " - <i>Show bot system info</i>\n" +
+			"	/uncooldown ID/USERNAME" + " - <i>Remove cooldown from a user</i>\n" +
+			"	/mod USERNAME" +           " - <i>Promote a user to mod</i>\n" +
+			"	/admin USERNAME" +         " - <i>Promote a user to admin</i>\n" +
 			"	/commands COMMANDS" +      " - <i>Change bot commands</i>\n"
 		if rank >= RANKS.admin else "")
 		if rank is not None else ""),
@@ -342,6 +351,7 @@ format_strs = {
 	types.BOT_INFO:
 		"<b>Python version:</b> {python_ver}\n" +
 		"<b>OS:</b> {os}\n" +
+		"<b>Last modification: {last_file_mod!t}\n" +
 		"<b>Launched:</b> {launched!t}\n" +
 		"<b>Local time:</b> {time}\n" + # Must not use "t" conversion
 		"\n" +

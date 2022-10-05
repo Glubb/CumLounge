@@ -208,13 +208,15 @@ def calc_spam_score(ev):
 	return s
 
 # Create BotCommand objects out of dictionary and register them
-# I know those annotations (or the function) do not belong here, but I haven't found a better way, yet...
+# I know those decorators (or the function) do not belong here, but I haven't found a better way, yet...
 @core.requireUser
 @core.requireRank(RANKS.admin)
 def register_bot_commands(user, cmd_dict: dict):
 		cmds = [telebot.types.BotCommand(cmd, dsc) for cmd, dsc in cmd_dict.items()]
-		bot.set_my_commands(cmds)
-		logging.info("%s set commands", user)
+		if bot.set_my_commands(cmds):
+			logging.info("%s set commands", user)
+		else:
+			return rp.Reply(rp.types.ERR_COMMANDS_REGISTER_FAIL)
 
 ###
 
@@ -609,9 +611,9 @@ def cmd_setup_commands(ev):
 	c_user = UserContainer(ev.from_user)
 	if bot.get_my_commands() != []:
 		return send_answer(ev, rp.Reply(rp.types.ERR_COMMANDS_ALREADY_SET_UP, bot_name=core.bot_name), reply_to=True)
-	register_bot_commands_result = register_bot_commands(c_user, DEFAULT_COMMANDS)
-	if isinstance(register_bot_commands_result, rp.Reply):
-		return send_answer(ev, register_bot_commands_result, reply_to=True)
+	result = register_bot_commands(c_user, DEFAULT_COMMANDS)
+	if isinstance(result, rp.Reply):
+		return send_answer(ev, result, reply_to=True)
 	return send_answer(ev, rp.Reply(rp.types.SUCCESS_COMMANDS_SETUP, bot_name=core.bot_name, cmds=DEFAULT_COMMANDS), reply_to=True)
 
 @takesArgument(optional=True)
@@ -625,7 +627,8 @@ def cmd_commands(ev, arg):
 		if set_commands_result is not None:
 			if isinstance(set_commands_result, rp.Reply):
 				return send_answer(ev, set_commands_result, reply_to=True)
-			register_bot_commands(c_user, set_commands_result)
+			register_bot_commands_result = register_bot_commands(c_user, set_commands_result)
+
 			return send_answer(ev, rp.Reply(rp.types.SUCCESS_COMMANDS, bot_name=core.bot_name), reply_to=True)
 
 cmd_users = wrap_core(core.get_users)
@@ -679,7 +682,7 @@ def cmd_botinfo(ev):
 	send_answer(ev, core.get_bot_info(c_user), True)
 
 def cmd_version(ev):
-	send_answer(ev, rp.Reply(rp.types.PROGRAM_VERSION, version=VERSION), True)
+	send_answer(ev, rp.Reply(rp.types.PROGRAM_VERSION, version=VERSION, url_catlounge=URL_CATLOUNGE, url_secretlounge=URL_SECRETLOUNGE), True)
 
 def cmd_changelog(ev):
 	if os.path.exists(FILENAME_CHANGELOG):

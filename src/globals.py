@@ -51,6 +51,9 @@ def dump(obj, name=None, r=False):
 # Program version
 VERSION = "0.7"
 
+URL_SECRETLOUNGE = "https://github.com/secretlounge/secretlounge-ng/"
+URL_CATLOUNGE = "https://github.com/CatLounge/catlounge-ng-meow/"
+
 # Default commands set
 DEFAULT_COMMANDS = {
 	"start": "Join the chat",

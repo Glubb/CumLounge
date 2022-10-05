@@ -7,7 +7,7 @@ import src.replies as rp
 from src.globals import *
 from src.database import User, SystemConfig
 from src.cache import CachedMessage
-from src.util import genTripcode
+from src.util import genTripcode, getLastModFile
 
 launched = None
 
@@ -346,6 +346,13 @@ def get_bot_info(user):
 	params = {
 		"python_ver": sys.version,
 		"os": sys.platform,
+		"last_file_mod":
+			max(
+				getLastModFile(),
+				getLastModFile("src"),
+				getLastModFile("util"),
+				key=lambda file_info: file_info.last_mod
+			).file,
 		"launched": launched,
 		"time": format_datetime(datetime.now(), True),
 		"cached_msgs": len(ch.msgs),
@@ -374,7 +381,7 @@ def get_users(user):
 
 @requireUser
 @requireRank(RANKS.admin)
-def set_commands(user, arg):
+def set_commands_dict(user, arg):
 	cmds = {
 		cmd[0].strip().lower(): cmd[1].strip() for cmd in [
 			cmd.split("-", 1) for cmd in arg.split("\n")
