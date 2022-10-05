@@ -25,8 +25,23 @@ Make sure you match the system requirements to use this bot framework:
 2. Edit `config.yaml` with your favorite text editor
 3. Enter the following command to start the bot:
    ```
-   $ ./secretlounge-ng
+   $ python ./secretlounge-ng
    ```
+   Note that on some systems you need to type `python3` instead of `python`
+
+### Windows setup
+1. Enter the following commands to set up the bot environent:
+   ```
+   > pip3 install -r requirements.txt
+   > copy config.yaml.example config.yaml
+   ```
+   If the first command fails, you may have to manually install the Python modules listed in `requirements.txt`.
+2. Edit `config.yaml` with your favorite text editor
+3. Enter the following command to start the bot:
+   ```
+   > python secretlounge-ng
+   ```
+   Note that on some systems you need to type `python3` instead of `python` or use the absolute path if you have not updated your `PATH` system variable
 
 ### BotFather setup
 Message [@BotFather](https://t.me/BotFather) to configure your bot as follows:
