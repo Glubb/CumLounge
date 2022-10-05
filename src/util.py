@@ -101,5 +101,5 @@ def getLastModFile(dir=""):
 	dir = os.path.join(".", dir)
 	files = os.listdir(dir)
 	file = max(files, key=os.path.getmtime)
-	last_mod = os.path.getctime(file)
+	last_mod = os.path.getmtime(file)
 	return {"dir": dir, "file": file, "last_mod": last_mod}
