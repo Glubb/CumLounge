@@ -351,7 +351,7 @@ format_strs = {
 	types.BOT_INFO:
 		"<b>Python version:</b> {python_ver}\n" +
 		"<b>OS:</b> {os}\n" +
-		"<b>Last modification: {last_file_mod!t}\n" +
+		"<b>Last modification:</b> {last_file_mod!t}\n" +
 		"<b>Launched:</b> {launched!t}\n" +
 		"<b>Local time:</b> {time}\n" + # Must not use "t" conversion
 		"\n" +
