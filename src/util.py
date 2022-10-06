@@ -2,6 +2,7 @@ import itertools
 import time
 import logging
 import os
+from datetime import datetime
 from queue import PriorityQueue
 from threading import Lock
 from datetime import timedelta
@@ -101,7 +102,7 @@ def getLastModFile(dir=""):
 	path = os.path.abspath(dir)
 	files = [{
 		"name": file.name,
-		"last_mod": file.stat().st_mtime,
+		"last_mod": datetime.fromtimestamp(file.stat().st_mtime),
 		"path": file.path,
 		"dir": dir
 	} for file in os.scandir(path) if file.is_file()]
