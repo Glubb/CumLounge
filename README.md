@@ -17,28 +17,28 @@ Make sure you match the system requirements to use this bot framework:
 
 ### Linux setup
 1. Enter the following commands to set up the bot environent:
-   ```
+   ```bash
    $ pip3 install -r requirements.txt
    $ cp config.yaml.example config.yaml
    ```
    If the first command fails, you may have to manually install the Python modules listed in `requirements.txt`.
 2. Edit `config.yaml` with your favorite text editor
 3. Enter the following command to start the bot:
-   ```
+   ```bash
    $ python ./secretlounge-ng
    ```
    Note that on some systems you need to type `python3` instead of `python`
 
 ### Windows setup
 1. Enter the following commands to set up the bot environent:
-   ```
+   ```bat
    > pip3 install -r requirements.txt
    > copy config.yaml.example config.yaml
    ```
    If the first command fails, you may have to manually install the Python modules listed in `requirements.txt`.
 2. Edit `config.yaml` with your favorite text editor
 3. Enter the following command to start the bot:
-   ```
+   ```bat
    > python secretlounge-ng
    ```
    Note that on some systems you need to type `python3` instead of `python` or use the absolute path if you have not updated your `PATH` system variable
