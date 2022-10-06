@@ -44,6 +44,8 @@ karma_level_names: ["-2", "-1", "0", "1", "2", "3", "4", "5", "6"]
 
 # name of your bot (will be displayed as .... lounge)
 bot_name: anon
+# display "karma" as "pats" (defaults to "false")
+#karma_is_pats = false
 
 # point of contact shown to blacklisted users (optional)
 #blacklist_contact: http://t.me/invite/something
