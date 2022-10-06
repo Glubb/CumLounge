@@ -71,15 +71,16 @@ def init(config, _db, _ch):
 	cmds = [
 		"start", "stop", "setup_commands", "commands",
 		"users", "info", "rules",
-		"toggledebug", "togglepats",
-		"version", "changelog", "help", "patinfo", "botinfo",
+		"toggledebug", "togglekarma",
+		"version", "changelog", "help", "karmainfo", "botinfo",
 		"modsay", "adminsay",
 		"mod", "admin",
 		"warn", "delete", "deleteall", "remove", "removeall",
 		"cooldown", "uncooldown",
 		"blacklist", "cleanup",
-		"s", "sign", "tripcode", "t", "tsign", "psign", "ps"
-	]
+		"s", "sign", "tripcode", "t", "tsign", "ksign", "ks"
+	] + ["togglepats", "patinfo", "psign", "ps"] if core.karma_is_pats else []
+
 	for c in cmds: # maps /<c> to the function cmd_<c>
 		c = c.lower()
 		registered_commands[c] = globals()["cmd_" + c]
@@ -135,7 +136,7 @@ def split_command(text):
 	pos = text.find(" ")
 	return text[1:pos].lower(), text[pos+1:].strip()
 
-def takesArgument(optional=False):
+def takesArgument(optional: bool =False):
 	def f(func):
 		def wrap(ev):
 			_, arg = split_command(ev.text)
@@ -310,7 +311,7 @@ def formatter_signed_message(user: core.User, fmt: FormattedMessageBuilder):
 	fmt.append("</a>", True)
 
 # Add signed message formatting for User `user` to `fmt`
-def formatter_psigned_message(user: core.User, fmt: FormattedMessageBuilder):
+def formatter_ksigned_message(user: core.User, fmt: FormattedMessageBuilder):
 	karma_level = core.getKarmaLevelName(user.karma)
 	fmt.append(" <i><b>t. ", True)
 	fmt.append(karma_level if karma_level != "" else "???")
@@ -655,7 +656,7 @@ def cmd_rules(ev, arg):
 		send_answer(ev, core.set_rules(c_user, arg), reply_to=True)
 
 cmd_toggledebug = wrap_core(core.toggle_debug)
-cmd_togglepats = wrap_core(core.toggle_karma)
+cmd_togglekarma = wrap_core(core.toggle_karma)
 
 @takesArgument(optional=True)
 def cmd_tripcode(ev, arg):
@@ -673,9 +674,9 @@ def cmd_help(ev):
 		user = db.getUser(id=c_user.id)
 	except KeyError as e:
 		pass
-	send_answer(ev, rp.Reply(rp.types.HELP, rank=(user.rank if (user is not None) and user.isJoined() else None)), True)
+	send_answer(ev, rp.Reply(rp.types.HELP, rank=(user.rank if (user is not None) and user.isJoined() else None), karma_is_pats=core.karma_is_pats), True)
 
-def cmd_patinfo(ev):
+def cmd_karmainfo(ev):
 	c_user = UserContainer(ev.from_user)
 	send_answer(ev, core.get_karma_info(c_user), True)
 
@@ -825,10 +826,10 @@ def relay(ev):
 # relay the message `ev` to other users in the chat
 # `caption_text` can be a FormattedMessage that overrides the caption of media
 # `signed` and `tripcode` indicate if the message is signed or tripcoded respectively
-def relay_inner(ev, *, caption_text=None, signed=False, tripcode=False, psigned=False):
+def relay_inner(ev, *, caption_text=None, signed=False, tripcode=False, ksigned=False):
 	is_media = is_forward(ev) or ev.content_type in MEDIA_FILTER_TYPES
 	msid = core.prepare_user_message(UserContainer(ev.from_user), calc_spam_score(ev),
-		is_media=is_media, signed=signed, tripcode=tripcode, psigned=psigned)
+		is_media=is_media, signed=signed, tripcode=tripcode, ksigned=ksigned)
 	if msid is None or isinstance(msid, rp.Reply):
 		return send_answer(ev, msid) # don't relay message, instead reply
 
@@ -850,8 +851,8 @@ def relay_inner(ev, *, caption_text=None, signed=False, tripcode=False, psigned=
 		fmt = FormattedMessageBuilder(caption_text, ev.caption, ev.text)
 		formatter_replace_links(ev, fmt)
 		formatter_network_links(fmt)
-		if psigned:
-			formatter_psigned_message(user, fmt)
+		if ksigned:
+			formatter_ksigned_message(user, fmt)
 		elif signed:
 			formatter_signed_message(user, fmt)
 		elif tripcode:
@@ -891,11 +892,11 @@ def cmd_sign(ev, arg):
 cmd_s = cmd_sign # alias
 
 @takesArgument()
-def cmd_psign(ev, arg):
+def cmd_ksign(ev, arg):
 	ev.text = arg
-	relay_inner(ev, psigned=True)
+	relay_inner(ev, ksigned=True)
 
-cmd_ps = cmd_psign # alias
+cmd_ks = cmd_ksign # alias
 
 @takesArgument()
 def cmd_tsign(ev, arg):
@@ -903,3 +904,10 @@ def cmd_tsign(ev, arg):
 	relay_inner(ev, tripcode=True)
 
 cmd_t = cmd_tsign # alias
+
+# Pat aliases
+if core.karma_is_pats:
+	cmd_togglepats = cmd_togglekarma
+	cmd_patinfo = cmd_karmainfo
+	cmd_psign = cmd_ksign
+	cmd_ps = cmd_ks

@@ -24,6 +24,7 @@ karma_amount_add = None
 karma_amount_remove = None
 karma_level_names = None
 bot_name = None
+karma_is_pats = None
 blacklist_contact = None
 enable_signing = None
 allow_remove_command = None
@@ -33,7 +34,7 @@ vote_up_interval = None
 vote_down_interval = None
 
 def init(config, _db, _ch):
-	global launched, db, ch, spam_scores, reg_open, log_channel, karma_amount_add, karma_amount_remove, karma_level_names, blacklist_contact, bot_name, enable_signing, allow_remove_command, media_limit_period, sign_interval, vote_up_interval, vote_down_interval
+	global launched, db, ch, spam_scores, reg_open, log_channel, karma_amount_add, karma_amount_remove, karma_level_names, blacklist_contact, bot_name, karma_is_pats, enable_signing, allow_remove_command, media_limit_period, sign_interval, vote_up_interval, vote_down_interval
 
 	launched = datetime.now()
 
@@ -49,6 +50,7 @@ def init(config, _db, _ch):
 	karma_amount_remove = config.get("karma_amount_remove", 1)
 	karma_level_names = config.get("karma_level_names", None)
 	bot_name = config.get("bot_name", "")
+	karma_is_pats = config.get("karma_is_pats", False)
 	blacklist_contact = config.get("blacklist_contact", "")
 	enable_signing = config["enable_signing"]
 	allow_remove_command = config["allow_remove_command"]
@@ -297,6 +299,7 @@ def get_info(user):
 		"username": user.getFormattedName(),
 		"rank_i": user.rank,
 		"rank": RANKS.reverse[user.rank],
+		"karma_is_pats": karma_is_pats,
 		"karma": user.karma,
 		"karmalevel": getKarmaLevelName(user.karma),
 		"warnings": user.warnings,
@@ -318,6 +321,7 @@ def get_info_mod(user, msid):
 		"username": user2.getFormattedName(),
 		"rank": user2.rank,
 		"karma": user2.karma if user.rank >= RANKS.admin else user2.getObfuscatedKarma(),
+		"karma_is_pats": karma_is_pats,
 		"karma_obfuscated": user.rank < RANKS.admin,
 		"joined": user2.joined if user.rank >= RANKS.admin else None,
 		"warnings": user2.warnings,
@@ -333,6 +337,7 @@ def get_karma_info(user):
 	next_level_karma = KARMA_LEVELS[karma_level] if karma_level < len(KARMA_LEVELS) else None
 	params = {
 		"karma": karma,
+		"karma_is_pats": karma_is_pats,
 		"level_name": getKarmaLevelName(karma),
 		"level_karma": KARMA_LEVELS[karma_level - 1] if karma_level > 0 else None,
 		"next_level_name": getKarmaLevelName(next_level_karma) if next_level_karma is not None else "???",
@@ -416,7 +421,7 @@ def toggle_karma(user):
 	with db.modifyUser(id=user.id) as user:
 		user.hideKarma = not user.hideKarma
 		new = user.hideKarma
-	return rp.Reply(rp.types.BOOLEAN_CONFIG, description="Pat notifications", enabled=not new)
+	return rp.Reply(rp.types.BOOLEAN_CONFIG, description=("Pat" if karma_is_pats else "Karma") + " notifications", enabled=not new)
 
 @requireUser
 def get_tripcode(user):
@@ -651,19 +656,19 @@ def modify_karma(user, msid, amount):
 	cm = ch.getMessage(msid)
 	if cm is None or cm.user_id is None:
 		return rp.Reply(rp.types.ERR_NOT_IN_CACHE)
-
+	params = {"karma_is_pats": karma_is_pats}
 	if cm.hasUpvoted(user):
-		return rp.Reply(rp.types.ERR_ALREADY_VOTED_UP)
+		return rp.Reply(rp.types.ERR_ALREADY_VOTED_UP, **params)
 	if cm.hasDownvoted(user):
-		return rp.Reply(rp.types.ERR_ALREADY_VOTED_DOWN)
+		return rp.Reply(rp.types.ERR_ALREADY_VOTED_DOWN, **params)
 	if user.id == cm.user_id:
-		return rp.Reply(rp.types.ERR_VOTE_OWN_MESSAGE)
+		return rp.Reply(rp.types.ERR_VOTE_OWN_MESSAGE, **params)
 	if amount > 0:
 		# enforce upvoting cooldown
 		if vote_up_interval.total_seconds() > 1:
 			last_used = vote_up_last_used.get(user.id, None)
 			if last_used and (datetime.now() - last_used) < vote_up_interval:
-				return rp.Reply(rp.types.ERR_SPAMMY_VOTE_UP)
+				return rp.Reply(rp.types.ERR_SPAMMY_VOTE_UP, **params)
 			vote_up_last_used[user.id] = datetime.now()
 
 		cm.addUpvote(user)
@@ -672,7 +677,7 @@ def modify_karma(user, msid, amount):
 		if vote_down_interval.total_seconds() > 1:
 			last_used = vote_down_last_used.get(user.id, None)
 			if last_used and (datetime.now() - last_used) < vote_down_interval:
-				return rp.Reply(rp.types.ERR_SPAMMY_VOTE_DOWN)
+				return rp.Reply(rp.types.ERR_SPAMMY_VOTE_DOWN, **params)
 			vote_down_last_used[user.id] = datetime.now()
 
 		cm.addDownvote(user)
@@ -685,22 +690,22 @@ def modify_karma(user, msid, amount):
 		user2.karma += KARMA_PLUS_ONE * amount
 		new_level = getKarmaLevel(user2.karma)
 	if not user2.hideKarma:
-		_push_system_message(rp.Reply(rp.types.KARMA_NOTIFICATION, count=amount), who=user2, reply_to=msid)
+		_push_system_message(rp.Reply(rp.types.KARMA_NOTIFICATION, count=amount, **params), who=user2, reply_to=msid)
 		if old_level < new_level:
-			_push_system_message(rp.Reply(rp.types.KARMA_LEVEL_UP, level=getKarmaLevelName(user2.karma)), who=user2)
+			_push_system_message(rp.Reply(rp.types.KARMA_LEVEL_UP, level=getKarmaLevelName(user2.karma), **params), who=user2)
 		if old_level > new_level:
-			_push_system_message(rp.Reply(rp.types.KARMA_LEVEL_DOWN, level=getKarmaLevelName(user2.karma)), who=user2)
+			_push_system_message(rp.Reply(rp.types.KARMA_LEVEL_DOWN, level=getKarmaLevelName(user2.karma), **params), who=user2)
 	if amount > 0:
-		return rp.Reply(rp.types.KARMA_VOTED_UP, bot_name=bot_name)
+		return rp.Reply(rp.types.KARMA_VOTED_UP, bot_name=bot_name, **params)
 	elif amount < 0:
-		return rp.Reply(rp.types.KARMA_VOTED_DOWN, bot_name=bot_name)
+		return rp.Reply(rp.types.KARMA_VOTED_DOWN, bot_name=bot_name, **params)
 
 @requireUser
-def prepare_user_message(user: User, msg_score, *, is_media=False, signed=False, tripcode=False, psigned=False):
+def prepare_user_message(user: User, msg_score, *, is_media=False, signed=False, tripcode=False, ksigned=False):
 	# prerequisites
 	if user.isInCooldown():
 		return rp.Reply(rp.types.ERR_COOLDOWN, until=user.cooldownUntil)
-	if (signed or tripcode or psigned) and not enable_signing:
+	if (signed or tripcode or ksigned) and not enable_signing:
 		return rp.Reply(rp.types.ERR_COMMAND_DISABLED)
 	if tripcode and user.tripcode is None:
 		return rp.Reply(rp.types.ERR_NO_TRIPCODE)
@@ -713,7 +718,7 @@ def prepare_user_message(user: User, msg_score, *, is_media=False, signed=False,
 		return rp.Reply(rp.types.ERR_SPAMMY)
 
 	# enforce signing cooldown
-	if (signed or psigned) and sign_interval.total_seconds() > 1:
+	if (signed or ksigned) and sign_interval.total_seconds() > 1:
 		last_used = sign_last_used.get(user.id, None)
 		if last_used and (datetime.now() - last_used) < sign_interval:
 			return rp.Reply(rp.types.ERR_SPAMMY_SIGN)

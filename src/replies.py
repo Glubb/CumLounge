@@ -177,23 +177,29 @@ format_strs = {
 	types.DELETION_QUEUED: em("{count} messages matched, deletion was queued."),
 	types.PROMOTED_MOD: em("You've been promoted to moderator, run /help for a list of commands."),
 	types.PROMOTED_ADMIN: em("You've been promoted to admin, run /help for a list of commands."),
-	types.KARMA_VOTED_UP: em("You just gave this {bot_name} a pat, awesome!"),
-	types.KARMA_VOTED_DOWN: em("You just removed a pat from this {bot_name}!"),
-	types.KARMA_NOTIFICATION: lambda count, **_:
-		em( "You have just " + ("been given" if count > 0 else "lost") +" a pat! (use /patinfo to see your pats and patlevel"+
-			" or /togglepats to turn these notifications off)" ),
-	types.KARMA_LEVEL_UP:
+	types.KARMA_VOTED_UP: lambda karma_is_pats, **_: em(
+			"You just gave this {bot_name} " + ("a pat" if karma_is_pats else "karma") + ", awesome!"
+		),
+	types.KARMA_VOTED_DOWN: lambda karma_is_pats, **_: em(
+			"You just removed " + ("a pat" if karma_is_pats else "karma") + " from this {bot_name}!"
+		),
+	types.KARMA_NOTIFICATION: lambda karma_is_pats, count, **_: em(
+			"You have just " + ("been given" if count > 0 else "lost") + " " + ("a pat" if karma_is_pats else "karma") + "!" +
+			(" (use /patinfo to see your pats and pat level" if karma_is_pats else " (use /karmainfo to see your karma and karma level") +
+			" or /toggle" + ("pats" if karma_is_pats else "karma") + " to turn these notifications off)"
+		),
+	types.KARMA_LEVEL_UP: lambda karma_is_pats, **_:
 		"<i>Congratulations!\n" +
-		"You have reached a new pat level:</i>\n" +
+		"You have reached a new " + ("pat" if karma_is_pats else "karma") + " level:</i>\n" +
 		"<b>{level}</b>\n" +
 		"<i>Keep posting good stuff!</i>\n" +
-		"<i>(Use /togglepats to turn these notifications off)</i>",
-	types.KARMA_LEVEL_DOWN:
-		"<i>Oh no, you lost your pat level!\n" +
+		"<i>(Use /toggle" + ("pats" if karma_is_pats else "karma") + " to turn these notifications off)</i>",
+	types.KARMA_LEVEL_DOWN: lambda karma_is_pats, **_:
+		"<i>Oh no, you lost your " + ("pat" if karma_is_pats else "karma") + " level!\n" +
 		"Your current level is:</i>\n" +
 		"<b>{level}</b>\n" +
 		"<i>Posting some cute pictures might help...</i>\n" +
-		"<i>(Use /togglepats to turn these notifications off)</i>",
+		"<i>(Use /toggle" + ("pats" if karma_is_pats else "karma") + " to turn these notifications off)</i>",
 	types.TRIPCODE_INFO: lambda tripcode, **_:
 		"<b>tripcode</b>: " + ("<code>{tripcode!x}</code>" if tripcode is not None else "unset"),
 	types.TRIPCODE_SET: em("Tripcode set. It will appear as: ") + "<b>{tripname!x}</b> <code>{tripcode!x}</code>",
@@ -221,17 +227,20 @@ format_strs = {
 	types.ERR_BLACKLISTED: lambda reason, contact, **_:
 		em( "You've been blacklisted" + (reason and " for {reason!x}" or "") )+
 		( em("\ncontact:") + " {contact}" if contact else "" ),
-	types.ERR_ALREADY_VOTED_UP: em("You have already given pats for this message"),
-	types.ERR_ALREADY_VOTED_DOWN: em("You have already removed a pat for this message"),
-	types.ERR_VOTE_OWN_MESSAGE: em("You cannot give or remove yourself pats"),
+	types.ERR_ALREADY_VOTED_UP: lambda karma_is_pats, **_: em(
+			"You have already given " + ("a pat" if karma_is_pats else "karma") + " for this message"),
+	types.ERR_ALREADY_VOTED_DOWN: lambda karma_is_pats, **_: em(
+			"You have already removed " + ("a pat" if karma_is_pats else "karma") + " from this message"),
+	types.ERR_VOTE_OWN_MESSAGE: lambda karma_is_pats, **_: em(
+			"You cannot give or remove yourself " + ("pats" if karma_is_pats else "karma")),
 	types.ERR_SPAMMY: em("Your message has not been sent. Avoid sending messages too fast, try again later."),
 	types.ERR_SPAMMY_SIGN: em("Your message has not been sent. Avoid using /sign too often, try again later."),
-	types.ERR_SPAMMY_VOTE_UP: em(
-			"Your pat was not transmitted.\n" +
+	types.ERR_SPAMMY_VOTE_UP: lambda karma_is_pats, **_: em(
+			"Your " + ("pat" if karma_is_pats else "karma") + " was not transmitted.\n" +
 			"Avoid using +1 too often, try again later."
 		),
-	types.ERR_SPAMMY_VOTE_DOWN: em(
-			"The pat was not removed.\n" +
+	types.ERR_SPAMMY_VOTE_DOWN: lambda karma_is_pats, **_: em(
+			"The " + ("pat" if karma_is_pats else "karma") + " was not removed.\n" +
 			"Avoid using -1 too often, try again later."
 		),
 	types.ERR_SIGN_PRIVACY: em("Your account privacy settings prevent usage of the sign feature. Enable linked forwards first."),
@@ -246,20 +255,20 @@ format_strs = {
 	types.ERR_VOICE_AND_VIDEO_PRIVACY_RESTRICTION:
 		em("This message can't be displayed on premium accounts with restricted access to voice and video messages"),
 
-	types.USER_INFO: lambda warnings, cooldown, **_:
-		"<b>id</b>: {id}, <b>username</b>: {username!x}, <b>rank</b>: {rank_i} ({rank})\n" +
-		"<b>pats</b>: {karma} ({karmalevel})\n" +
-		"<b>warnings</b>: {warnings} " + smiley(warnings) +
+	types.USER_INFO: lambda karma_is_pats, warnings, cooldown, **_:
+		"<b>ID</b>: {id}, <b>username</b>: {username!x}, <b>rank</b>: {rank_i} ({rank})\n" +
+		"<b>" + ("Pats" if karma_is_pats else "Karma") + "</b>: {karma} ({karmalevel})\n" +
+		"<b>Warnings</b>: {warnings} " + smiley(warnings) +
 		( " (one warning will be removed on {warnExpiry!t})" if warnings > 0 else "" ) + ", " +
-		"<b>cooldown</b>: " +
+		"<b>Cooldown</b>: " +
 		( cooldown and "yes, until {cooldown!t}" or "no" ),
-	types.USER_INFO_MOD: lambda karma_obfuscated, warnings, cooldown, joined, **_:
-		"<b>id</b>: {id} (<b>rank</b>: {rank})\n"+
-		"<b>pats</b>: " + ("~" if karma_obfuscated else "") + "{karma}\n"+
-		("<b>joined</b>: {joined!t}\n" if joined else "") +
-		"<b>warnings</b>: {warnings} " +
+	types.USER_INFO_MOD: lambda karma_is_pats, karma_obfuscated, warnings, cooldown, joined, **_:
+		"<b>ID</b>: {id} (<b>rank</b>: {rank})\n"+
+		"<b>" + ("Pats" if karma_is_pats else "Karma") + "</b>: " + ("~" if karma_obfuscated else "") + "{karma}\n"+
+		("<b>Joined</b>: {joined!t}\n" if joined else "") +
+		"<b>Warnings</b>: {warnings} " +
 		(" (one warning will be removed on {warnExpiry!t})" if warnings > 0 else "") + "\n" +
-		"<b>cooldown</b>: " +
+		"<b>Cooldown</b>: " +
 		(cooldown and "yes, until {cooldown!t}" or "no"),
 	types.USERS_INFO:
 		"<b>Total users:</b> {total}\n" +
@@ -292,7 +301,7 @@ format_strs = {
 				versions.items()
 			) if (count < 0) or (index >= len(versions) - count)
 		]),
-	types.HELP: lambda rank, **_:
+	types.HELP: lambda rank, karma_is_pats, **_:
 		"<b><u>Important commands</u></b>\n"+
 		"	/start" +                  " - <i>Join the chat</i>\n" +
 		(
@@ -312,12 +321,13 @@ format_strs = {
 		"	/sign <i>or</i> /s TEXT" + " - <i>Sign message with your username</i>\n"
 		if rank is not None else "") +
 		(
-		"\n<b><u>Pat commands</u></b>\n" +
-		"	+1" +                " (reply) - <i>Give a pat</i>\n" +
-		"	-1" +                " (reply) - <i>Remove a pat</i>\n" +
-		"	/togglepats" +               " - <i>Toggle pat notifications</i>\n" +
-		"	/psign <i>or</i> /ps TEXT" + " - <i>Sign message with your pat level</i>\n" +
-		"	/patinfo" +                  " - <i>Show info about your pat level</i>\n" +
+		"\n<b><u>" + ("Pat" if karma_is_pats else "Karma") + " commands</u></b>\n" +
+		"	+1" +                                              " (reply) - <i>Give " + ("a pat" if karma_is_pats else "karma") + "</i>\n" +
+		"	-1" +                                              " (reply) - <i>Remove " + ("a pat" if karma_is_pats else "karma") + "</i>\n" +
+		"	/toggle" + ("pats" if karma_is_pats else "karma") +        " - <i>Toggle " + ("pat" if karma_is_pats else "karma") + " notifications</i>\n" +
+		"	/" + ("p" if karma_is_pats else "k") + "sign <i>or</i> " +
+			"/" + ("p" if karma_is_pats else "k") + "s TEXT" +         " - <i>Sign message with your " + ("pat" if karma_is_pats else "karma") + " level</i>\n" +
+		"	/" + ("pat" if karma_is_pats else "karma") + "info" +      " - <i>Show info about your " + ("pat" if karma_is_pats else "karma") + " level</i>\n" +
 		(
 			"\n<b><u>Mod commands</u></b>\n" +
 			"	/info" +              " (reply) - <i>Show info about a user</i>\n" +
@@ -342,15 +352,16 @@ format_strs = {
 			"	/commands COMMANDS" +      " - <i>Change bot commands</i>\n"
 		if rank >= RANKS.admin else "")
 		if rank is not None else ""),
-	types.KARMA_INFO: lambda karma, level_karma, next_level_karma, **_:
+	types.KARMA_INFO: lambda karma, karma_is_pats, level_karma, next_level_karma, **_:
 		"<b>Your level:</b> <i>{level_name}</i>\n" +
 		"<b>Next level:</b> <i>{next_level_name}</i>\n" +
 		"\n" +
-		"<b>Pats:</b> {karma}/" + ("{next_level_karma}" if next_level_karma is not None else "{level_karma}") + "\n" +
+		"<b>" + ("Pats" if karma_is_pats else "Karma") + ":</b> {karma}/" + ("{next_level_karma}" if next_level_karma is not None else "{level_karma}") + "\n" +
 		progress(karma, level_karma if level_karma is not None else karma, next_level_karma if next_level_karma is not None else karma - 1),
 	types.BOT_INFO:
 		"<b>Python version:</b> {python_ver}\n" +
 		"<b>OS:</b> {os}\n" +
+		"\n" +
 		"<b>Last modification:</b> {last_file_mod!t}\n" +
 		"<b>Launched:</b> {launched!t}\n" +
 		"<b>Local time:</b> {time}\n" + # Must not use "t" conversion
