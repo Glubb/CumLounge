@@ -352,7 +352,7 @@ def get_bot_info(user):
 				getLastModFile("src"),
 				getLastModFile("util"),
 				key=lambda file: file["last_mod"]
-			).last_mod,
+			)["last_mod"],
 		"launched": launched,
 		"time": format_datetime(datetime.now(), True),
 		"cached_msgs": len(ch.msgs),
