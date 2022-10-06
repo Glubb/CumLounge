@@ -1,4 +1,4 @@
-import os
+from os import path
 from src.util import Enum
 
 # a few utility functions
@@ -66,7 +66,7 @@ DEFAULT_COMMANDS = {
 }
 
 # File names
-FILENAME_CHANGELOG = os.path.join(".", "changelog.txt")
+FILENAME_CHANGELOG = path.abspath("changelog.txt")
 
 # Ranks
 RANKS = Enum({

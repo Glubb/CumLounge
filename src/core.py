@@ -351,8 +351,8 @@ def get_bot_info(user):
 				getLastModFile(),
 				getLastModFile("src"),
 				getLastModFile("util"),
-				key=lambda file_info: file_info.last_mod
-			).file,
+				key=lambda file: file.last_mod
+			).last_mod,
 		"launched": launched,
 		"time": format_datetime(datetime.now(), True),
 		"cached_msgs": len(ch.msgs),

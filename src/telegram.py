@@ -3,6 +3,7 @@ import logging
 import time
 import json
 import re
+from os import path
 
 import src.core as core
 import src.replies as rp
@@ -623,12 +624,13 @@ def cmd_commands(ev, arg):
 		send_answer(ev, rp.Reply(rp.types.COMMANDS, cmds=cmds), reply_to=True)
 	else:
 		c_user = UserContainer(ev.from_user)
-		set_commands_result = core.set_commands(c_user, arg)
-		if set_commands_result is not None:
-			if isinstance(set_commands_result, rp.Reply):
-				return send_answer(ev, set_commands_result, reply_to=True)
-			register_bot_commands_result = register_bot_commands(c_user, set_commands_result)
-
+		result = core.set_commands_dict(c_user, arg)
+		if result is not None:
+			if isinstance(result, rp.Reply):
+				return send_answer(ev, result, reply_to=True)
+			result = register_bot_commands(c_user, result)
+			if isinstance(result, rp.Reply):
+				return send_answer(ev, result, reply_to=True)
 			return send_answer(ev, rp.Reply(rp.types.SUCCESS_COMMANDS, bot_name=core.bot_name), reply_to=True)
 
 cmd_users = wrap_core(core.get_users)
@@ -685,7 +687,7 @@ def cmd_version(ev):
 	send_answer(ev, rp.Reply(rp.types.PROGRAM_VERSION, version=VERSION, url_catlounge=URL_CATLOUNGE, url_secretlounge=URL_SECRETLOUNGE), True)
 
 def cmd_changelog(ev):
-	if os.path.exists(FILENAME_CHANGELOG):
+	if path.exists(FILENAME_CHANGELOG):
 		changelog = open(FILENAME_CHANGELOG, "r")
 		caption = ""
 		sections = {}

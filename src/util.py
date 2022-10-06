@@ -98,8 +98,11 @@ def genTripcode(tripcode):
 	return trname, "!" + trip_final[-10:]
 
 def getLastModFile(dir=""):
-	dir = os.path.join(".", dir)
-	files = os.listdir(dir)
-	file = max(files, key=os.path.getmtime)
-	last_mod = os.path.getmtime(file)
-	return {"dir": dir, "file": file, "last_mod": last_mod}
+	path = os.path.abspath(dir)
+	files = [{
+		"name": file.name,
+		"last_mod": file.stat().st_mtime,
+		"path": file.path,
+		"dir": dir
+	} for file in os.scandir(path) if file.is_file()]
+	return max(files, key=lambda file: file["last_mod"])
