@@ -79,7 +79,7 @@ def init(config, _db, _ch):
 		"cooldown", "uncooldown",
 		"blacklist", "cleanup",
 		"s", "sign", "tripcode", "t", "tsign", "ksign", "ks"
-	] + ["togglepats", "patinfo", "psign", "ps"] if core.karma_is_pats else []
+	] + (["togglepats", "patinfo", "psign", "ps"] if core.karma_is_pats else [])
 
 	for c in cmds: # maps /<c> to the function cmd_<c>
 		c = c.lower()
