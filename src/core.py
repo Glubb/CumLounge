@@ -351,7 +351,7 @@ def get_bot_info(user):
 				getLastModFile(),
 				getLastModFile("src"),
 				getLastModFile("util"),
-				key=lambda file: file.last_mod
+				key=lambda file: file["last_mod"]
 			).last_mod,
 		"launched": launched,
 		"time": format_datetime(datetime.now(), True),
