@@ -79,7 +79,16 @@ def init(config, _db, _ch):
 		"cooldown", "uncooldown",
 		"blacklist", "cleanup",
 		"s", "sign", "tripcode", "t", "tsign", "ksign", "ks"
-	] + (["togglepats", "patinfo", "psign", "ps"] if core.karma_is_pats else [])
+	]
+
+	# Pat aliases
+	if core.karma_is_pats:
+		global cmd_togglepats, cmd_patinfo, cmd_psign, cmd_ps
+		cmds += ["togglepats", "patinfo", "psign", "ps"]
+		cmd_togglepats = cmd_togglekarma
+		cmd_patinfo = cmd_karmainfo
+		cmd_psign = cmd_ksign
+		cmd_ps = cmd_ks
 
 	for c in cmds: # maps /<c> to the function cmd_<c>
 		c = c.lower()
@@ -904,10 +913,3 @@ def cmd_tsign(ev, arg):
 	relay_inner(ev, tripcode=True)
 
 cmd_t = cmd_tsign # alias
-
-# Pat aliases
-if core.karma_is_pats:
-	cmd_togglepats = cmd_togglekarma
-	cmd_patinfo = cmd_karmainfo
-	cmd_psign = cmd_ksign
-	cmd_ps = cmd_ks
