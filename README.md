@@ -55,10 +55,11 @@ start - Join the chat
 stop - Leave the chat
 help - Show all available commands
 info - Get info about your account
-ps - Sign with your pat level
+ks - Sign with your karma level
 users - Show current user count
 remove - Delete a message [mod]
 ```
+Please keep in mind that if you decided to enable `karma_is_pats` in the configurations, you may want to change the `ks` into `ps` here.
 
 Our bot also supports a commands setup with `/setup_commands`. This allows you to set up the commands list from within the bot if you have not already defined any commands. If you need to modify your commands list, please use either BotFather's `/setcommands` or your bot's `/commands` command; both work nearly identical.
 
