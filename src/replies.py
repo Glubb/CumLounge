@@ -256,18 +256,20 @@ format_strs = {
 		em("This message can't be displayed on premium accounts with restricted access to voice and video messages"),
 
 	types.USER_INFO: lambda karma_is_pats, warnings, cooldown, **_:
-		"<b>ID</b>: {id}, <b>username</b>: {username!x}, <b>rank</b>: {rank_i} ({rank})\n" +
+		"<b>ID</b>: {id}, <b>username</b>: {username!x}\n" +
+		"<b>rank</b>: {rank}\n" +
 		"<b>" + ("Pats" if karma_is_pats else "Karma") + "</b>: {karma} ({karmalevel})\n" +
 		"<b>Warnings</b>: {warnings} " + smiley(warnings) +
 		( " (one warning will be removed on {warnExpiry!t})" if warnings > 0 else "" ) + ", " +
 		"<b>Cooldown</b>: " +
 		( cooldown and "yes, until {cooldown!t}" or "no" ),
 	types.USER_INFO_MOD: lambda karma_is_pats, karma_obfuscated, warnings, cooldown, joined, **_:
-		"<b>ID</b>: {id} (<b>rank</b>: {rank})\n"+
+		"<b>ID</b>: {id}\n"+
+		"<b>rank</b>: {rank} ({rank_i})\n" +
 		"<b>" + ("Pats" if karma_is_pats else "Karma") + "</b>: " + ("~" if karma_obfuscated else "") + "{karma}\n"+
 		("<b>Joined</b>: {joined!t}\n" if joined else "") +
-		"<b>Warnings</b>: {warnings} " +
-		(" (one warning will be removed on {warnExpiry!t})" if warnings > 0 else "") + "\n" +
+		"<b>Warnings</b>: {warnings}" +
+		(" (one warning will be removed on {warnExpiry!t})" if warnings > 0 else "") + ", " +
 		"<b>Cooldown</b>: " +
 		(cooldown and "yes, until {cooldown!t}" or "no"),
 	types.USERS_INFO:
@@ -283,8 +285,8 @@ format_strs = {
 		"<b>In cooldown:</b> {cooldown}",
 
 	types.PROGRAM_VERSION: "<a href=\"{url_catlounge}\"><b>catlounge</b></a>" +
-       "<b>v{version}</b> <i>is a fork of the original <a href=\"{url_secretlounge}\">secretlounge bot</a>.</i>" +
-	   "<i>For updates check our <a href=\"https://t.me/catloungeadmin\">channel</a> or /changelog.</i>",
+       " <b>v{version}</b> <i>is a fork of the original <a href=\"{url_secretlounge}\">secretlounge bot</a>.</i>" +
+	   " <i>For updates check our <a href=\"https://t.me/catloungeadmin\">channel</a> or /changelog.</i>",
 	types.PROGRAM_CHANGELOG: lambda versions, count=-1, **_:
 		"\n\n".join(["<b><u>" + version + "</u></b>\n" +
 			"\n".join(

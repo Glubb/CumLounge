@@ -1,49 +1,28 @@
-= Version 0.1 =
-* Changed: /help shows now all available commands and detect if you are user/mod/admin
-* Removed: /adminhelp and /modhelp
-* Changed: Karma is now pats
-* Changed: /togglekarma is now /togglepats
+=Catlounge Version 1.0 =
+* Added: /help shows now all relevant commands for you
+* Changed: Karma can be now pats through config
 * Added: Enhanced user count for all users
-* Added: Mod command /deleteall and /removeall to delete all cached messages from a user
-* Changed: /blacklist also deletes all messages from the cache of the selected user
-* Changed: Cooldown time has been increased
-* Added: admin /info now shows the real rank, karma value and join date
-
-= Version 0.2 =
-* Added: You can now downvote with -1
-* Changed: Default cooldown is 1 minute for downvoting a message
-
-= Version 0.3 =
-* Changed: /version and readme has been updated
+* Added: You can now downvote with -1 (Defult cooldown 1 minute)
 * Changed: /motd is now /rules
-* Added: Mod command /cooldown Xs Xm Xh Xd Xw to spicify a cooldown and assign a warning
-* Added: Support for /delete Xs Xm Xh Xd Xw to specify a cooldown
 * Added: User command /changelog
-
-= Version 0.4 =
-* Added: Telegram log channel support for cmd logs
-* Added: bot_name to config
-* Added: reg_open to config
-* Added: Support for anonymous polls
+* Added: Support for anonymous polls (forwarded)
+* Added: Karma levels (must be namend in config)
+* Added: /psign signs a message with your karma level
+* Added: Karma level notifications
+* Added: User command /karmainfo
+* Added: Mod command /deleteall and /removeall to delete all cached messages from a user
 * Changed: /blacklist is now a mod command
-
-= Version 0.5 =
-* Changed: /help shows correct commands for inactive users
-* Fixed: Possible crash with modded clients before first join
+* Changed: /blacklist also deletes all messages from the cache of the selected user
+* Added: Mod command /cooldown DURATION to spicify a cooldown
+* Added: Support for /delete DURATION to specify a cooldown + delete
+* Added: Admin /info now shows the real rank, karma value
+* Added: Telegram log channel support for cmd logs
+* Added: You can set a Name for your bot/user (bot_name)
+* Added: Registration can now be closed through config (reg_open)
 * Fixed: Clients with disabled voice/video privacy setting now receive notifications
 * Fixed: Commands return an error message if a required argument is missing
-
-= Version 0.6 =
-* Added: /psign signs a message with your karma/pat level
-* Added: Karmal evels in config
-* Added: Admin command /botinfo
-* Added: User command /patinfo
-
-= Version 0.7 =
+* Added: Admin command /botinfo (shows usefull information about your bot)
 * Added: /commands command to show/change registred bot commands
-* Added: Pat level notifications
-* Added: Compatibility for Windows (except for tripcodes)
-* Added: Progress bar in /patinfo
 * Added: /setup_commands command
+* Added: Compatibility for Windows (except for tripcodes)
 * Added: Info message for the first user
-* Changed: Updated /users command

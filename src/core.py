@@ -319,7 +319,8 @@ def get_info_mod(user, msid):
 	params = {
 		"id": user2.getObfuscatedId(),
 		"username": user2.getFormattedName(),
-		"rank": user2.rank,
+		"rank_i": user2.rank,
+		"rank": RANKS.reverse[user2.rank],
 		"karma": user2.karma if user.rank >= RANKS.admin else user2.getObfuscatedKarma(),
 		"karma_is_pats": karma_is_pats,
 		"karma_obfuscated": user.rank < RANKS.admin,
