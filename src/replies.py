@@ -248,7 +248,7 @@ format_strs = {
 		em("Given tripcode is not valid, the format is ")+
 		"<code>name#pass</code>" + em("."),
 	types.ERR_NO_TRIPCODE: em("You don't have a tripcode set."),
-	types.ERR_MEDIA_LIMIT: em("You can't send media or forward messages at this time, try again later."),
+	types.ERR_MEDIA_LIMIT: em("Spam protection triggred! You can't send media or forward messages at this time, try again in {media_limit_period} hours after join."),
 	types.ERR_NO_CHANGELOG: em("Changelog not found"),
 	types.ERR_POLL_NOT_ANONYMOUS: em("Poll or quiz must be anonymous!"),
 	types.ERR_REG_CLOSED: em("Registrations are closed"),

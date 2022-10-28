@@ -7,7 +7,7 @@
 * Added: User command /changelog
 * Added: Support for anonymous polls (forwarded)
 * Added: Karma levels (must be namend in config)
-* Added: /psign signs a message with your karma level
+* Added: /ksign signs a message with your karma level
 * Added: Karma level notifications
 * Added: User command /karmainfo
 * Added: Mod command /deleteall and /removeall to delete all cached messages from a user

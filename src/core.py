@@ -712,7 +712,7 @@ def prepare_user_message(user: User, msg_score, *, is_media=False, signed=False,
 		return rp.Reply(rp.types.ERR_NO_TRIPCODE)
 	if is_media and user.rank < RANKS.mod and media_limit_period is not None:
 		if (datetime.now() - user.joined) < media_limit_period:
-			return rp.Reply(rp.types.ERR_MEDIA_LIMIT)
+			return rp.Reply(rp.types.ERR_MEDIA_LIMIT, media_limit_period=media_limit_period)
 
 	ok = spam_scores.increaseSpamScore(user.id, msg_score)
 	if not ok:
