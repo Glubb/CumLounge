@@ -263,11 +263,10 @@ format_strs = {
 		( " (one warning will be removed on {warnExpiry!t})" if warnings > 0 else "" ) + ", " +
 		"<b>Cooldown</b>: " +
 		( cooldown and "yes, until {cooldown!t}" or "no" ),
-	types.USER_INFO_MOD: lambda karma_is_pats, karma_obfuscated, warnings, cooldown, joined, **_:
+	types.USER_INFO_MOD: lambda karma_is_pats, karma_obfuscated, warnings, cooldown, **_:
 		"<b>ID</b>: {id}\n"+
 		"<b>rank</b>: {rank} ({rank_i})\n" +
 		"<b>" + ("Pats" if karma_is_pats else "Karma") + "</b>: " + ("~" if karma_obfuscated else "") + "{karma}\n"+
-		("<b>Joined</b>: {joined!t}\n" if joined else "") +
 		"<b>Warnings</b>: {warnings}" +
 		(" (one warning will be removed on {warnExpiry!t})" if warnings > 0 else "") + ", " +
 		"<b>Cooldown</b>: " +
