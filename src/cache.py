@@ -14,7 +14,7 @@ class CachedMessage():
 		self.upvoted = set() # set of users that have given this message karma
 		self.downvoted = set() # set of users that have taken this message karma
 	def isExpired(self):
-		return datetime.now() >= self.time + timedelta(hours=24)
+		return datetime.now() >= self.time + timedelta(hours=48)
 	def hasUpvoted(self, user):
 		return user.id in self.upvoted
 	def hasDownvoted(self, user):
