@@ -3,6 +3,7 @@ config.yaml
 # Any database files
 *.db
 *.sqlite
+config.yaml
 # Directories
 doglounge
 catlounge
