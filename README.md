@@ -84,6 +84,12 @@ You can also auto-disable media when no admin has typed for a while. Set `media_
 - You can mark exactly one instance as the leader using `is_leader: true` in `config.yaml`. Followers should set `is_leader: false`.
 - The leader runs global scheduled tasks and sends one-off notices (e.g., media auto-disable broadcast). Followers skip those tasks but still process messages, reactions, and use the shared DB.
 
+#### Multiple bot tokens (separate message streams)
+- You can run multiple instances with *different* bot tokens, each processing its own user community while sharing the same database.
+- **Per-bot scope**: Messages and karma are tracked per bot token. Each instance only sends to users who have started that specific bot.
+- **Shared across all bots**: Cooldowns, blacklists, and warnings are enforced globally across all instances.
+- When a user first messages a bot, they're automatically marked as reachable by that token. The bot won't attempt to DM users who haven't started it (avoiding "chat not found" errors).
+
 ### Starting the bot
 Once the bot is running, you can use a telegram client to connect to your bot. The first person that connects automatically becomes an admin. Thereby, it is important that you do not publish the bot URL before first entering it. If you are the first one to join, you should get a nottification message confirming you have been made an automatic admin. Additional admins and mods may be promoted using the `/admin` and `/mod` commands. We recommend defining a welcome message with rules, too, using `/rules <TEXT>`.
 

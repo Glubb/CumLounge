@@ -5,6 +5,7 @@ import sqlite3
 from datetime import date, datetime, timedelta, timezone
 from random import randint
 from threading import RLock
+from typing import Optional
 
 from src.globals import *
 
@@ -263,11 +264,19 @@ class JSONDatabase(Database):
 			return []
 
 	# Stubs for message mapping support; JSON backend is not shared across processes
-	def save_message_mapping(self, uid: int, msid: int, message_id: int, bot_id: int | None = None):
+	def save_message_mapping(self, uid: int, msid: int, message_id: int, bot_id: Optional[int] = None):
 		return
-	def get_msid_by_uid_message(self, uid: int, message_id: int, bot_id: int | None = None):
+	def get_msid_by_uid_message(self, uid: int, message_id: int, bot_id: Optional[int] = None):
 		return None
-	def get_recipient_mappings_by_msid(self, msid: int, bot_id: int | None = None):
+	def get_recipient_mappings_by_msid(self, msid: int, bot_id: Optional[int] = None):
+		return []
+
+	# Stubs for per-bot reachability; JSON backend is dev-only
+	def mark_bot_user_seen(self, bot_id: int, uid: int):
+		return
+	def set_bot_user_send_blocked(self, bot_id: int, uid: int):
+		return
+	def get_reachable_user_ids(self, bot_id: int):
 		return []
 			
 	def getSystemConfig(self):
@@ -287,6 +296,7 @@ class SQLiteDatabase(Database):
 			detect_types=sqlite3.PARSE_DECLTYPES|sqlite3.PARSE_COLNAMES)
 		self.db.row_factory = sqlite3.Row
 		self._mm_has_bot_id = False
+		self._pending_commits = 0
 		# Improve multi-process concurrency when sharing one DB file
 		try:
 			# WAL allows readers during writes; NORMAL sync is a good balance
@@ -299,12 +309,13 @@ class SQLiteDatabase(Database):
 		self._ensure_schema()
 	def register_tasks(self, sched):
 		def f():
-			with self.lock:
-				self.db.commit()
+			self._commit()
 		sched.register(f, seconds=5)
 	def close(self):
 		with self.lock:
-			self.db.commit()
+			if self._pending_commits > 0:
+				self.db.commit()
+				self._pending_commits = 0
 			self.db.close()
 	@staticmethod
 	def _systemConfigToDict(config):
@@ -324,6 +335,18 @@ class SQLiteDatabase(Database):
 		for prop in r.keys():
 			setattr(user, prop, r[prop])
 		return user
+	
+	def _commit(self):
+		"""Commit only if there are pending changes."""
+		with self.lock:
+			if self._pending_commits > 0:
+				self.db.commit()
+				self._pending_commits = 0
+	
+	def _mark_dirty(self):
+		"""Mark that there are uncommitted changes."""
+		self._pending_commits += 1
+	
 	def _ensure_schema(self):
 		def row_exists(table, name):
 			cur = self.db.execute("PRAGMA table_info(`" + table + "`);")
@@ -384,8 +407,21 @@ CREATE TABLE IF NOT EXISTS `message_mapping` (
 			# Detect availability for conditional queries
 			self._mm_has_bot_id = True
 
+			# Track which users are reachable per bot token (for multi-bot deployments)
+			self.db.execute("""
+CREATE TABLE IF NOT EXISTS `bot_users` (
+	`bot_id` BIGINT NOT NULL,
+	`uid` BIGINT NOT NULL,
+	`last_seen` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+	`can_send` TINYINT NOT NULL DEFAULT 1,
+	PRIMARY KEY (`bot_id`, `uid`)
+);
+			""".strip())
+			self.db.execute("CREATE INDEX IF NOT EXISTS `idx_bu_bot` ON `bot_users`(`bot_id`);")
+			self.db.execute("CREATE INDEX IF NOT EXISTS `idx_bu_uid` ON `bot_users`(`uid`);")
+
 	# -- Message mapping helpers for sharing across instances --
-	def save_message_mapping(self, uid: int, msid: int, message_id: int, bot_id: int | None = None):
+	def save_message_mapping(self, uid: int, msid: int, message_id: int, bot_id: Optional[int] = None):
 		"""Persist mapping so other processes can resolve reactions/mirroring."""
 		if self._mm_has_bot_id and bot_id is not None:
 			sql = "REPLACE INTO message_mapping(`msid`,`uid`,`message_id`,`bot_id`) VALUES (?,?,?,?)"
@@ -395,10 +431,9 @@ CREATE TABLE IF NOT EXISTS `message_mapping` (
 			params = (msid, uid, message_id)
 		with self.lock:
 			self.db.execute(sql, params)
-			# Ensure immediate visibility across processes
-			self.db.commit()
+			self._mark_dirty()
 
-	def get_msid_by_uid_message(self, uid: int, message_id: int, bot_id: int | None = None):
+	def get_msid_by_uid_message(self, uid: int, message_id: int, bot_id: Optional[int] = None):
 		if self._mm_has_bot_id and bot_id is not None:
 			sql = "SELECT msid FROM message_mapping WHERE uid = ? AND message_id = ? AND (bot_id = ? OR bot_id IS NULL)"
 			params = (uid, message_id, bot_id)
@@ -410,7 +445,7 @@ CREATE TABLE IF NOT EXISTS `message_mapping` (
 			row = cur.fetchone()
 			return row[0] if row else None
 
-	def get_recipient_mappings_by_msid(self, msid: int, bot_id: int | None = None):
+	def get_recipient_mappings_by_msid(self, msid: int, bot_id: Optional[int] = None):
 		"""Return list of (uid, message_id) for all recipients of msid."""
 		if self._mm_has_bot_id and bot_id is not None:
 			sql = "SELECT uid, message_id FROM message_mapping WHERE msid = ? AND (bot_id = ? OR bot_id IS NULL)"
@@ -421,6 +456,35 @@ CREATE TABLE IF NOT EXISTS `message_mapping` (
 		with self.lock:
 			cur = self.db.execute(sql, params)
 			return [(row[0], row[1]) for row in cur.fetchall()]
+
+	# -- Per-bot reachable users --
+	def mark_bot_user_seen(self, bot_id: int, uid: int):
+		"""Record that this user has started/messaged this bot (can now receive DMs)."""
+		with self.lock:
+			self.db.execute(
+				"REPLACE INTO bot_users(`bot_id`,`uid`,`last_seen`,`can_send`) VALUES (?,?,CURRENT_TIMESTAMP,1)",
+				(bot_id, uid)
+			)
+			self._mark_dirty()
+
+	def set_bot_user_send_blocked(self, bot_id: int, uid: int):
+		"""Mark that sending to this user with this bot fails (chat not found)."""
+		with self.lock:
+			self.db.execute(
+				"UPDATE bot_users SET can_send = 0 WHERE bot_id = ? AND uid = ?",
+				(bot_id, uid)
+			)
+			self._mark_dirty()
+
+	def get_reachable_user_ids(self, bot_id: int):
+		"""Return list of user IDs this bot can send messages to."""
+		with self.lock:
+			cur = self.db.execute(
+				"SELECT uid FROM bot_users WHERE bot_id = ? AND can_send = 1",
+				(bot_id,)
+			)
+			return [row[0] for row in cur.fetchall()]
+
 	def getUser(self, id=None):
 		if id is None:
 			raise ValueError()
@@ -441,6 +505,7 @@ CREATE TABLE IF NOT EXISTS `message_mapping` (
 		param = list(newuser.values()) + [id, ]
 		with self.lock:
 			self.db.execute(sql, param)
+			self._mark_dirty()
 	def addUser(self, newuser):
 		newuser = SQLiteDatabase._userToDict(newuser)
 		sql = "INSERT INTO users("
@@ -451,6 +516,7 @@ CREATE TABLE IF NOT EXISTS `message_mapping` (
 		param = list(newuser.values())
 		with self.lock:
 			self.db.execute(sql, param)
+			self._mark_dirty()
 	def iterateUserIds(self):
 		sql = "SELECT `id` FROM users"
 		with self.lock:
@@ -469,11 +535,11 @@ CREATE TABLE IF NOT EXISTS `message_mapping` (
 			return None
 		return SQLiteDatabase._userFromRow(row)
 	def iterateUsers(self):
-		sql = "SELECT * FROM users"
 		with self.lock:
+			sql = "SELECT * FROM users"
 			cur = self.db.execute(sql)
-			l = list(SQLiteDatabase._userFromRow(row) for row in cur)
-		yield from l
+			for row in cur:
+				yield SQLiteDatabase._userFromRow(row)
 		
 	def get_all_chats(self):
 		"""Get all unique chat IDs where the bot should monitor reactions"""
@@ -498,3 +564,4 @@ CREATE TABLE IF NOT EXISTS `message_mapping` (
 		with self.lock:
 			for k, v in d.items():
 				self.db.execute(sql, (k, v))
+			self._mark_dirty()

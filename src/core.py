@@ -12,6 +12,11 @@ from src.util import genTripcode, getLastModFile
 launched = None
 is_leader = True
 
+# User cache for frequent lookups
+_user_cache = {}
+_user_cache_time = {}
+_USER_CACHE_TTL = 30
+
 db = None
 ch = None
 spam_scores = None
@@ -37,7 +42,6 @@ media_blocked = False
 media_auto_disable_hours = 8
 
 def relay_message(message, user, msid, reply_msid):
-	"""Deprecated: not used by current Telegram pipeline."""
 	return None, msid
 
 def init(config, _db, _ch):
@@ -53,8 +57,6 @@ def init(config, _db, _ch):
 	log_channel = config.get("log_channel", False)
 	if log_channel:
 		logging.info("Log channel: %d", log_channel)
-	# Default to giving +2 karma on positive reactions; negative reactions
-	# (thumbs down / poop) will remove 1 karma by default.
 	karma_amount_add = config.get("karma_amount_add", 2)
 	karma_amount_remove = config.get("karma_amount_remove", 1)
 	karma_level_names = config.get("karma_level_names", None)
@@ -69,11 +71,8 @@ def init(config, _db, _ch):
 	vote_up_interval = timedelta(seconds=int(config.get("vote_up_limit_interval", 0)))
 	vote_down_interval = timedelta(seconds=int(config.get("vote_down_limit_interval", 60)))
 
-	# Optional: allow configuring initial media blocked state (default False)
 	media_blocked = bool(config.get("media_blocked", False))
-	# Optional: designate this instance as leader to run global scheduled tasks
 	is_leader = bool(config.get("is_leader", True))
-	# Optional: hours of admin inactivity after which media is auto-disabled (0 to disable)
 	try:
 		media_auto_disable_hours = int(config.get("media_auto_disable_hours", 8))
 	except Exception:
@@ -83,16 +82,13 @@ def init(config, _db, _ch):
 		rp.localization = __import__("src.replies_" + config["locale"],
 			fromlist=["localization"]).localization
 
-	# initialize db if empty
 	if db.getSystemConfig() is None:
 		c = SystemConfig()
 		c.defaults()
 		db.setSystemConfig(c)
 
 def register_tasks(sched):
-	# spam score handling
 	sched.register(spam_scores.scheduledTask, seconds=SPAM_INTERVAL_SECONDS)
-	# warning removal
 	def task():
 		now = datetime.now()
 		for user in db.iterateUsers():
@@ -103,8 +99,8 @@ def register_tasks(sched):
 					user.removeWarning()
 	sched.register(task, minutes=15)
 
-	# Auto-disable media if no admin activity for configured hours
 	def _auto_disable_media():
+		global media_blocked
 		try:
 			if media_auto_disable_hours and media_auto_disable_hours > 0:
 				threshold = datetime.now() - timedelta(hours=media_auto_disable_hours)
@@ -120,17 +116,12 @@ def register_tasks(sched):
 							latest_admin = t
 					except Exception:
 						continue
-				# If no admin seen or stale beyond threshold, and media not blocked yet: block it
 				if (latest_admin is None or latest_admin < threshold) and (not media_blocked):
-					# flip flag
-					global media_blocked
 					media_blocked = True
-					# Inform users
 					Sender.reply(rp.Reply(rp.types.CUSTOM, text="Media has been automatically disabled due to no admin activity."), None, None, None, None)
 		except Exception:
 			logging.exception("Error in auto-disable media task")
 
-	# Check every 30 minutes (leader-only to avoid duplicate notices)
 	if is_leader:
 		sched.register(_auto_disable_media, minutes=30)
 
@@ -139,12 +130,34 @@ def updateUserFromEvent(user, c_user):
 	user.realname = c_user.realname
 	user.lastActive = datetime.now()
 
+def _get_cached_user(uid):
+	"""Get user with caching to reduce DB queries."""
+	global _user_cache, _user_cache_time
+	now = datetime.now()
+	
+	if uid in _user_cache:
+		cached_time = _user_cache_time.get(uid)
+		if cached_time and (now - cached_time).total_seconds() < _USER_CACHE_TTL:
+			return _user_cache[uid]
+	
+	try:
+		user = db.getUser(id=uid)
+		_user_cache[uid] = user
+		_user_cache_time[uid] = now
+		return user
+	except KeyError:
+		return None
+
+def _invalidate_user_cache(uid):
+	"""Invalidate cached user data."""
+	global _user_cache, _user_cache_time
+	_user_cache.pop(uid, None)
+	_user_cache_time.pop(uid, None)
+
 def getUserByName(username):
 	if not username:
 		return None
-	# Strip @ from the beginning if present
 	username = username.lstrip('@').lower()
-	# Search through all users including blacklisted ones
 	for user in db.iterateUsers():
 		if user.username is not None and user.username.lower() == username:
 			return user
@@ -184,23 +197,20 @@ def requireUser(func):
 		if isinstance(c_user, User):
 			user = c_user
 		else:
-			# fetch user from db
 			try:
 				user = db.getUser(id=c_user.id)
 			except KeyError as e:
 				return rp.Reply(rp.types.USER_NOT_IN_CHAT, bot_name=bot_name)
 
-		# keep db entry up to date
 		with db.modifyUser(id=user.id) as user:
 			updateUserFromEvent(user, c_user)
+		_invalidate_user_cache(user.id)
 
-		# check for blacklist or absence
 		if user.isBlacklisted():
 			return rp.Reply(rp.types.ERR_BLACKLISTED, reason=user.blacklistReason, contact=blacklist_contact)
 		elif not user.isJoined():
 			return rp.Reply(rp.types.USER_NOT_IN_CHAT, bot_name=bot_name)
 
-		# call original function
 		return func(user, *args, **kwargs)
 	return wrapper
 
@@ -315,7 +325,7 @@ def user_join(c_user):
 			updateUserFromEvent(user, c_user)
 			user.setLeft(False)
 		logging.info("%s rejoined chat", user)
-		return rp.Reply(rp.types.CHAT_JOIN, bot_name=bot_name)
+		return rp.Reply(rp.types.CUSTOM, text="You joined the anonymous chat")
 
 	if not reg_open:
 		return rp.Reply(rp.types.ERR_REG_CLOSED)
@@ -332,7 +342,7 @@ def user_join(c_user):
 
 	logging.info("%s joined chat", user)
 	db.addUser(user)
-	ret.insert(0, rp.Reply(rp.types.CHAT_JOIN, bot_name=bot_name))
+	ret.insert(0, rp.Reply(rp.types.CUSTOM, text="You joined the anonymous chat"))
 
 	motd = db.getSystemConfig().motd
 	if motd != "":
@@ -352,7 +362,7 @@ def user_leave(user):
 	force_user_leave(user.id, blocked=False)
 	logging.info("%s left chat", user)
 
-	return rp.Reply(rp.types.CHAT_LEAVE, bot_name=bot_name)
+	return rp.Reply(rp.types.CUSTOM, text="You left the anonymous chat")
 
 @requireUser
 def get_info(user):
@@ -751,28 +761,17 @@ def handle_message_reaction(user, msid, emoji):
 	if cm is None or cm.user_id is None:
 		return rp.Reply(rp.types.ERR_NOT_IN_CACHE)
 
-	# Don't allow reacting to your own messages
 	if cm.user_id == user.id:
 		return rp.Reply(rp.types.ERR_VOTE_OWN_MESSAGE)
 
-	# Fetch message sender; hideKarma only suppresses notifications, not awarding
-	sender = db.getUser(id=cm.user_id)
-	try:
-		logging.debug("receiver notification settings: user=%s hideKarma=%s", sender.id, getattr(sender, 'hideKarma', None))
-	except Exception:
-		pass
+	sender = _get_cached_user(cm.user_id)
+	if not sender:
+		return rp.Reply(rp.types.ERR_NOT_IN_CACHE)
 
-	# Normalize to handle variation selectors (e.g., ❤ vs ❤️)
-	def _norm(e):
-		try:
-			return e.replace('\uFE0F', '')
-		except Exception:
-			return e
+	_norm = lambda e: e.replace('\uFE0F', '') if e else e
 	pos_norm = {_norm(x) for x in POSITIVE_REACTIONS}
 	norm = _norm(emoji)
-	logging.debug("reaction check: emoji=%s norm=%s in_positive=%s", emoji, norm, norm in pos_norm)
 
-	# Handle positive reactions
 	if norm in pos_norm:
 		karma_change = karma_amount_add
 		is_pat = emoji in {"❤️", "🥰", "💖", "💗", "💓", "💝"}
@@ -780,30 +779,23 @@ def handle_message_reaction(user, msid, emoji):
 		if result.type == rp.types.ERR_VOTE_OWN_MESSAGE:
 			return result
 		
-		# Send notification to the message sender (receiver of the karma)
 		if not sender.hideKarma:
 			notification = rp.Reply(rp.types.SUCCESS_EMOJI_RECEIVED, 
 				karma_change=karma_change, emoji=emoji, karma_is_pats=is_pat)
 			_push_system_message(notification, who=sender, reply_to=msid)
-		else:
-			logging.debug("receiver notification suppressed by /togglekarma for user=%s", sender.id)
 		
 		return rp.Reply(rp.types.SUCCESS_EMOJI_REACTION, karma_change=karma_change, emoji=emoji, karma_is_pats=is_pat, bot_name=bot_name)
 
-	# Handle negative reactions (thumbs down and poop are negative)
 	if norm in {_norm("👎"), _norm("💩")}:
 		karma_change = -karma_amount_remove
 		result = modify_karma(user, msid, karma_change, emoji=emoji)
 		if result.type == rp.types.ERR_VOTE_OWN_MESSAGE:
 			return result
 		
-		# Send notification to the message sender (receiver of the karma)
 		if not sender.hideKarma:
 			notification = rp.Reply(rp.types.SUCCESS_EMOJI_RECEIVED, 
 				karma_change=karma_change, emoji=emoji, karma_is_pats=False)
 			_push_system_message(notification, who=sender, reply_to=msid)
-		else:
-			logging.debug("receiver notification suppressed by /togglekarma for user=%s", sender.id)
 		
 		return rp.Reply(rp.types.SUCCESS_EMOJI_REACTION, karma_change=karma_change, emoji=emoji, karma_is_pats=False, bot_name=bot_name)
 
@@ -815,23 +807,21 @@ def modify_karma(user, msid, amount, emoji=None, karma_is_pats=False):
 	if cm is None or cm.user_id is None:
 		return rp.Reply(rp.types.ERR_NOT_IN_CACHE)
 	
-	user2 = db.getUser(id=cm.user_id)
+	user2 = _get_cached_user(cm.user_id)
+	if not user2:
+		return rp.Reply(rp.types.ERR_NOT_IN_CACHE)
 	
-	# Don't modify karma for your own messages
 	if user2.id == user.id:
 		return rp.Reply(rp.types.ERR_VOTE_OWN_MESSAGE)
 
 	params = {"karma_is_pats": karma_is_pats}
 	
-	# Check for duplicate votes
 	if cm.hasUpvoted(user):
 		return rp.Reply(rp.types.ERR_ALREADY_VOTED_UP, **params)
 	if cm.hasDownvoted(user):
 		return rp.Reply(rp.types.ERR_ALREADY_VOTED_DOWN, **params)
 	
-	# Enforce cooldowns
 	if amount > 0:
-		# enforce upvoting cooldown
 		if vote_up_interval.total_seconds() > 1:
 			last_used = vote_up_last_used.get(user.id, None)
 			if last_used and (datetime.now() - last_used) < vote_up_interval:
@@ -840,7 +830,6 @@ def modify_karma(user, msid, amount, emoji=None, karma_is_pats=False):
 
 		cm.addUpvote(user)
 	elif amount < 0:
-		# enforce downvoting cooldown
 		if vote_down_interval.total_seconds() > 1:
 			last_used = vote_down_last_used.get(user.id, None)
 			if last_used and (datetime.now() - last_used) < vote_down_interval:
@@ -851,9 +840,9 @@ def modify_karma(user, msid, amount, emoji=None, karma_is_pats=False):
 	else:
 		return
 
-	# Update the user's karma
 	with db.modifyUser(id=user2.id) as user2:
 		user2.karma += amount
+	_invalidate_user_cache(user2.id)
 		
 	if emoji:
 		params = {"karma_is_pats": karma_is_pats, "karma_change": amount, "emoji": emoji}
@@ -863,7 +852,6 @@ def modify_karma(user, msid, amount, emoji=None, karma_is_pats=False):
 
 @requireUser
 def prepare_user_message(user: User, msg_score, *, is_media=False, signed=False, tripcode=False, ksigned=False):
-	# prerequisites
 	if user.isInCooldown():
 		return rp.Reply(rp.types.ERR_COOLDOWN, until=user.cooldownUntil)
 	if (signed or tripcode or ksigned) and not enable_signing:
@@ -878,7 +866,6 @@ def prepare_user_message(user: User, msg_score, *, is_media=False, signed=False,
 	if not ok:
 		return rp.Reply(rp.types.ERR_SPAMMY)
 
-	# enforce signing cooldown
 	if (signed or ksigned) and sign_interval.total_seconds() > 1:
 		last_used = sign_last_used.get(user.id, None)
 		if last_used and (datetime.now() - last_used) < sign_interval:
@@ -887,13 +874,8 @@ def prepare_user_message(user: User, msg_score, *, is_media=False, signed=False,
 
 	return ch.assignMessageId(CachedMessage(user.id))
 
-# Removed duplicate/unreferenced cmd_unblacklist implementations and decorator redefinitions.
-
-# who is None -> to everyone except the user <except_who> (if applicable)
-# who is not None -> only to the user <who>
-# reply_to: msid the message is in reply to
 def _push_system_message(m, *, who=None, except_who=None, reply_to=None):
 	msid = None
-	if who is None: # we only need an ID if multiple people can see the msg
+	if who is None:
 		msid = ch.assignMessageId(CachedMessage())
 	Sender.reply(m, msid, who, except_who, reply_to)

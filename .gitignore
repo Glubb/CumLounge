@@ -3,9 +3,14 @@ config.yaml
 # Any database files
 *.db
 *.sqlite
+*.sqlite-wal
+*.sqlite-shm
 config.yaml
 # Directories
 doglounge
 catlounge
 venv
 __pycache__
+/.venv/
+.DS_Store
+.vscode/

@@ -28,19 +28,20 @@ class Cache():
 	def __init__(self):
 		self.lock = RLock()
 		self.counter = itertools.count()
-		self.msgs = {} # dict(msid -> CachedMessage)
-		self.idmap = {} # dict(uid -> dict(msid -> opaque))
-		self.revmap = {} # dict((uid, data) -> msid) for O(1) reverse lookups
+		self.msgs = {}
+		self.idmap = {}
+		self.revmap = {}
+	
 	def _saveMapping(self, x, uid, msid, data):
 		if uid not in x.keys():
 			x[uid] = {}
 		x[uid][msid] = data
+	
 	def _lookupMapping(self, x, uid, msid, data):
 		if uid not in x.keys():
 			return None
 		if msid is not None:
 			return x[uid].get(msid, None)
-		# data is not None
 		gen = ( msid for msid, _data in x[uid].items() if _data == data )
 		return next(gen, None)
 
@@ -49,25 +50,24 @@ class Cache():
 			ret = next(self.counter)
 			self.msgs[ret] = cm
 		return ret
+	
 	def getMessage(self, msid):
-		with self.lock:
-			return self.msgs.get(msid, None)
+		return self.msgs.get(msid, None)
+	
 	def iterateMessages(self, functor):
 		with self.lock:
-			for msid, cm in self.msgs.items():
+			for msid, cm in list(self.msgs.items()):
 				functor(msid, cm)
+	
 	def getMessages(self, uid):
 		with self.lock:
-			return {msid: msg for msid, msg in self.msgs.items() if msg.user_id == uid}
+			return [cm for cm in self.msgs.values() if cm.user_id == uid]
+	
 	def saveMapping(self, uid, msid, data):
 		with self.lock:
 			self._saveMapping(self.idmap, uid, msid, data)
-			# maintain reverse map for fast lookup by (chat_id, telegram_msg_id)
-			try:
-				self.revmap[(uid, data)] = msid
-			except Exception:
-				# defensive: ignore non-hashable data
-				pass
+			self.revmap[(uid, data)] = msid
+	
 	def lookupMapping(self, uid, msid=None, data=None):
 		if msid is None and data is None:
 			raise ValueError()
@@ -82,24 +82,21 @@ class Cache():
 		"""
 		if data is None:
 			raise ValueError()
-		with self.lock:
-			if uid is not None:
-				return self.revmap.get((uid, data))
-			# fallback: linear scan across idmap (for backward-compat)
-			for _uid, mappings in self.idmap.items():
-				for msid, _data in mappings.items():
-					if _data == data:
-						return msid
-			return None
+		if uid is not None:
+			return self.revmap.get((uid, data))
+		# fallback: linear scan
+		for _uid, mappings in self.idmap.items():
+			for msid, _data in mappings.items():
+				if _data == data:
+					return msid
+		return None
 
 	def deleteMappings(self, msid):
 		with self.lock:
 			for d in self.idmap.values():
 				d.pop(msid, None)
-			# also remove any reverse mappings that point to this msid
-			for k, v in list(self.revmap.items()):
-				if v == msid:
-					del self.revmap[k]
+			self.revmap = {k: v for k, v in self.revmap.items() if v != msid}
+	
 	def expire(self):
 		ids = set()
 		with self.lock:
@@ -107,7 +104,6 @@ class Cache():
 				if not self.msgs[msid].isExpired():
 					continue
 				ids.add(msid)
-				# delete message itself and from mappings
 				del self.msgs[msid]
 				self.deleteMappings(msid)
 		if len(ids) > 0:

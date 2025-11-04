@@ -18,6 +18,10 @@ message_queue = None
 BOT_ID = None
 BOT_USERNAME = None
 
+# Cache for reachable user IDs to reduce DB queries
+_reachable_cache = None
+_cache_time = None
+
 # Config flags
 allow_contacts = False
 allow_documents = False
@@ -28,30 +32,22 @@ allow_polls = False
 class _TelegramReceiver(core.Receiver):
     @staticmethod
     def reply(m, msid, who, except_who, reply_to):
-        try:
-            text = rp.formatForTelegram(m)
-        except Exception as e:
-            logging.warning("Failed to format system reply: %s", e)
-            return
-
-        def _uid(x):
-            try:
-                return x.id if hasattr(x, 'id') else int(x)
-            except Exception:
-                return None
+        text = rp.formatForTelegram(m)
+        _uid = lambda x: x.id if hasattr(x, 'id') else int(x) if x is not None else None
 
         # Determine recipients
         recipients = []
         if who is None:
+            reachable_ids = _get_cached_reachable_ids()
+            
             for u in db.iterateUsers():
-                try:
-                    if not u.isJoined():
-                        continue
-                    if except_who is not None and _uid(except_who) == u.id:
-                        continue
-                    recipients.append(u.id)
-                except Exception:
+                if not u.isJoined() or u.isBlacklisted():
                     continue
+                if except_who is not None and _uid(except_who) == u.id:
+                    continue
+                if BOT_ID is not None and u.id not in reachable_ids:
+                    continue
+                recipients.append(u.id)
         else:
             uid = _uid(who)
             if uid is not None:
@@ -73,32 +69,40 @@ class _TelegramReceiver(core.Receiver):
 
     @staticmethod
     def delete(msids):
-        # Not used in this minimal receiver
         pass
 
     @staticmethod
     def stop_invoked(who, delete_out=False):
-        # Not used in this minimal receiver
         pass
 
 def log_into_channel(msg, html=False):
-    # Deprecated helper; retained as no-op for backward compatibility
     pass
 
 
-def _broadcast_targets(sender_id):
-    """Yield users who should receive a forwarded copy (excludes sender and non-joined)."""
-    for u in db.iterateUsers():
+def _get_cached_reachable_ids():
+    """Get reachable user IDs with 5-second caching to reduce DB queries."""
+    global _reachable_cache, _cache_time
+    now = time.time()
+    if _reachable_cache is None or _cache_time is None or (now - _cache_time) > 5:
         try:
-            if u.id == sender_id:
-                continue
-            if not u.isJoined():
-                continue
-            if u.isBlacklisted():
-                continue
-            yield u
+            _reachable_cache = set(db.get_reachable_user_ids(BOT_ID)) if BOT_ID else set()
+            _cache_time = now
         except Exception:
+            _reachable_cache = set()
+    return _reachable_cache
+
+
+def _broadcast_targets(sender_id):
+    """Yield users who should receive a forwarded copy (excludes sender and non-joined).
+    Only yields users reachable by this bot token."""
+    reachable_ids = _get_cached_reachable_ids()
+    
+    for u in db.iterateUsers():
+        if u.id == sender_id or not u.isJoined() or u.isBlacklisted():
             continue
+        if BOT_ID is not None and u.id not in reachable_ids:
+            continue
+        yield u
 
 
 def send_to_single_inner(chat_id, ev, reply_to=None, force_caption=None):
@@ -109,35 +113,32 @@ def send_to_single_inner(chat_id, ev, reply_to=None, force_caption=None):
         kwargs["reply_to_message_id"] = reply_to
         kwargs["allow_sending_without_reply"] = True
 
-    # Handle basic content types
-    if hasattr(ev, 'content_type'):
-        ct = ev.content_type
-        if ct == 'text':
-            return bot.send_message(chat_id, ev.text, **kwargs)
-        if ct == 'photo' and ev.photo:
-            photo = sorted(ev.photo, key=lambda p: p.width * p.height)[-1]
-            return bot.send_photo(chat_id, photo.file_id, **kwargs)
-        if ct == 'sticker':
-            return bot.send_sticker(chat_id, ev.sticker.file_id, **kwargs)
-        if ct == 'animation':
-            return bot.send_animation(chat_id, ev.animation.file_id, **kwargs)
-        if ct == 'audio':
-            return bot.send_audio(chat_id, ev.audio.file_id, **kwargs)
-        if ct == 'document':
-            return bot.send_document(chat_id, ev.document.file_id, **kwargs)
-        if ct == 'video':
-            return bot.send_video(chat_id, ev.video.file_id, **kwargs)
-        if ct == 'voice':
-            return bot.send_voice(chat_id, ev.voice.file_id, **kwargs)
-        if ct == 'video_note':
-            return bot.send_video_note(chat_id, ev.video_note.file_id, **kwargs)
-        if ct == 'location':
-            return bot.send_location(chat_id, ev.location.latitude, ev.location.longitude, **kwargs)
-        if ct == 'contact':
-            return bot.send_contact(chat_id, ev.contact.phone_number, ev.contact.first_name, **kwargs)
-
-    # Fallback: stringify
-    return bot.send_message(chat_id, rp.formatForTelegram(rp.Reply(rp.types.CUSTOM, text=str(getattr(ev, 'text', '')))), parse_mode='HTML', **kwargs)
+    ct = getattr(ev, 'content_type', None)
+    if ct == 'text':
+        return bot.send_message(chat_id, ev.text, **kwargs)
+    elif ct == 'photo' and ev.photo:
+        photo = max(ev.photo, key=lambda p: p.width * p.height)
+        return bot.send_photo(chat_id, photo.file_id, **kwargs)
+    elif ct == 'sticker':
+        return bot.send_sticker(chat_id, ev.sticker.file_id, **kwargs)
+    elif ct == 'animation':
+        return bot.send_animation(chat_id, ev.animation.file_id, **kwargs)
+    elif ct == 'audio':
+        return bot.send_audio(chat_id, ev.audio.file_id, **kwargs)
+    elif ct == 'document':
+        return bot.send_document(chat_id, ev.document.file_id, **kwargs)
+    elif ct == 'video':
+        return bot.send_video(chat_id, ev.video.file_id, **kwargs)
+    elif ct == 'voice':
+        return bot.send_voice(chat_id, ev.voice.file_id, **kwargs)
+    elif ct == 'video_note':
+        return bot.send_video_note(chat_id, ev.video_note.file_id, **kwargs)
+    elif ct == 'location':
+        return bot.send_location(chat_id, ev.location.latitude, ev.location.longitude, **kwargs)
+    elif ct == 'contact':
+        return bot.send_contact(chat_id, ev.contact.phone_number, ev.contact.first_name, **kwargs)
+    else:
+        return bot.send_message(chat_id, rp.formatForTelegram(rp.Reply(rp.types.CUSTOM, text=str(getattr(ev, 'text', '')))), parse_mode='HTML', **kwargs)
 
 
 def send_to_single(ev, msid, user, *, reply_msid=None, force_caption=None):
@@ -162,7 +163,6 @@ def send_thread():
                 time.sleep(0.05)
                 continue
 
-            # Don't thread original replies across users for now
             reply_to = None
             sent = send_to_single_inner(item.user.id, item.msg, reply_to, item.force_caption)
             if sent and hasattr(sent, 'message_id') and item.msid is not None:
@@ -172,8 +172,19 @@ def send_thread():
                 except Exception:
                     pass
         except Exception as e:
+            error_msg = str(e).lower()
+            if "chat not found" in error_msg or ("400" in error_msg and "not found" in error_msg):
+                try:
+                    if BOT_ID is not None and hasattr(item, 'user'):
+                        db.set_bot_user_send_blocked(BOT_ID, item.user.id)
+                        logging.debug("Marked user %s as unreachable for bot %s", item.user.id, BOT_ID)
+                        global _cache_time
+                        _cache_time = None  # Invalidate cache
+                except Exception:
+                    pass
+                continue
+            
             logging.warning("Message delivery failed: %s", e)
-            # If recent, retry once after short delay
             try:
                 if time.time() - getattr(item, 'timestamp', 0) < 60:
                     time.sleep(0.5)
@@ -184,54 +195,57 @@ def send_thread():
 
 def relay(message):
     """Main incoming message handler: forward to all active users (except sender)."""
+    sender_id = message.from_user.id if hasattr(message, 'from_user') else message.chat.id
+    
+    # Early exit if user not joined
     try:
-        sender_id = message.from_user.id if hasattr(message, 'from_user') else message.chat.id
-        # Update lastActive for the sender on any message
+        user_obj = db.getUser(id=sender_id)
+        if not user_obj.isJoined():
+            return
+    except KeyError:
+        return
+    
+    # Mark user as reachable and invalidate cache
+    if BOT_ID is not None:
         try:
-            with db.modifyUser(id=sender_id) as u:
-                u.lastActive = datetime.datetime.now()
+            db.mark_bot_user_seen(BOT_ID, sender_id)
+            global _cache_time
+            _cache_time = None
         except Exception:
             pass
-        # Enforce admin media toggle: block media sending/forwarding for non-admins when enabled
-        def _is_forward(msg):
-            try:
-                return bool(getattr(msg, 'forward_from', None) or getattr(msg, 'forward_from_chat', None) or (hasattr(msg, 'json') and msg.json.get('forward_origin')))
-            except Exception:
-                return False
-        def _is_media(msg):
-            ct = getattr(msg, 'content_type', '')
-            return ct in {'photo','animation','document','video','sticker','voice','video_note','audio','poll'}
-
-        try:
-            user_obj = db.getUser(id=sender_id)
-        except KeyError:
-            user_obj = None
-
-        if getattr(core, 'media_blocked', False) and (_is_media(message) or (_is_forward(message) and _is_media(message))):
-            # allow admins to bypass
-            if not (user_obj and user_obj.rank >= core.RANKS.admin):
-                try:
-                    txt = rp.formatForTelegram(rp.Reply(rp.types.ERR_MEDIA_DISABLED))
-                    bot.send_message(sender_id, txt, parse_mode='HTML', reply_to_message_id=getattr(message, 'message_id', None))
-                except Exception:
-                    pass
-                return
-        # Cache original message for reactions/links
-        cm = CachedMessage(user_id=sender_id)
-        msid = ch.assignMessageId(cm)
-        try:
-            ch.saveMapping(sender_id, msid, message.message_id)
-            db.save_message_mapping(sender_id, msid, message.message_id, bot_id=BOT_ID)
-        except Exception:
-            pass
-
-        # Send to all targets
-        for u in _broadcast_targets(sender_id):
-            send_to_single(message, msid, u)
-
-        logging.debug("relay(): msid=%d broadcast queued", msid)
+    
+    # Update lastActive
+    try:
+        with db.modifyUser(id=sender_id) as u:
+            u.lastActive = datetime.datetime.now()
     except Exception as e:
-        logging.exception("Error in relay(): %s", e)
+        pass
+    
+    # Check media restrictions
+    ct = getattr(message, 'content_type', '')
+    is_media = ct in {'photo','animation','document','video','sticker','voice','video_note','audio','poll'}
+    is_forward = bool(getattr(message, 'forward_from', None) or getattr(message, 'forward_from_chat', None))
+    
+    if getattr(core, 'media_blocked', False) and (is_media or is_forward):
+        if not (user_obj and user_obj.rank >= core.RANKS.admin):
+            txt = rp.formatForTelegram(rp.Reply(rp.types.ERR_MEDIA_DISABLED))
+            bot.send_message(sender_id, txt, parse_mode='HTML', reply_to_message_id=getattr(message, 'message_id', None))
+            return
+    
+    # Cache message and create mappings
+    cm = CachedMessage(user_id=sender_id)
+    msid = ch.assignMessageId(cm)
+    try:
+        ch.saveMapping(sender_id, msid, message.message_id)
+        db.save_message_mapping(sender_id, msid, message.message_id, bot_id=BOT_ID)
+    except Exception:
+        pass
+    
+    # Broadcast to all targets
+    for u in _broadcast_targets(sender_id):
+        send_to_single(message, msid, u)
+    
+    logging.debug("relay(): msid=%d broadcast queued", msid)
 
 
 def register_tasks(sched):
@@ -336,6 +350,134 @@ def init(config, _db, _ch):
                 return False
             cmd = text.split()[0].split('@')[0].lstrip('/')
             chat_id = m.chat.id
+            
+            # Handle start command
+            if cmd == 'start':
+                c_user = type('User', (), {
+                    'id': chat_id,
+                    'username': getattr(m.from_user, 'username', None),
+                    'realname': ' '.join(filter(None, [
+                        getattr(m.from_user, 'first_name', ''),
+                        getattr(m.from_user, 'last_name', '')
+                    ])) or 'Unknown'
+                })()
+                res = core.user_join(c_user)
+                if res:
+                    replies = res if isinstance(res, list) else [res]
+                    for reply in replies:
+                        try:
+                            txt = rp.formatForTelegram(reply)
+                            bot.send_message(chat_id, txt, parse_mode='HTML')
+                        except Exception as e:
+                            logging.debug('start reply failed: %s', e)
+                return True
+            
+            # Handle stop command
+            if cmd == 'stop':
+                try:
+                    c_user = db.getUser(id=chat_id)
+                except KeyError:
+                    return True
+                res = core.user_leave(c_user)
+                if res:
+                    try:
+                        txt = rp.formatForTelegram(res)
+                        bot.send_message(chat_id, txt, parse_mode='HTML')
+                    except Exception as e:
+                        logging.debug('stop reply failed: %s', e)
+                return True
+            
+            # Handle pin/unpin commands (mods and admins only)
+            if cmd in ('pin', 'unpin'):
+                try:
+                    c_user = db.getUser(id=chat_id)
+                except KeyError:
+                    return True
+                # Permission check: at least moderator
+                if c_user.rank < core.RANKS.mod:
+                    try:
+                        txt = rp.formatForTelegram(rp.Reply(rp.types.ERR_COMMAND_DISABLED))
+                        bot.send_message(chat_id, txt, parse_mode='HTML', reply_to_message_id=m.message_id)
+                    except Exception:
+                        pass
+                    return True
+
+                # Determine msid either from reply or from argument
+                target_msid = None
+                replied = getattr(m, 'reply_to_message', None)
+                if replied is not None:
+                    # Prefer cache O(1) lookup
+                    target_msid = ch.lookupMappingByData(replied.message_id, uid=chat_id)
+                    if target_msid is None:
+                        try:
+                            target_msid = db.get_msid_by_uid_message(chat_id, replied.message_id, bot_id=BOT_ID)
+                        except Exception:
+                            target_msid = None
+                else:
+                    # Try parse numeric msid from command arg
+                    parts = text.strip().split()
+                    if len(parts) > 1 and parts[1].isdigit():
+                        try:
+                            target_msid = int(parts[1])
+                        except Exception:
+                            target_msid = None
+
+                if target_msid is None:
+                    # Inform user how to use
+                    try:
+                        help_txt = "Reply to a message with /pin or /unpin, or use: /pin <msid>"
+                        bot.send_message(chat_id, help_txt, reply_to_message_id=getattr(m, 'message_id', None))
+                    except Exception:
+                        pass
+                    return True
+
+                # Gather all recipient message ids for this msid
+                recipient_pairs = []  # list of (uid, message_id)
+                try:
+                    # First try cache for faster mapping
+                    for recipient in db.iterateUsers():
+                        if not recipient.isJoined():
+                            continue
+                        mid = ch.lookupMapping(recipient.id, msid=target_msid)
+                        if mid:
+                            recipient_pairs.append((recipient.id, mid))
+                    if not recipient_pairs:
+                        # Fallback to DB cross-process mapping
+                        recipient_pairs = getattr(db, 'get_recipient_mappings_by_msid', lambda _msid, _bid=None: [])(target_msid, BOT_ID)
+                except Exception:
+                    pass
+
+                if not recipient_pairs:
+                    try:
+                        bot.send_message(chat_id, "Couldn't find copies of that message to pin.", reply_to_message_id=m.message_id)
+                    except Exception:
+                        pass
+                    return True
+
+                success, failed = 0, 0
+                for (rcpt_uid, rcpt_msg_id) in recipient_pairs:
+                    try:
+                        if cmd == 'pin':
+                            bot.pin_chat_message(rcpt_uid, rcpt_msg_id)
+                        else:
+                            # unpin specific message
+                            bot.unpin_chat_message(rcpt_uid, rcpt_msg_id)
+                        success += 1
+                    except Exception as e:
+                        failed += 1
+                        logging.debug("pin/unpin failed for uid=%s mid=%s: %s", rcpt_uid, rcpt_msg_id, e)
+
+                # Acknowledge
+                try:
+                    action = 'Pinned' if cmd == 'pin' else 'Unpinned'
+                    msg = f"{action} this message in {success} chats"
+                    if failed:
+                        msg += f" (failed in {failed})"
+                    bot.send_message(chat_id, msg, reply_to_message_id=m.message_id)
+                except Exception:
+                    pass
+                return True
+
             # Map aliases
             if cmd in ('togglekarma', 'togglepats'):
                 try:
