@@ -33,6 +33,10 @@ sign_interval = None
 vote_up_interval = None
 vote_down_interval = None
 
+def relay_message(message, user, msid, reply_msid):
+	"""Deprecated: not used by current Telegram pipeline."""
+	return None, msid
+
 def init(config, _db, _ch):
 	global launched, db, ch, spam_scores, reg_open, log_channel, karma_amount_add, karma_amount_remove, karma_level_names, blacklist_contact, bot_name, karma_is_pats, enable_signing, allow_remove_command, media_limit_period, sign_interval, vote_up_interval, vote_down_interval
 
@@ -46,7 +50,9 @@ def init(config, _db, _ch):
 	log_channel = config.get("log_channel", False)
 	if log_channel:
 		logging.info("Log channel: %d", log_channel)
-	karma_amount_add = config.get("karma_amount_add", 1)
+	# Default to giving +2 karma on positive reactions; negative reactions
+	# (thumbs down / poop) will remove 1 karma by default.
+	karma_amount_add = config.get("karma_amount_add", 2)
 	karma_amount_remove = config.get("karma_amount_remove", 1)
 	karma_level_names = config.get("karma_level_names", None)
 	bot_name = config.get("bot_name", "")
@@ -90,11 +96,12 @@ def updateUserFromEvent(user, c_user):
 	user.lastActive = datetime.now()
 
 def getUserByName(username):
-	username = username.lower()
-	# there *should* only be a single joined user with a given username
+	if not username:
+		return None
+	# Strip @ from the beginning if present
+	username = username.lstrip('@').lower()
+	# Search through all users including blacklisted ones
 	for user in db.iterateUsers():
-		if not user.isJoined():
-			continue
 		if user.username is not None and user.username.lower() == username:
 			return user
 	return None
@@ -163,6 +170,17 @@ def requireRank(need_rank):
 			return func(user, *args, **kwargs)
 		return wrapper
 	return f
+
+def requireAdmin(func):
+	def wrapper(*args, **kwargs):
+		if len(args) > 0 and isinstance(args[0], User):
+			user = args[0]
+		else:
+			user = kwargs.get('user', None)
+		if user is None or user.rank < RANKS.admin:
+			return rp.Reply(rp.types.ERR_COMMAND_DISABLED)
+		return func(*args, **kwargs)
+	return wrapper
 
 ###
 
@@ -478,6 +496,8 @@ def send_admin_message(user, arg):
 	_push_system_message(m)
 	logging.info("%s sent admin message: %s", user, arg)
 
+# NOTE: The finalized handle_message_reaction implementation appears below.
+
 @requireUser
 @requireRank(RANKS.mod)
 def warn_user(user, msid, delete=False, del_all=False, duration=""):
@@ -651,17 +671,114 @@ def blacklist_user(user, msid, reason, del_all=False):
 		return rp.Reply(rp.types.SUCCESS_BLACKLIST, id=user2.getObfuscatedId())
 
 @requireUser
-def modify_karma(user, msid, amount):
+@requireRank(RANKS.admin)
+def unblacklist_user(user, username):
+    if username is None:
+        return rp.Reply(rp.types.ERR_NO_ARG)
+    
+    username = username.lstrip('@')
+    user2 = getUserByName(username)
+    if user2 is None:
+        logging.warning("Failed unblacklist attempt by %s: user %s not found", user, username)
+        return rp.Reply(rp.types.ERR_NO_USER)
+    
+    if not user2.isBlacklisted():
+        logging.info("Failed unblacklist attempt by %s: user %s is not blacklisted", user, user2.getFormattedName())
+        return rp.Reply(rp.types.ERR_NOT_BLACKLISTED)
+    
+    old_reason = user2.blacklistReason
+    with db.modifyUser(id=user2.id) as user2:
+        user2.setJoined()
+    
+    logging.info("%s unblacklisted %s (previous reason: %s)", 
+                 user.getFormattedName(), user2.getFormattedName(), old_reason or "None")
+    return rp.Reply(rp.types.SUCCESS_UNBLACKLIST, id=user2.getFormattedName())
+
+@requireUser
+def handle_message_reaction(user, msid, emoji):
 	cm = ch.getMessage(msid)
 	if cm is None or cm.user_id is None:
 		return rp.Reply(rp.types.ERR_NOT_IN_CACHE)
+
+	# Don't allow reacting to your own messages
+	if cm.user_id == user.id:
+		return rp.Reply(rp.types.ERR_VOTE_OWN_MESSAGE)
+
+	# Fetch message sender; hideKarma only suppresses notifications, not awarding
+	sender = db.getUser(id=cm.user_id)
+	try:
+		logging.debug("receiver notification settings: user=%s hideKarma=%s", sender.id, getattr(sender, 'hideKarma', None))
+	except Exception:
+		pass
+
+	# Normalize to handle variation selectors (e.g., ❤ vs ❤️)
+	def _norm(e):
+		try:
+			return e.replace('\uFE0F', '')
+		except Exception:
+			return e
+	pos_norm = {_norm(x) for x in POSITIVE_REACTIONS}
+	norm = _norm(emoji)
+	logging.debug("reaction check: emoji=%s norm=%s in_positive=%s", emoji, norm, norm in pos_norm)
+
+	# Handle positive reactions
+	if norm in pos_norm:
+		karma_change = karma_amount_add
+		is_pat = emoji in {"❤️", "🥰", "💖", "💗", "💓", "💝"}
+		result = modify_karma(user, msid, karma_change, emoji=emoji, karma_is_pats=is_pat)
+		if result.type == rp.types.ERR_VOTE_OWN_MESSAGE:
+			return result
+		
+		# Send notification to the message sender (receiver of the karma)
+		if not sender.hideKarma:
+			notification = rp.Reply(rp.types.SUCCESS_EMOJI_RECEIVED, 
+				karma_change=karma_change, emoji=emoji, karma_is_pats=is_pat)
+			_push_system_message(notification, who=sender, reply_to=msid)
+		else:
+			logging.debug("receiver notification suppressed by /togglekarma for user=%s", sender.id)
+		
+		return rp.Reply(rp.types.SUCCESS_EMOJI_REACTION, karma_change=karma_change, emoji=emoji, karma_is_pats=is_pat, bot_name=bot_name)
+
+	# Handle negative reactions (thumbs down and poop are negative)
+	if norm in {_norm("👎"), _norm("💩")}:
+		karma_change = -karma_amount_remove
+		result = modify_karma(user, msid, karma_change, emoji=emoji)
+		if result.type == rp.types.ERR_VOTE_OWN_MESSAGE:
+			return result
+		
+		# Send notification to the message sender (receiver of the karma)
+		if not sender.hideKarma:
+			notification = rp.Reply(rp.types.SUCCESS_EMOJI_RECEIVED, 
+				karma_change=karma_change, emoji=emoji, karma_is_pats=False)
+			_push_system_message(notification, who=sender, reply_to=msid)
+		else:
+			logging.debug("receiver notification suppressed by /togglekarma for user=%s", sender.id)
+		
+		return rp.Reply(rp.types.SUCCESS_EMOJI_REACTION, karma_change=karma_change, emoji=emoji, karma_is_pats=False, bot_name=bot_name)
+
+	return None
+
+@requireUser
+def modify_karma(user, msid, amount, emoji=None, karma_is_pats=False):
+	cm = ch.getMessage(msid)
+	if cm is None or cm.user_id is None:
+		return rp.Reply(rp.types.ERR_NOT_IN_CACHE)
+	
+	user2 = db.getUser(id=cm.user_id)
+	
+	# Don't modify karma for your own messages
+	if user2.id == user.id:
+		return rp.Reply(rp.types.ERR_VOTE_OWN_MESSAGE)
+
 	params = {"karma_is_pats": karma_is_pats}
+	
+	# Check for duplicate votes
 	if cm.hasUpvoted(user):
 		return rp.Reply(rp.types.ERR_ALREADY_VOTED_UP, **params)
 	if cm.hasDownvoted(user):
 		return rp.Reply(rp.types.ERR_ALREADY_VOTED_DOWN, **params)
-	if user.id == cm.user_id:
-		return rp.Reply(rp.types.ERR_VOTE_OWN_MESSAGE, **params)
+	
+	# Enforce cooldowns
 	if amount > 0:
 		# enforce upvoting cooldown
 		if vote_up_interval.total_seconds() > 1:
@@ -683,21 +800,15 @@ def modify_karma(user, msid, amount):
 	else:
 		return
 
-	user2 = db.getUser(id=cm.user_id)
-	with db.modifyUser(id=cm.user_id) as user2:
-		old_level = getKarmaLevel(user2.karma)
-		user2.karma += KARMA_PLUS_ONE * amount
-		new_level = getKarmaLevel(user2.karma)
-	if not user2.hideKarma:
-		_push_system_message(rp.Reply(rp.types.KARMA_NOTIFICATION, count=amount, **params), who=user2, reply_to=msid)
-		if old_level < new_level:
-			_push_system_message(rp.Reply(rp.types.KARMA_LEVEL_UP, level=getKarmaLevelName(user2.karma), **params), who=user2)
-		if old_level > new_level:
-			_push_system_message(rp.Reply(rp.types.KARMA_LEVEL_DOWN, level=getKarmaLevelName(user2.karma), **params), who=user2)
-	if amount > 0:
-		return rp.Reply(rp.types.KARMA_VOTED_UP, bot_name=bot_name, **params)
-	elif amount < 0:
-		return rp.Reply(rp.types.KARMA_VOTED_DOWN, bot_name=bot_name, **params)
+	# Update the user's karma
+	with db.modifyUser(id=user2.id) as user2:
+		user2.karma += amount
+		
+	if emoji:
+		params = {"karma_is_pats": karma_is_pats, "karma_change": amount, "emoji": emoji}
+		return rp.Reply(rp.types.SUCCESS_EMOJI_REACTION, **params)
+	else:
+		return rp.Reply(rp.types.SUCCESS_KARMA_REACTION, karma_change=amount)
 
 @requireUser
 def prepare_user_message(user: User, msg_score, *, is_media=False, signed=False, tripcode=False, ksigned=False):
@@ -724,6 +835,8 @@ def prepare_user_message(user: User, msg_score, *, is_media=False, signed=False,
 		sign_last_used[user.id] = datetime.now()
 
 	return ch.assignMessageId(CachedMessage(user.id))
+
+# Removed duplicate/unreferenced cmd_unblacklist implementations and decorator redefinitions.
 
 # who is None -> to everyone except the user <except_who> (if applicable)
 # who is not None -> only to the user <who>

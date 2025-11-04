@@ -1,915 +1,436 @@
-import telebot
 import logging
 import time
 import json
-import re
-from os import path
+import telebot
+from telebot.types import ReactionTypeEmoji
 
 import src.core as core
 import src.replies as rp
-from src.util import MutablePriorityQueue, genTripcode
-from src.globals import *
+from src.cache import CachedMessage
+from src.util import MutablePriorityQueue
 
-# module constants
-MEDIA_FILTER_TYPES = ("photo", "animation", "document", "video", "sticker")
-CAPTIONABLE_TYPES = ("photo", "audio", "animation", "document", "video", "voice")
-HIDE_FORWARD_FROM = set([
-	"anonymize_bot", "AnonFaceBot", "AnonymousForwarderBot", "anonomiserBot",
-	"anonymous_forwarder_nashenasbot", "anonymous_forward_bot", "mirroring_bot",
-	"anonymizbot", "ForwardsCoverBot", "anonymousmcjnbot", "MirroringBot",
-	"anonymousforwarder_bot", "anonymousForwardBot", "anonymous_forwarder_bot",
-	"anonymousforwardsbot", "HiddenlyBot", "ForwardCoveredBot", "anonym2bot",
-	"AntiForwardedBot", "noforward_bot", "Anonymous_telegram_bot",
-	"Forwards_Cover_Bot", "ForwardsHideBot", "ForwardsCoversBot",
-	"NoForwardsSourceBot", "AntiForwarded_v2_Bot", "ForwardCoverzBot",
-])
-VENUE_PROPS = ("title", "address", "foursquare_id", "foursquare_type", "google_place_id", "google_place_type")
-
-# module variables
+# Globals initialized in init()
 bot = None
 db = None
 ch = None
 message_queue = None
-registered_commands = {}
 
-# settings
-allow_documents = None
-allow_polls = None
-linked_network: dict = None
+# Config flags
+allow_contacts = False
+allow_documents = False
+allow_polls = False
 
-def init(config, _db, _ch):
-	global bot, db, ch, message_queue, allow_documents, allow_polls, linked_network
-	if config["bot_token"] == "":
-		logging.error("No telegram token specified.")
-		exit(1)
 
-	logging.getLogger("urllib3").setLevel(logging.WARNING) # very noisy with debug otherwise
-	telebot.apihelper.READ_TIMEOUT = 20
+# Minimal Receiver to deliver system messages emitted by core
+class _TelegramReceiver(core.Receiver):
+    @staticmethod
+    def reply(m, msid, who, except_who, reply_to):
+        try:
+            text = rp.formatForTelegram(m)
+        except Exception as e:
+            logging.warning("Failed to format system reply: %s", e)
+            return
 
-	bot = telebot.TeleBot(config["bot_token"], threaded=False)
-	db = _db
-	ch = _ch
-	message_queue = MutablePriorityQueue()
+        def _uid(x):
+            try:
+                return x.id if hasattr(x, 'id') else int(x)
+            except Exception:
+                return None
 
-	allow_contacts = config["allow_contacts"]
-	allow_documents = config["allow_documents"]
-	allow_polls = config["allow_polls"]
-	linked_network = config.get("linked_network")
-	if linked_network is not None and not isinstance(linked_network, dict):
-		logging.error("Wrong type for 'linked_network'")
-		exit(1)
+        # Determine recipients
+        recipients = []
+        if who is None:
+            for u in db.iterateUsers():
+                try:
+                    if not u.isJoined():
+                        continue
+                    if except_who is not None and _uid(except_who) == u.id:
+                        continue
+                    recipients.append(u.id)
+                except Exception:
+                    continue
+        else:
+            uid = _uid(who)
+            if uid is not None:
+                recipients.append(uid)
 
-	types = ["text", "location", "venue"]
-	if allow_contacts:
-		types += ["contact"]
-	if allow_documents:
-		types += ["document"]
-	if allow_polls:
-		types += ["poll"]
-	types += ["animation", "audio", "photo", "sticker", "video", "video_note", "voice"]
+        # Send to recipients, optionally as a reply to a mapped message
+        for rid in recipients:
+            kwargs = {"parse_mode": "HTML"}
+            try:
+                if reply_to is not None:
+                    msg_id = ch.lookupMapping(rid, msid=reply_to)
+                    if msg_id is not None:
+                        kwargs["reply_to_message_id"] = msg_id
+                        kwargs["allow_sending_without_reply"] = True
+                bot.send_message(rid, text, **kwargs)
+                logging.debug("Delivered system message to %s", rid)
+            except Exception as e:
+                logging.debug("Failed to deliver system message to %s: %s", rid, e)
 
-	cmds = [
-		"start", "stop", "setup_commands", "commands",
-		"users", "info", "rules",
-		"toggledebug", "togglekarma",
-		"version", "changelog", "help", "karmainfo", "botinfo",
-		"modsay", "adminsay",
-		"mod", "admin",
-		"warn", "delete", "deleteall", "remove", "removeall",
-		"cooldown", "uncooldown",
-		"blacklist", "cleanup",
-		"s", "sign", "tripcode", "t", "tsign", "ksign", "ks"
-	]
+    @staticmethod
+    def delete(msids):
+        # Not used in this minimal receiver
+        pass
 
-	# Pat aliases
-	if core.karma_is_pats:
-		global cmd_togglepats, cmd_patinfo, cmd_psign, cmd_ps
-		cmds += ["togglepats", "patinfo", "psign", "ps"]
-		cmd_togglepats = cmd_togglekarma
-		cmd_patinfo = cmd_karmainfo
-		cmd_psign = cmd_ksign
-		cmd_ps = cmd_ks
-
-	for c in cmds: # maps /<c> to the function cmd_<c>
-		c = c.lower()
-		registered_commands[c] = globals()["cmd_" + c]
-	set_handler(relay, content_types=types)
-
-def set_handler(func, *args, **kwargs):
-	def wrapper(*args, **kwargs):
-		try:
-			func(*args, **kwargs)
-		except Exception as e:
-			logging.exception("Exception raised in event handler")
-	bot.message_handler(*args, **kwargs)(wrapper)
-
-def run():
-	while True:
-		try:
-			bot.polling(none_stop=True, long_polling_timeout=45)
-		except Exception as e:
-			# you're not supposed to call .polling() more than once but I'm left with no choice
-			logging.warning("%s while polling Telegram, retrying.", type(e).__name__)
-			time.sleep(1)
-
-def register_tasks(sched):
-	# cache expiration
-	def task():
-		ids = ch.expire()
-		if len(ids) == 0:
-			return
-		n = 0
-		def f(item):
-			nonlocal n
-			if item.msid in ids:
-				n += 1
-				return True
-			return False
-		message_queue.delete(f)
-		if n > 0:
-			logging.warning("Failed to deliver %d messages before they expired from cache.", n)
-	sched.register(task, hours=6) # (1/4) * cache duration
-
-# Wraps a telegram user in a consistent class (used by core.py)
-class UserContainer():
-	def __init__(self, u):
-		self.id = u.id
-		self.username = u.username
-		self.realname = u.first_name
-		if u.last_name is not None:
-			self.realname += " " + u.last_name
-
-def split_command(text):
-	if " " not in text:
-		return text[1:].lower(), ""
-	pos = text.find(" ")
-	return text[1:pos].lower(), text[pos+1:].strip()
-
-def takesArgument(optional: bool =False):
-	def f(func):
-		def wrap(ev):
-			_, arg = split_command(ev.text)
-			if arg == "" and not optional:
-				send_answer(ev, rp.Reply(rp.types.ERR_NO_ARG), True)
-				return
-			return func(ev, arg)
-		return wrap
-	return f
-
-def wrap_core(func, reply_to=False):
-	def f(ev):
-		m = func(UserContainer(ev.from_user))
-		send_answer(ev, m, reply_to=reply_to)
-	return f
-
-def send_answer(ev, m, reply_to=False):
-	if m is None:
-		return
-	elif isinstance(m, list):
-		for m2 in m:
-			send_answer(ev, m2, reply_to)
-		return
-
-	reply_to = ev.message_id if reply_to else None
-	def f(ev=ev, m=m):
-		while True:
-			try:
-				send_to_single_inner(ev.chat.id, m, reply_to=reply_to)
-			except telebot.apihelper.ApiException as e:
-				retry = check_telegram_exc(e, None)
-				if retry:
-					continue
-				return
-			break
-
-	try:
-		user = db.getUser(id=ev.from_user.id)
-	except KeyError as e:
-		user = None # happens on e.g. /start
-	put_into_queue(user, None, f)
-
-# TODO: find a better place for this
-def allow_message_text(text):
-	if text is None or text == "":
-		return True
-	# Mathematical Alphanumeric Symbols: has convincing looking bold text
-	if any(0x1D400 <= ord(c) <= 0x1D7FF for c in text):
-		return False
-	return True
-
-# determine spam score for message `ev`
-def calc_spam_score(ev):
-	if not allow_message_text(ev.text) or not allow_message_text(ev.caption):
-		return 999
-
-	s = SCORE_BASE_MESSAGE
-	if (ev.forward_from is not None or ev.forward_from_chat is not None
-		or ev.json.get("forward_sender_name") is not None):
-		s = SCORE_BASE_FORWARD
-	elif ev.content_type == "photo":
-		return SCORE_PHOTO
-
-	if ev.content_type == "sticker":
-		return SCORE_STICKER
-	elif ev.content_type == "text":
-		pass
-	else:
-		return s
-	s += len(ev.text) * SCORE_TEXT_CHARACTER + ev.text.count("\n") * SCORE_TEXT_LINEBREAK
-	return s
-
-# Create BotCommand objects out of dictionary and register them
-# I know those decorators (or the function) do not belong here, but I haven't found a better way, yet...
-@core.requireUser
-@core.requireRank(RANKS.admin)
-def register_bot_commands(user, cmd_dict: dict):
-		cmds = [telebot.types.BotCommand(cmd, dsc) for cmd, dsc in cmd_dict.items()]
-		if bot.set_my_commands(cmds):
-			logging.info("%s set commands", user)
-		else:
-			return rp.Reply(rp.types.ERR_COMMANDS_REGISTER_FAIL)
-
-###
-
-# Formatting for user messages, which are largely passed through as-is
-
-class FormattedMessage():
-	html: bool
-	content: str
-	def __init__(self, html, content):
-		self.html = html
-		self.content = content
-
-class FormattedMessageBuilder():
-	text_content: str
-	# initialize builder with first argument that isn't None
-	def __init__(self, *args):
-		self.text_content = next(filter(lambda x: x is not None, args))
-		self.inserts = {}
-	def get_text(self):
-		return self.text_content
-	# insert `content` at `pos`, `html` indicates HTML or plaintext
-	# if `pre` is set content will be inserted *before* existing insertions
-	def insert(self, pos, content, html=False, pre=False):
-		i = self.inserts.get(pos)
-		if i is not None:
-			cat = lambda a, b: (b + a) if pre else (a + b)
-			# only turn insert into HTML if strictly necessary
-			if i[0] == html:
-				i = ( i[0], cat(i[1], content) )
-			elif not i[0]:
-				i = ( True, cat(escape_html(i[1]), content) )
-			else: # not html
-				i = ( True, cat(i[1], escape_html(content)) )
-		else:
-			i = (html, content)
-		self.inserts[pos] = i
-	def prepend(self, content, html=False):
-		self.insert(0, content, html, True)
-	def append(self, content, html=False):
-		self.insert(len(self.text_content), content, html)
-	def enclose(self, pos1, pos2, content_begin, content_end, html=False):
-		self.insert(pos1, content_begin, html)
-		self.insert(pos2, content_end, html, True)
-	def build(self) -> FormattedMessage:
-		if len(self.inserts) == 0:
-			return
-		html = any(i[0] for i in self.inserts.values())
-		norm = lambda i: i[1] if i[0] == html else escape_html(i[1])
-		s = ""
-		for idx, c in enumerate(self.text_content):
-			i = self.inserts.pop(idx, None)
-			if i is not None:
-				s += norm(i)
-			s += escape_html(c) if html else c
-		i = self.inserts.pop(len(self.text_content), None)
-		if i is not None:
-			s += norm(i)
-		assert len(self.inserts) == 0
-		return FormattedMessage(html, s)
-
-# Append inline URLs from the message `ev` to `fmt` so they are preserved even
-# if the original formatting is stripped
-def formatter_replace_links(ev, fmt: FormattedMessageBuilder):
-	entities = ev.caption_entities or ev.entities
-	if entities is None:
-		return
-	for ent in entities:
-		if ent.type == "text_link":
-			if ent.url.startswith("tg://"):
-				continue # doubt anyone needs these
-			if "://t.me/" in ent.url and "?start=" in ent.url:
-				continue # deep links look ugly and are likely not important
-			fmt.append("\n(%s)" % ent.url)
-
-# Add inline links for >>>/name/ syntax depending on configuration
-def formatter_network_links(fmt: FormattedMessageBuilder):
-	if not linked_network:
-		return
-	for m in re.finditer(r'>>>/([a-zA-Z0-9]+)/', fmt.get_text()):
-		link = linked_network.get(m.group(1).lower())
-		if link:
-			# we use a tg:// URL here because it avoids web page preview
-			fmt.enclose(m.start(), m.end(),
-				"<a href=\"tg://resolve?domain=%s\">" % link, "</a>", True)
-
-# Add signed message formatting for User `user` to `fmt`
-def formatter_signed_message(user: core.User, fmt: FormattedMessageBuilder):
-	fmt.append(" <a href=\"tg://user?id=%d\">" % user.id, True)
-	fmt.append("~~" + user.getFormattedName())
-	fmt.append("</a>", True)
-
-# Add signed message formatting for User `user` to `fmt`
-def formatter_ksigned_message(user: core.User, fmt: FormattedMessageBuilder):
-	karma_level = core.getKarmaLevelName(user.karma)
-	fmt.append(" <i><b>t. ", True)
-	fmt.append(karma_level if karma_level != "" else "???")
-	fmt.append("</b></i>", True)
-
-# Add tripcode message formatting for User `user` to `fmt`
-def formatter_tripcoded_message(user: core.User, fmt: FormattedMessageBuilder):
-	tripname, tripcode = genTripcode(user.tripcode)
-	# due to how prepend() works the string is built right-to-left
-	fmt.prepend("</code>:\n", True)
-	fmt.prepend(tripcode)
-	fmt.prepend("</b> <code>", True)
-	fmt.prepend(tripname)
-	fmt.prepend("<b>", True)
-
-###
-
-# Message sending (queue-related)
-
-class QueueItem():
-	__slots__ = ("user_id", "msid", "func")
-	def __init__(self, user, msid, func):
-		self.user_id = None # who this item is being delivered to
-		if user is not None:
-			self.user_id = user.id
-		self.msid = msid # message id connected to this item
-		self.func = func
-	def call(self):
-		try:
-			self.func()
-		except Exception as e:
-			logging.exception("Exception raised during queued message")
-
-def get_priority_for(user):
-	if user is None:
-		# user doesn't exist (yet): handle as rank=0, lastActive=<now>
-		# cf. User.getMessagePriority in database.py
-		return max(RANKS.values()) << 16
-	return user.getMessagePriority()
-
-def put_into_queue(user, msid, f):
-	message_queue.put(get_priority_for(user), QueueItem(user, msid, f))
-
-def send_thread():
-	while True:
-		item = message_queue.get()
-		item.call()
-
-###
-
-# Message sending (functions)
-
-def is_forward(ev):
-	return (ev.forward_from is not None or ev.forward_from_chat is not None
-		or ev.json.get("forward_sender_name") is not None)
-
-def should_hide_forward(ev):
-	# Hide forwards from anonymizing bots that have recently become popular.
-	# The main reason is that the bot API heavily penalizes forwarding and the
-	# 'Forwarded from Anonymize Bot' provides no additional/useful information.
-	if ev.forward_from is not None:
-		return ev.forward_from.username in HIDE_FORWARD_FROM
-	return False
-
-def resend_message(chat_id, ev, reply_to=None, force_caption: FormattedMessage=None):
-	# Check if the message is either voice or video
-	if ev.content_type in ("video_note", "voice"):
-		# We need the full Chat object here, because some properties are not available in the ev.chat trait
-		tchat = bot.get_chat(chat_id)
-		# Check if the user has disabled them
-		if tchat.has_restricted_voice_and_video_messages:
-			return bot.send_message(chat_id, rp.formatForTelegram(rp.Reply(rp.types.ERR_VOICE_AND_VIDEO_PRIVACY_RESTRICTION)), parse_mode="HTML")
-
-	if should_hide_forward(ev):
-		pass
-	elif is_forward(ev) and (ev.content_type != "poll"):
-		# forward message instead of re-sending the contents
-		return bot.forward_message(chat_id, ev.chat.id, ev.message_id)
-
-	kwargs = {}
-	if reply_to is not None:
-		kwargs["reply_to_message_id"] = reply_to
-		kwargs["allow_sending_without_reply"] = True
-	if ev.content_type in CAPTIONABLE_TYPES:
-		if force_caption is not None:
-			kwargs["caption"] = force_caption.content
-			if force_caption.html:
-				kwargs["parse_mode"] = "HTML"
-		else:
-			kwargs["caption"] = ev.caption
-
-	# re-send message based on content type
-	if ev.content_type == "text":
-		return bot.send_message(chat_id, ev.text, **kwargs)
-	elif ev.content_type == "photo":
-		photo = sorted(ev.photo, key=lambda e: e.width*e.height, reverse=True)[0]
-		return bot.send_photo(chat_id, photo.file_id, **kwargs)
-	elif ev.content_type == "audio":
-		for prop in ("performer", "title"):
-			kwargs[prop] = getattr(ev.audio, prop)
-		return bot.send_audio(chat_id, ev.audio.file_id, **kwargs)
-	elif ev.content_type == "animation":
-		return bot.send_animation(chat_id, ev.animation.file_id, **kwargs)
-	elif ev.content_type == "document":
-		return bot.send_document(chat_id, ev.document.file_id, **kwargs)
-	elif ev.content_type == "video":
-		return bot.send_video(chat_id, ev.video.file_id, **kwargs)
-	elif ev.content_type == "voice":
-		return bot.send_voice(chat_id, ev.voice.file_id, **kwargs)
-	elif ev.content_type == "video_note":
-		return bot.send_video_note(chat_id, ev.video_note.file_id, **kwargs)
-	elif ev.content_type == "location":
-		kwargs["latitude"] = ev.location.latitude
-		kwargs["longitude"] = ev.location.longitude
-		return bot.send_location(chat_id, **kwargs)
-	elif ev.content_type == "venue":
-		kwargs["latitude"] = ev.venue.location.latitude
-		kwargs["longitude"] = ev.venue.location.longitude
-		for prop in VENUE_PROPS:
-			kwargs[prop] = getattr(ev.venue, prop)
-		return bot.send_venue(chat_id, **kwargs)
-	elif ev.content_type == "contact":
-		for prop in ("phone_number", "first_name", "last_name"):
-			kwargs[prop] = getattr(ev.contact, prop)
-		return bot.send_contact(chat_id, **kwargs)
-	elif ev.content_type == "sticker":
-		return bot.send_sticker(chat_id, ev.sticker.file_id, **kwargs)
-	elif ev.content_type == "poll":
-		return bot.forward_message(chat_id, ev.chat.id, ev.message_id)
-	else:
-		raise NotImplementedError("content_type = %s" % ev.content_type)
-
-# send a message `ev` (multiple types possible) to Telegram ID `chat_id`
-# returns the sent Telegram message
-def send_to_single_inner(chat_id, ev, reply_to=None, force_caption=None):
-	if isinstance(ev, rp.Reply):
-		kwargs2 = {}
-		if reply_to is not None:
-			kwargs2["reply_to_message_id"] = reply_to
-			kwargs2["allow_sending_without_reply"] = True
-		kwargs2["disable_web_page_preview"] = True
-		return bot.send_message(chat_id, rp.formatForTelegram(ev), parse_mode="HTML", **kwargs2)
-	elif isinstance(ev, FormattedMessage):
-		kwargs2 = {}
-		if reply_to is not None:
-			kwargs2["reply_to_message_id"] = reply_to
-			kwargs2["allow_sending_without_reply"] = True
-		if ev.html:
-			kwargs2["parse_mode"] = "HTML"
-		return bot.send_message(chat_id, ev.content, **kwargs2)
-
-	return resend_message(chat_id, ev, reply_to=reply_to, force_caption=force_caption)
-
-# queue sending of a single message `ev` (multiple types possible) to User `user`
-# this includes saving of the sent message id to the cache mapping.
-# `reply_msid` can be a msid of the message that will be replied to
-# `force_caption` can be a FormattedMessage to set the caption for resent media
-def send_to_single(ev, msid, user, *, reply_msid=None, force_caption=None):
-	# set reply_to_message_id if applicable
-	reply_to = None
-	if reply_msid is not None:
-		reply_to = ch.lookupMapping(user.id, msid=reply_msid)
-
-	user_id = user.id
-	def f():
-		while True:
-			try:
-				ev2 = send_to_single_inner(user_id, ev, reply_to, force_caption)
-			except telebot.apihelper.ApiException as e:
-				retry = check_telegram_exc(e, user_id)
-				if retry:
-					continue
-				return
-			break
-		ch.saveMapping(user_id, msid, ev2.message_id)
-	put_into_queue(user, msid, f)
-
-# delete message with `id` in Telegram chat `user_id`
-def delete_message_inner(user_id, id):
-	while True:
-		try:
-			bot.delete_message(user_id, id)
-		except telebot.apihelper.ApiException as e:
-			retry = check_telegram_exc(e, None)
-			if retry:
-				continue
-			return
-		break
-
-# look at given Exception `e`, force-leave user if bot was blocked
-# returns True if message sending should be retried
-def check_telegram_exc(e, user_id):
-	errmsgs = ["bot was blocked by the user", "user is deactivated",
-		"PEER_ID_INVALID", "bot can't initiate conversation"]
-	if any(msg in e.result.text for msg in errmsgs):
-		if user_id is not None:
-			core.force_user_leave(user_id)
-		return False
-
-	if "Too Many Requests" in e.result.text:
-		d = json.loads(e.result.text)["parameters"]["retry_after"]
-		d = min(d, 30) # supposedly this is in seconds, but you sometimes get 100 or even 2000
-		if d >= 20: # We do not need to log cooldowns of less than 20, this would flood the channel
-			logging.warning("API rate limit hit, waiting for %ds", d)
-		time.sleep(d)
-		return True # retry
-
-	logging.exception("API exception")
-	return False
-
-####
-
-# Event receiver: handles all things the core decides to do "on its own":
-# e.g. karma notifications, deletion of messages, signed messages
-# This does *not* include direct replies to commands or relaying of messages.
-
-@core.registerReceiver
-class MyReceiver(core.Receiver):
-	@staticmethod
-	def reply(m, msid, who, except_who, reply_msid):
-		if who is not None:
-			return send_to_single(m, msid, who, reply_msid=reply_msid)
-
-		for user in db.iterateUsers():
-			if not user.isJoined():
-				continue
-			if user == except_who and not user.debugEnabled:
-				continue
-			send_to_single(m, msid, user, reply_msid=reply_msid)
-	@staticmethod
-	def delete(msids):
-		msids_set = set(msids)
-		# first stop actively delivering this message
-		message_queue.delete(lambda item: item.msid in msids_set)
-		# then delete all instances that have already been sent
-		msids_owner = []
-		for msid in msids:
-			tmp = ch.getMessage(msid)
-			msids_owner.append(None if tmp is None else tmp.user_id)
-		assert len(msids_owner) == len(msids)
-		# FIXME: there's a hard to avoid race condition here:
-		# if a message is currently being sent, but finishes after we grab the
-		# message ids it will never be deleted
-		for user in db.iterateUsers():
-			if not user.isJoined():
-				continue
-
-			for j, msid in enumerate(msids):
-				if user.id == msids_owner[j] and not user.debugEnabled:
-					continue
-				id = ch.lookupMapping(user.id, msid=msid)
-				if id is None:
-					continue
-				user_id = user.id
-				def f(user_id=user_id, id=id):
-					delete_message_inner(user_id, id)
-				# msid=None here since this is a deletion, not a message being sent
-				put_into_queue(user, None, f)
-		# drop the mappings for this message so the id doesn't end up used e.g. for replies
-		for msid in msids_set:
-			ch.deleteMappings(msid)
-	@staticmethod
-	def stop_invoked(user, delete_out):
-		# delete pending messages to be delivered *to* the user
-		message_queue.delete(lambda item, user_id=user.id: item.user_id == user_id)
-		if not delete_out:
-			return
-		# delete all pending messages written *by* the user too
-		def f(item):
-			if item.msid is None:
-				return False
-			cm = ch.getMessage(item.msid)
-			if cm is None:
-				return False
-			return cm.user_id == user.id
-		message_queue.delete(f)
-
-####
-
-# Custom logger mapping to specified channel
+    @staticmethod
+    def stop_invoked(who, delete_out=False):
+        # Not used in this minimal receiver
+        pass
 
 def log_into_channel(msg, html=False):
-	try:
-		if (bot is not None) and core.log_channel:
-			bot.send_message(core.log_channel, msg, parse_mode= "HTML" if html else None)
-	except:
-		pass
+    # Deprecated helper; retained as no-op for backward compatibility
+    pass
 
-class ChannelHandler(logging.StreamHandler):
-	def emit(self, record):
-		log_into_channel(self.format(record))
 
-####
+def _broadcast_targets(sender_id):
+    """Yield users who should receive a forwarded copy (excludes sender and non-joined)."""
+    for u in db.iterateUsers():
+        try:
+            if u.id == sender_id:
+                continue
+            if not u.isJoined():
+                continue
+            if u.isBlacklisted():
+                continue
+            yield u
+        except Exception:
+            continue
 
-cmd_start = wrap_core(core.user_join)
-cmd_stop = wrap_core(core.user_leave)
 
-def cmd_setup_commands(ev):
-	c_user = UserContainer(ev.from_user)
-	if bot.get_my_commands() != []:
-		return send_answer(ev, rp.Reply(rp.types.ERR_COMMANDS_ALREADY_SET_UP, bot_name=core.bot_name), reply_to=True)
-	result = register_bot_commands(c_user, DEFAULT_COMMANDS)
-	if isinstance(result, rp.Reply):
-		return send_answer(ev, result, reply_to=True)
-	return send_answer(ev, rp.Reply(rp.types.SUCCESS_COMMANDS_SETUP, bot_name=core.bot_name, cmds=DEFAULT_COMMANDS), reply_to=True)
+def send_to_single_inner(chat_id, ev, reply_to=None, force_caption=None):
+    """Low-level send using the incoming Telegram message as source.
+    Returns the Telegram message object."""
+    kwargs = {}
+    if reply_to is not None:
+        kwargs["reply_to_message_id"] = reply_to
+        kwargs["allow_sending_without_reply"] = True
 
-@takesArgument(optional=True)
-def cmd_commands(ev, arg):
-	if arg == "":
-		cmds = bot.get_my_commands()
-		send_answer(ev, rp.Reply(rp.types.COMMANDS, cmds=cmds), reply_to=True)
-	else:
-		c_user = UserContainer(ev.from_user)
-		result = core.set_commands_dict(c_user, arg)
-		if result is not None:
-			if isinstance(result, rp.Reply):
-				return send_answer(ev, result, reply_to=True)
-			result = register_bot_commands(c_user, result)
-			if isinstance(result, rp.Reply):
-				return send_answer(ev, result, reply_to=True)
-			return send_answer(ev, rp.Reply(rp.types.SUCCESS_COMMANDS, bot_name=core.bot_name), reply_to=True)
+    # Handle basic content types
+    if hasattr(ev, 'content_type'):
+        ct = ev.content_type
+        if ct == 'text':
+            return bot.send_message(chat_id, ev.text, **kwargs)
+        if ct == 'photo' and ev.photo:
+            photo = sorted(ev.photo, key=lambda p: p.width * p.height)[-1]
+            return bot.send_photo(chat_id, photo.file_id, **kwargs)
+        if ct == 'sticker':
+            return bot.send_sticker(chat_id, ev.sticker.file_id, **kwargs)
+        if ct == 'animation':
+            return bot.send_animation(chat_id, ev.animation.file_id, **kwargs)
+        if ct == 'audio':
+            return bot.send_audio(chat_id, ev.audio.file_id, **kwargs)
+        if ct == 'document':
+            return bot.send_document(chat_id, ev.document.file_id, **kwargs)
+        if ct == 'video':
+            return bot.send_video(chat_id, ev.video.file_id, **kwargs)
+        if ct == 'voice':
+            return bot.send_voice(chat_id, ev.voice.file_id, **kwargs)
+        if ct == 'video_note':
+            return bot.send_video_note(chat_id, ev.video_note.file_id, **kwargs)
+        if ct == 'location':
+            return bot.send_location(chat_id, ev.location.latitude, ev.location.longitude, **kwargs)
+        if ct == 'contact':
+            return bot.send_contact(chat_id, ev.contact.phone_number, ev.contact.first_name, **kwargs)
 
-cmd_users = wrap_core(core.get_users)
+    # Fallback: stringify
+    return bot.send_message(chat_id, rp.formatForTelegram(rp.Reply(rp.types.CUSTOM, text=str(getattr(ev, 'text', '')))), parse_mode='HTML', **kwargs)
 
-def cmd_info(ev):
-	c_user = UserContainer(ev.from_user)
-	if ev.reply_to_message is None:
-		return send_answer(ev, core.get_info(c_user), True)
 
-	reply_msid = ch.lookupMapping(ev.from_user.id, data=ev.reply_to_message.message_id)
-	if reply_msid is None:
-		return send_answer(ev, rp.Reply(rp.types.ERR_NOT_IN_CACHE), True)
-	return send_answer(ev, core.get_info_mod(c_user, reply_msid), True)
+def send_to_single(ev, msid, user, *, reply_msid=None, force_caption=None):
+    """Queue a single copy for a user."""
+    item = type("QueueItem", (), {
+        "msid": msid,
+        "msg": ev,
+        "reply_msid": reply_msid,
+        "user": user,
+        "force_caption": force_caption,
+        "timestamp": time.time()
+    })
+    message_queue.put(0, item)
 
-@takesArgument(optional=True)
-def cmd_rules(ev, arg):
-	c_user = UserContainer(ev.from_user)
 
-	if arg == "":
-		send_answer(ev, core.get_rules(c_user), reply_to=True)
-	else:
-		send_answer(ev, core.set_rules(c_user, arg), reply_to=True)
+def send_thread():
+    """Background worker sending queued messages."""
+    while True:
+        try:
+            item = message_queue.get()
+            if not item:
+                time.sleep(0.05)
+                continue
 
-cmd_toggledebug = wrap_core(core.toggle_debug)
-cmd_togglekarma = wrap_core(core.toggle_karma)
+            # Don't thread original replies across users for now
+            reply_to = None
+            sent = send_to_single_inner(item.user.id, item.msg, reply_to, item.force_caption)
+            if sent and hasattr(sent, 'message_id') and item.msid is not None:
+                ch.saveMapping(item.user.id, item.msid, sent.message_id)
+        except Exception as e:
+            logging.warning("Message delivery failed: %s", e)
+            # If recent, retry once after short delay
+            try:
+                if time.time() - getattr(item, 'timestamp', 0) < 60:
+                    time.sleep(0.5)
+                    message_queue.put(0, item)
+            except Exception:
+                time.sleep(0.5)
 
-@takesArgument(optional=True)
-def cmd_tripcode(ev, arg):
-	c_user = UserContainer(ev.from_user)
 
-	if arg == "":
-		send_answer(ev, core.get_tripcode(c_user))
-	else:
-		send_answer(ev, core.set_tripcode(c_user, arg))
+def relay(message):
+    """Main incoming message handler: forward to all active users (except sender)."""
+    try:
+        sender_id = message.from_user.id if hasattr(message, 'from_user') else message.chat.id
+        # Cache original message for reactions/links
+        cm = CachedMessage(user_id=sender_id)
+        msid = ch.assignMessageId(cm)
+        try:
+            ch.saveMapping(sender_id, msid, message.message_id)
+        except Exception:
+            pass
 
-def cmd_help(ev):
-	c_user = UserContainer(ev.from_user)
-	user = None
-	try:
-		user = db.getUser(id=c_user.id)
-	except KeyError as e:
-		pass
-	send_answer(ev, rp.Reply(rp.types.HELP, rank=(user.rank if (user is not None) and user.isJoined() else None), karma_is_pats=core.karma_is_pats), True)
+        # Send to all targets
+        for u in _broadcast_targets(sender_id):
+            send_to_single(message, msid, u)
 
-def cmd_karmainfo(ev):
-	c_user = UserContainer(ev.from_user)
-	send_answer(ev, core.get_karma_info(c_user), True)
+        logging.debug("relay(): msid=%d broadcast queued", msid)
+    except Exception as e:
+        logging.exception("Error in relay(): %s", e)
 
-def cmd_botinfo(ev):
-	c_user = UserContainer(ev.from_user)
-	send_answer(ev, core.get_bot_info(c_user), True)
 
-def cmd_version(ev):
-	send_answer(ev, rp.Reply(rp.types.PROGRAM_VERSION, version=VERSION, url_catlounge=URL_CATLOUNGE, url_secretlounge=URL_SECRETLOUNGE), True)
+def register_tasks(sched):
+    def clean_expired_messages():
+        try:
+            expired = ch.expire()
+            if not expired:
+                return
+            n = 0
+            def selector(item):
+                nonlocal n
+                if item.msid in expired:
+                    n += 1
+                    return True
+                return False
+            message_queue.delete(selector)
+            if n > 0:
+                logging.warning("Failed to deliver %d messages before they expired from cache.", n)
+        except Exception:
+            logging.exception("Error in telegram cleanup task")
 
-def cmd_changelog(ev):
-	if path.exists(FILENAME_CHANGELOG):
-		changelog = open(FILENAME_CHANGELOG, "r")
-		caption = ""
-		sections = {}
-		for line in changelog.readlines():
-			line = line.strip(" \n\r")
-			if line != "":
-				if re.match("^=.*=$", line):
-					caption = line.strip(" =")
-					sections[caption] = []
-				elif re.match("^\* ", line):
-					sections[caption].append(line.lstrip(" *"))
-				else:
-					sections[caption].append(line)
-		send_answer(ev, rp.Reply(rp.types.PROGRAM_CHANGELOG, versions=sections, count=3), True)
-	else:
-		send_answer(ev, rp.Reply(rp.types.ERR_NO_CHANGELOG), True)
+    sched.register(clean_expired_messages, hours=6)
 
-@takesArgument()
-def cmd_modsay(ev, arg):
-	c_user = UserContainer(ev.from_user)
-	arg = escape_html(arg)
-	return send_answer(ev, core.send_mod_message(c_user, arg), True)
 
-@takesArgument()
-def cmd_adminsay(ev, arg):
-	c_user = UserContainer(ev.from_user)
-	arg = escape_html(arg)
-	return send_answer(ev, core.send_admin_message(c_user, arg), True)
+def check_reaction_support():
+    try:
+        me = bot.get_me()
+        logging.info(f"Bot initialized: @{me.username} (ID: {me.id})")
+        return True
+    except Exception as e:
+        logging.error("Error checking bot: %s", e)
+        return False
 
-@takesArgument()
-def cmd_mod(ev, arg):
-	c_user = UserContainer(ev.from_user)
-	arg = arg.lstrip("@")
-	send_answer(ev, core.promote_user(c_user, arg, RANKS.mod), True)
 
-@takesArgument()
-def cmd_admin(ev, arg):
-	c_user = UserContainer(ev.from_user)
-	arg = arg.lstrip("@")
-	send_answer(ev, core.promote_user(c_user, arg, RANKS.admin), True)
+def run():
+    # Include reaction updates so we can process reactions/karma
+    allowed_updates = [
+        "message",
+        "edited_message",
+        "callback_query",
+        "message_reaction",
+        "message_reaction_count",
+    ]
+    try:
+        logging.debug(f"Starting bot.polling with allowed_updates={allowed_updates}")
+        bot.infinity_polling(timeout=45, allowed_updates=allowed_updates, skip_pending=True)
+    except Exception as e:
+        logging.error("Polling error: %s", e, exc_info=True)
+        time.sleep(1)
 
-def cmd_warn(ev, delete=False, only_delete=False, delete_all=False, cooldown_duration=""):
-	c_user = UserContainer(ev.from_user)
 
-	if ev.reply_to_message is None:
-		return send_answer(ev, rp.Reply(rp.types.ERR_NO_REPLY), True)
+def init(config, _db, _ch):
+    global bot, db, ch, message_queue, allow_contacts, allow_documents, allow_polls
 
-	reply_msid = ch.lookupMapping(ev.from_user.id, data=ev.reply_to_message.message_id)
-	if reply_msid is None:
-		return send_answer(ev, rp.Reply(rp.types.ERR_NOT_IN_CACHE), True)
-	if only_delete:
-		r = core.delete_message(c_user, reply_msid, delete_all)
-	else:
-		r = core.warn_user(c_user, reply_msid, delete, delete_all, cooldown_duration)
-	send_answer(ev, r, True)
+    if not config.get("bot_token"):
+        logging.error("No telegram token specified.")
+        raise SystemExit(1)
 
-@takesArgument(optional=True)
-def cmd_delete(ev, arg):
-	return cmd_warn(ev, delete=True, cooldown_duration=arg)
+    telebot.apihelper.SKIP_PENDING = True
+    telebot.apihelper.READ_TIMEOUT = 20
 
-@takesArgument(optional=True)
-def cmd_deleteall(ev, arg):
-	return cmd_warn(ev, delete=True, delete_all=True, cooldown_duration=arg)
+    # Save deps
+    db = _db
+    ch = _ch
+    message_queue = MutablePriorityQueue()
 
-cmd_remove = lambda ev: cmd_warn(ev, only_delete=True)
+    allow_contacts = bool(config.get("allow_contacts", False))
+    allow_documents = bool(config.get("allow_documents", False))
+    allow_polls = bool(config.get("allow_polls", False))
 
-cmd_removeall = lambda ev: cmd_warn(ev, only_delete=True, delete_all=True)
+    bot = telebot.TeleBot(config["bot_token"], threaded=False, parse_mode="HTML")
 
-@takesArgument()
-def cmd_cooldown(ev, arg):
-	return cmd_warn(ev, delete=False, cooldown_duration=arg)
+    # Register as a core receiver so system messages can be delivered here
+    try:
+        core.registerReceiver(_TelegramReceiver)
+    except Exception:
+        # Avoid duplicate registration on re-init
+        pass
 
-cmd_cleanup = wrap_core(core.cleanup_messages)
+    # Register message handler for relevant content types
+    types = ["text", "location", "venue"]
+    if allow_contacts:
+        types += ["contact"]
+    if allow_documents:
+        types += ["document"]
+    if allow_polls:
+        types += ["poll"]
+    types += ["animation", "audio", "photo", "sticker", "video", "video_note", "voice"]
 
-@takesArgument()
-def cmd_uncooldown(ev, arg):
-	c_user = UserContainer(ev.from_user)
+    def _handle_command(m) -> bool:
+        try:
+            text = getattr(m, 'text', '') or ''
+            if not text.startswith('/'):
+                return False
+            cmd = text.split()[0].split('@')[0].lstrip('/')
+            chat_id = m.chat.id
+            # Map aliases
+            if cmd in ('togglekarma', 'togglepats'):
+                try:
+                    c_user = db.getUser(id=chat_id)
+                except KeyError:
+                    return True
+                res = core.toggle_karma(c_user)
+                if res:
+                    try:
+                        txt = rp.formatForTelegram(res)
+                        bot.send_message(chat_id, txt, parse_mode='HTML', reply_to_message_id=m.message_id)
+                    except Exception as e:
+                        logging.debug('toggle_karma reply failed: %s', e)
+                return True
+        except Exception:
+            logging.exception('Error handling command')
+        return False
 
-	oid, username = None, None
-	if len(arg) < 5:
-		oid = arg # usernames can't be this short -> it's an id
-	else:
-		username = arg
+    @bot.message_handler(content_types=types)
+    def _on_message(m):
+        # Intercept commands so they are not broadcast to others
+        if getattr(m, 'text', None) and str(m.text).startswith('/'):
+            if _handle_command(m):
+                return
+        relay(m)
 
-	send_answer(ev, core.uncooldown_user(c_user, oid, username), True)
+    # Reaction updates (both per-user and count updates)
+    @bot.message_reaction_handler()
+    def _on_reaction(m):
+        try:
+            # Log raw update if available
+            logging.debug("Reaction update received")
+            if hasattr(m, 'json'):
+                logging.debug("reaction raw: %s", json.dumps(m.json, indent=2))
 
-@takesArgument(optional=True)
-def cmd_blacklist(ev, arg):
-	c_user = UserContainer(ev.from_user)
-	if ev.reply_to_message is None:
-		return send_answer(ev, rp.Reply(rp.types.ERR_NO_REPLY), True)
+            chat_id = getattr(getattr(m, 'chat', None), 'id', None)
+            msg_id = getattr(m, 'message_id', None)
+            if not chat_id or not msg_id:
+                logging.debug("reaction: missing chat/message id")
+                return
 
-	reply_msid = ch.lookupMapping(ev.from_user.id, data=ev.reply_to_message.message_id)
-	if reply_msid is None:
-		return send_answer(ev, rp.Reply(rp.types.ERR_NOT_IN_CACHE), True)
-	return send_answer(ev, core.blacklist_user(c_user, reply_msid, arg, True), True)
+            msid = ch.lookupMappingByData(msg_id, uid=chat_id)
+            if msid is None:
+                logging.debug("reaction: no msid for chat=%s msg=%s", chat_id, msg_id)
+                return
 
-def reaction(ev, modifier):
-	c_user = UserContainer(ev.from_user)
-	if ev.reply_to_message is None:
-		return send_answer(ev, rp.Reply(rp.types.ERR_NO_REPLY), True)
+            # Count updates don't include user; we only act on per-user updates
+            user_obj = getattr(m, 'user', None)
+            user_id = getattr(user_obj, 'id', None)
+            if not user_id:
+                return
 
-	reply_msid = ch.lookupMapping(ev.from_user.id, data=ev.reply_to_message.message_id)
-	if reply_msid is None:
-		return send_answer(ev, rp.Reply(rp.types.ERR_NOT_IN_CACHE), True)
+            # Determine newly added emoji(s)
+            added = []
+            new_r = getattr(m, 'new_reaction', None)
+            old_r = getattr(m, 'old_reaction', None)
+            if isinstance(new_r, list):
+                def _emoji_of(x):
+                    if isinstance(x, dict):
+                        return x.get('emoji') or x.get('value')
+                    return getattr(x, 'emoji', None) or getattr(x, 'value', None)
+                for r in new_r:
+                    e = _emoji_of(r)
+                    if e and (not isinstance(old_r, list) or all(_emoji_of(x) != e for x in old_r)):
+                        added.append(e)
 
-	return send_answer(ev, core.modify_karma(c_user, reply_msid, modifier), True)
+            # Fallback: some libs expose 'reaction' or 'message_reaction'
+            if not added:
+                r = getattr(m, 'message_reaction', None)
+                if isinstance(r, list):
+                    for x in r:
+                        e = (x.get('emoji') if isinstance(x, dict) else getattr(x, 'emoji', None))
+                        if e:
+                            added.append(e)
 
-def relay(ev):
-	# handle commands and karma giving
-	if ev.content_type == "text":
-		if ev.text.startswith("/"):
-			c, _ = split_command(ev.text)
-			if c in registered_commands.keys():
-				registered_commands[c](ev)
-			return
-		elif ev.text.strip() == "+1":
-			return reaction(ev, core.karma_amount_add)
-		elif ev.text.strip() == "-1":
-			return reaction(ev, -core.karma_amount_remove)
-	# prohibit non-anonymous polls
-	if ev.content_type == "poll":
-		if not ev.poll.is_anonymous:
-			return send_answer(ev, rp.Reply(rp.types.ERR_POLL_NOT_ANONYMOUS))
-	# manually handle signing / tripcodes for media since captions don't count for commands
-	if not is_forward(ev) and ev.content_type in CAPTIONABLE_TYPES and (ev.caption or "").startswith("/"):
-		c, arg = split_command(ev.caption)
-		if c in ("s", "sign"):
-			return relay_inner(ev, caption_text=arg, signed=True)
-		elif c in ("t", "tsign"):
-			return relay_inner(ev, caption_text=arg, tripcode=True)
+            if not added:
+                logging.debug("reaction: no added emojis detected")
+                return
 
-	relay_inner(ev)
+            # Process first added emoji
+            emoji = str(added[0])
+            logging.debug("Reaction detected: user=%s emoji=%s msid=%s", user_id, emoji, msid)
+            
+            try:
+                c_user = db.getUser(id=user_id)
+            except KeyError:
+                logging.debug("reaction: unknown user %s", user_id)
+                return
 
-# relay the message `ev` to other users in the chat
-# `caption_text` can be a FormattedMessage that overrides the caption of media
-# `signed` and `tripcode` indicate if the message is signed or tripcoded respectively
-def relay_inner(ev, *, caption_text=None, signed=False, tripcode=False, ksigned=False):
-	is_media = is_forward(ev) or ev.content_type in MEDIA_FILTER_TYPES
-	msid = core.prepare_user_message(UserContainer(ev.from_user), calc_spam_score(ev),
-		is_media=is_media, signed=signed, tripcode=tripcode, ksigned=ksigned)
-	if msid is None or isinstance(msid, rp.Reply):
-		return send_answer(ev, msid) # don't relay message, instead reply
+            # Mirror the reaction to all other users' copies of this message
+            cm = ch.getMessage(msid)
+            logging.debug("Lookup msid=%s -> found=%s sender=%s", msid, cm is not None, cm.user_id if cm else None)
+            if cm:
+                # The important user is the SENDER of the original message (cm.user_id)
+                # We want to show the reaction on the sender's copy
+                sender_id = cm.user_id
+                
+                # Iterate through all users to find their copies of this message
+                mirrored_count = 0
+                for recipient in db.iterateUsers():
+                    if recipient.id == user_id:
+                        continue  # Skip the reactor's own copy
+                    if not recipient.isJoined():
+                        continue
+                    
+                    # Look up this recipient's copy of the message
+                    recipient_msg_id = ch.lookupMapping(recipient.id, msid=msid)
+                    logging.debug("Recipient %s (is_sender=%s): msid=%s -> msg_id=%s", 
+                                recipient.id, recipient.id == sender_id, msid, recipient_msg_id)
+                    if recipient_msg_id:
+                        try:
+                            # Set reaction on this recipient's copy
+                            # Create a proper ReactionTypeEmoji object
+                            reaction_obj = ReactionTypeEmoji(emoji)
+                            bot.set_message_reaction(
+                                chat_id=recipient.id,
+                                message_id=recipient_msg_id,
+                                reaction=[reaction_obj],
+                                is_big=False
+                            )
+                            mirrored_count += 1
+                            logging.debug("Mirrored reaction %s to user %s msg %s", emoji, recipient.id, recipient_msg_id)
+                        except Exception as e:
+                            logging.warning("✗ Failed to mirror reaction to user %s: %s", recipient.id, e)
+                logging.debug("Mirrored reaction to %d users (sender=%s)", mirrored_count, sender_id)
 
-	user = db.getUser(id=ev.from_user.id)
+            # Update karma for the message sender
+            res = core.handle_message_reaction(c_user, msid, emoji)
+            logging.debug("handle_message_reaction returned: %s", res)
+            if res:
+                txt = rp.formatForTelegram(res)
+                logging.debug("Formatted message for reactor prepared")
+                try:
+                    # Send confirmation to the reactor
+                    bot.send_message(chat_id, txt, parse_mode="HTML", reply_to_message_id=msg_id)
+                    logging.debug("Sent reaction confirmation to user %s", user_id)
+                except Exception as e:
+                    logging.warning("reaction: failed to send confirmation: %s", e)
 
-	# for signed msgs: check user's forward privacy status first
-	# FIXME? this is a possible bottleneck
-	if signed:
-		tchat = bot.get_chat(user.id)
-		if tchat.has_private_forwards:
-			return send_answer(ev, rp.Reply(rp.types.ERR_SIGN_PRIVACY))
+        except Exception:
+            logging.exception("reaction handler error")
 
-	# apply text formatting to text or caption (if media)
-	ev_tosend = ev
-	force_caption = None
-	if is_forward(ev):
-		pass # leave message alone
-	elif ev.content_type == "text" or ev.caption is not None or caption_text is not None:
-		fmt = FormattedMessageBuilder(caption_text, ev.caption, ev.text)
-		formatter_replace_links(ev, fmt)
-		formatter_network_links(fmt)
-		if ksigned:
-			formatter_ksigned_message(user, fmt)
-		elif signed:
-			formatter_signed_message(user, fmt)
-		elif tripcode:
-			formatter_tripcoded_message(user, fmt)
-		fmt = fmt.build()
-		# either replace whole message or just the caption
-		if ev.content_type == "text":
-			ev_tosend = fmt or ev_tosend
-		else:
-			force_caption = fmt
-
-	# find out which message is being replied to
-	reply_msid = None
-	if ev.reply_to_message is not None:
-		reply_msid = ch.lookupMapping(ev.from_user.id, data=ev.reply_to_message.message_id)
-		# There is no benefit of having this logged in the console/channel...
-		#if reply_msid is None:
-		#	logging.warning("Message replied to not found in cache")
-
-	# relay message to all other users
-	logging.debug("relay(): msid=%d reply_msid=%r", msid, reply_msid)
-	for user2 in db.iterateUsers():
-		if not user2.isJoined():
-			continue
-		if user2 == user and not user.debugEnabled:
-			ch.saveMapping(user2.id, msid, ev.message_id)
-			continue
-
-		send_to_single(ev_tosend, msid, user2,
-			reply_msid=reply_msid, force_caption=force_caption)
-
-@takesArgument()
-def cmd_sign(ev, arg):
-	ev.text = arg
-	relay_inner(ev, signed=True)
-
-cmd_s = cmd_sign # alias
-
-@takesArgument()
-def cmd_ksign(ev, arg):
-	ev.text = arg
-	relay_inner(ev, ksigned=True)
-
-cmd_ks = cmd_ksign # alias
-
-@takesArgument()
-def cmd_tsign(ev, arg):
-	ev.text = arg
-	relay_inner(ev, tripcode=True)
-
-cmd_t = cmd_tsign # alias
+    # Optional: lightweight debug tap
+    # Removed debug tap handler

@@ -36,17 +36,13 @@ def format_timedelta(d):
 		s += (" " if len(s) != 0 else "") + ("%ds" % remainder.total_seconds())
 	return s
 
-## for debugging ##
-def dump(obj, name=None, r=False):
-	name = "" if name is None else (name + ".")
-	for e, ev in ((e, getattr(obj, e)) for e in dir(obj)):
-		if e.startswith("_") or ev is None:
-			continue
-		if r and ev.__class__.__name__[0].isupper():
-			print("%s%s (%s)" % (name, e, ev.__class__.__name__))
-			dump(ev, name + e, r)
-		else:
-			print("%s%s = %r" % (name, e, ev))
+# List of positive emojis that give karma
+POSITIVE_REACTIONS = {
+    "❤️", "👍", "🔥", "👏", "😍", "🥰", "🤩", "⭐", "💯", "🎉",
+    "🌟", "💪", "✨", "🙏", "💖", "💓", "💝", "💕", "♥️", "😊"
+}
+
+# (Removed legacy debug dump utility)
 
 # Program version
 VERSION = "1.0"

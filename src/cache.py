@@ -30,6 +30,7 @@ class Cache():
 		self.counter = itertools.count()
 		self.msgs = {} # dict(msid -> CachedMessage)
 		self.idmap = {} # dict(uid -> dict(msid -> opaque))
+		self.revmap = {} # dict((uid, data) -> msid) for O(1) reverse lookups
 	def _saveMapping(self, x, uid, msid, data):
 		if uid not in x.keys():
 			x[uid] = {}
@@ -61,15 +62,44 @@ class Cache():
 	def saveMapping(self, uid, msid, data):
 		with self.lock:
 			self._saveMapping(self.idmap, uid, msid, data)
+			# maintain reverse map for fast lookup by (chat_id, telegram_msg_id)
+			try:
+				self.revmap[(uid, data)] = msid
+			except Exception:
+				# defensive: ignore non-hashable data
+				pass
 	def lookupMapping(self, uid, msid=None, data=None):
 		if msid is None and data is None:
 			raise ValueError()
 		with self.lock:
 			return self._lookupMapping(self.idmap, uid, msid, data)
+
+	def lookupMappingByData(self, data, uid=None):
+		"""Find the msid for a telegram message id (data).
+
+		If uid (chat id) is provided, perform an O(1) lookup in the reverse
+		map. Otherwise fall back to scanning idmap (legacy behaviour).
+		"""
+		if data is None:
+			raise ValueError()
+		with self.lock:
+			if uid is not None:
+				return self.revmap.get((uid, data))
+			# fallback: linear scan across idmap (for backward-compat)
+			for _uid, mappings in self.idmap.items():
+				for msid, _data in mappings.items():
+					if _data == data:
+						return msid
+			return None
+
 	def deleteMappings(self, msid):
 		with self.lock:
 			for d in self.idmap.values():
 				d.pop(msid, None)
+			# also remove any reverse mappings that point to this msid
+			for k, v in list(self.revmap.items()):
+				if v == msid:
+					del self.revmap[k]
 	def expire(self):
 		ids = set()
 		with self.lock:

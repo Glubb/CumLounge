@@ -35,11 +35,15 @@ types = NumericEnum([
 	"SUCCESS_RULES",
 	"SUCCESS_DELETE",
 	"SUCCESS_DELETEALL",
+	"SUCCESS_KARMA_REACTION",
+	"SUCCESS_EMOJI_REACTION",
+	"SUCCESS_EMOJI_RECEIVED",
 	"SUCCESS_WARN",
 	"SUCCESS_WARN_DELETE",
 	"SUCCESS_WARN_DELETEALL",
 	"SUCCESS_BLACKLIST",
 	"SUCCESS_BLACKLIST_DELETEALL",
+	"SUCCESS_UNBLACKLIST",
 	"LOG_CHANNEL",
 	"COMMANDS",
 	"BOOLEAN_CONFIG",
@@ -140,6 +144,13 @@ format_strs = {
 	types.SUCCESS_RULES: "☑ <i>The rules for {bot_name} lounge have been updated</i>",
 	types.SUCCESS_DELETE: "☑ <i>The message by</i> <b>{id}</b> <i>has been deleted</i>",
 	types.SUCCESS_DELETEALL: "☑ <i>All</i> {count} <i>messages by</i> <b>{id}</b> <i>have been deleted</i>",
+	types.SUCCESS_KARMA_REACTION: "☑ <i>{karma_change:+d} karma from reaction</i>",
+	types.SUCCESS_EMOJI_REACTION: lambda karma_is_pats, **_: em(
+			"You just gave this {bot_name} a {emoji} ({karma_change:+d} " + ("pat" if karma_is_pats else "karma") + "), awesome!"
+		),
+	types.SUCCESS_EMOJI_RECEIVED: lambda karma_is_pats, **_: em(
+			"You just received a {emoji} ({karma_change:+d} " + ("pat" if karma_is_pats else "karma") + "), awesome!"
+		),
 	types.SUCCESS_WARN: lambda cooldown, **_:
 		"☑ <b>{id}</b> <i>has been warned" + (" (cooldown: {cooldown})" if cooldown is not None else "") + "</i>",
 	types.SUCCESS_WARN_DELETE: lambda cooldown, **_:
@@ -148,6 +159,7 @@ format_strs = {
 		"☑ <b>{id}</b> <i>has been warned" + (" (cooldown: {cooldown})" if cooldown is not None else "") + " and all {count} messages were deleted</i>",
 	types.SUCCESS_BLACKLIST: "☑ <b>{id}</b> <i>has been blacklisted and the message was deleted</i>",
 	types.SUCCESS_BLACKLIST_DELETEALL: "☑ <b>{id}</b> <i>has been blacklisted and all {count} messages were deleted</i>",
+	types.SUCCESS_UNBLACKLIST: "☑ <b>{id}</b> <i>has been unblacklisted</i>",
 	types.LOG_CHANNEL: "catlounge-ng-meow v{version} started\n"+
 						"This is the log channel for: <b>{bot_name}</b> lounge",
 	types.COMMANDS: lambda cmds, **_:
@@ -348,6 +360,7 @@ format_strs = {
 			"	/rules TEXT" +             " - <i>Define rules (HTML)</i>\n" +
 			"	/botinfo" +                " - <i>Show bot system info</i>\n" +
 			"	/uncooldown ID/USERNAME" + " - <i>Remove cooldown from a user</i>\n" +
+			"	/unblacklist ID/USERNAME" + " - <i>Remove user from blacklist</i>\n" +
 			"	/mod USERNAME" +           " - <i>Promote a user to mod</i>\n" +
 			"	/admin USERNAME" +         " - <i>Promote a user to admin</i>\n" +
 			"	/commands COMMANDS" +      " - <i>Change bot commands</i>\n"
@@ -377,7 +390,18 @@ def formatForTelegram(m):
 	s = localization.get(m.type)
 	if s is None:
 		s = format_strs[m.type]
-	if type(s).__name__ == "function":
-		s = s(**m.kwargs)
+	# Provide sensible defaults for formatting (e.g. bot_name) so missing
+	# kwargs don't raise KeyError. Import core lazily to avoid circular
+	# imports.
+	try:
+		import src.core as core
+		_defaults = {"bot_name": getattr(core, 'bot_name', '')}
+	except Exception:
+		_defaults = {"bot_name": ""}
+	# merge defaults with message kwargs (message kwargs take precedence)
+	kw = dict(_defaults)
+	kw.update(m.kwargs or {})
+	if callable(s):
+		s = s(**kw)
 	cls = localization.get("_FORMATTER_", CustomFormatter)
-	return cls().format(s, **m.kwargs)
+	return cls().format(s, **kw)

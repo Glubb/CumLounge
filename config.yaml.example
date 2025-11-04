@@ -1,6 +1,8 @@
 # Telegram bot token
 bot_token: "BOT_TOKEN_HERE"
 
+# (Bot-only) No MTProto credentials required. The bot token below is sufficient.
+
 # supported db types: json, sqlite
 # both take a single argument which is the database file path
 database: [sqlite, "secretlounge.sqlite"]

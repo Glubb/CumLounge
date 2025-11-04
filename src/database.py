@@ -54,6 +54,13 @@ class User():
 		self.karma = 0
 		self.hideKarma = False
 		self.debugEnabled = False
+		
+	def setJoined(self):
+		"""Reset blacklist status and set user as joined"""
+		self.rank = RANKS.user
+		self.blacklistReason = None
+		self.left = None
+		self.lastActive = datetime.now()
 	def isJoined(self):
 		return self.left is None
 	def isInCooldown(self):
@@ -243,10 +250,18 @@ class JSONDatabase(Database):
 		with self.lock:
 			self.db["users"].append(newuser)
 			self._save()
-	def iterateUserIds(self):
+	def iterateUsers(self):
 		with self.lock:
-			l = list(u["id"] for u in self.db["users"])
+			l = list(u for u in self.db["users"])
 		yield from l
+		
+	def get_all_chats(self):
+		"""Return a list of all unique chat IDs from the cache"""
+		with self.lock:
+			# In JSON implementation we don't store chat mappings
+			# You'll need to implement chat storage if you want to track them
+			return []
+			
 	def getSystemConfig(self):
 		with self.lock:
 			return JSONDatabase._systemConfigFromDict(self.db["systemConfig"])
@@ -364,12 +379,35 @@ CREATE TABLE IF NOT EXISTS `users` (
 			cur = self.db.execute(sql)
 			l = cur.fetchall()
 		yield from l
+		
+	def getUserByUsername(self, username):
+		# Remove @ if present
+		username = username.lstrip('@')
+		sql = "SELECT * FROM users WHERE username = ?"
+		with self.lock:
+			cur = self.db.execute(sql, (username,))
+			row = cur.fetchone()
+		if row is None:
+			return None
+		return SQLiteDatabase._userFromRow(row)
 	def iterateUsers(self):
 		sql = "SELECT * FROM users"
 		with self.lock:
 			cur = self.db.execute(sql)
 			l = list(SQLiteDatabase._userFromRow(row) for row in cur)
 		yield from l
+		
+	def get_all_chats(self):
+		"""Get all unique chat IDs where the bot should monitor reactions"""
+		sql = """
+		SELECT DISTINCT chat_id 
+		FROM message_mapping 
+		WHERE chat_id IS NOT NULL 
+		AND chat_id != 0
+		"""
+		with self.lock:
+			cur = self.db.execute(sql)
+			return [row[0] for row in cur]
 	def getSystemConfig(self):
 		sql = "SELECT * FROM system_config"
 		with self.lock:
