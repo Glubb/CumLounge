@@ -366,6 +366,7 @@ format_strs = {
 			"	/unblacklist ID/USERNAME" + " - <i>Remove user from blacklist</i>\n" +
 			"	/mod USERNAME" +           " - <i>Promote a user to mod</i>\n" +
 			"	/admin USERNAME" +         " - <i>Promote a user to admin</i>\n" +
+			"\t/demote USERNAME" +        " - <i>Demote a user to regular user</i>\n" +
 			"	/commands COMMANDS" +      " - <i>Change bot commands</i>\n"
 		if rank >= RANKS.admin else "")
 		if rank is not None else ""),

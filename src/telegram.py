@@ -567,6 +567,30 @@ def init(config, _db, _ch):
                     except Exception:
                         pass
                 return True
+
+            # Demote: /demote USERNAME (admin-only)
+            if cmd == 'demote':
+                try:
+                    c_user = db.getUser(id=chat_id)
+                except KeyError:
+                    return True
+                parts = text.strip().split(None, 1)
+                if len(parts) < 2 or not parts[1].strip():
+                    try:
+                        txt = rp.formatForTelegram(rp.Reply(rp.types.ERR_NO_ARG))
+                        bot.send_message(chat_id, txt, parse_mode='HTML', reply_to_message_id=m.message_id)
+                    except Exception:
+                        pass
+                    return True
+                username = parts[1].strip()
+                res = core.demote_user(c_user, username)
+                if res:
+                    try:
+                        txt = rp.formatForTelegram(res)
+                        bot.send_message(chat_id, txt, parse_mode='HTML', reply_to_message_id=m.message_id)
+                    except Exception:
+                        pass
+                return True
             
             # Handle stop command
             if cmd == 'stop':

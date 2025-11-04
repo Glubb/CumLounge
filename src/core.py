@@ -542,6 +542,27 @@ def promote_user(user, username2, rank):
 	return rp.Reply(rp.types.SUCCESS)
 
 @requireUser
+@requireRank(RANKS.admin)
+def demote_user(user, username2):
+	"""Demote a user back to regular user rank.
+	Guardrails: cannot demote users with rank >= invoker's rank; refuse if blacklisted.
+	"""
+	user2 = getUserByName(username2)
+	if user2 is None:
+		return rp.Reply(rp.types.ERR_NO_USER)
+	# Don't silently unblacklist via demotion
+	if user2.isBlacklisted():
+		return rp.Reply(rp.types.ERR_COMMAND_DISABLED)
+	# Prevent demoting same or higher rank than invoker
+	if user2.rank >= user.rank:
+		return
+	with db.modifyUser(id=user2.id) as user2:
+		user2.rank = RANKS.user
+	_push_system_message(rp.Reply(rp.types.CUSTOM, text="Your privileges have been revoked; you are now a user."), who=user2)
+	logging.info("%s was demoted to user by %s", user2, user)
+	return rp.Reply(rp.types.SUCCESS)
+
+@requireUser
 @requireRank(RANKS.mod)
 def send_mod_message(user, arg):
 	text = arg + " ~<b>mods</b>"

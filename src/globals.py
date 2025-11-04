@@ -59,7 +59,10 @@ DEFAULT_COMMANDS = {
 	"ps": "Sign with your pat level",
 	"users": "Show current user count",
 	"remove": "Delete a message [mod]",
-	"togglemedia": "Toggle global media relay on/off [admin]"
+	"togglemedia": "Toggle global media relay on/off [admin]",
+	"mod": "Promote a user to mod [admin]",
+	"admin": "Promote a user to admin [admin]",
+	"demote": "Demote a user to user [admin]"
 }
 
 # File names
