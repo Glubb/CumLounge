@@ -10,6 +10,7 @@ from src.cache import CachedMessage
 from src.util import genTripcode, getLastModFile
 
 launched = None
+is_leader = True
 
 db = None
 ch = None
@@ -33,13 +34,14 @@ sign_interval = None
 vote_up_interval = None
 vote_down_interval = None
 media_blocked = False
+media_auto_disable_hours = 8
 
 def relay_message(message, user, msid, reply_msid):
 	"""Deprecated: not used by current Telegram pipeline."""
 	return None, msid
 
 def init(config, _db, _ch):
-	global launched, db, ch, spam_scores, reg_open, log_channel, karma_amount_add, karma_amount_remove, karma_level_names, blacklist_contact, bot_name, karma_is_pats, enable_signing, allow_remove_command, media_limit_period, sign_interval, vote_up_interval, vote_down_interval, media_blocked
+	global launched, db, ch, spam_scores, reg_open, log_channel, karma_amount_add, karma_amount_remove, karma_level_names, blacklist_contact, bot_name, karma_is_pats, enable_signing, allow_remove_command, media_limit_period, sign_interval, vote_up_interval, vote_down_interval, media_blocked, media_auto_disable_hours, is_leader
 
 	launched = datetime.now()
 
@@ -69,6 +71,13 @@ def init(config, _db, _ch):
 
 	# Optional: allow configuring initial media blocked state (default False)
 	media_blocked = bool(config.get("media_blocked", False))
+	# Optional: designate this instance as leader to run global scheduled tasks
+	is_leader = bool(config.get("is_leader", True))
+	# Optional: hours of admin inactivity after which media is auto-disabled (0 to disable)
+	try:
+		media_auto_disable_hours = int(config.get("media_auto_disable_hours", 8))
+	except Exception:
+		media_auto_disable_hours = 8
 
 	if config.get("locale"):
 		rp.localization = __import__("src.replies_" + config["locale"],
@@ -93,6 +102,37 @@ def register_tasks(sched):
 				with db.modifyUser(id=user.id) as user:
 					user.removeWarning()
 	sched.register(task, minutes=15)
+
+	# Auto-disable media if no admin activity for configured hours
+	def _auto_disable_media():
+		try:
+			if media_auto_disable_hours and media_auto_disable_hours > 0:
+				threshold = datetime.now() - timedelta(hours=media_auto_disable_hours)
+				latest_admin = None
+				for u in db.iterateUsers():
+					try:
+						if not u.isJoined() or u.rank < RANKS.admin:
+							continue
+						t = getattr(u, 'lastActive', None)
+						if t is None:
+							continue
+						if latest_admin is None or t > latest_admin:
+							latest_admin = t
+					except Exception:
+						continue
+				# If no admin seen or stale beyond threshold, and media not blocked yet: block it
+				if (latest_admin is None or latest_admin < threshold) and (not media_blocked):
+					# flip flag
+					global media_blocked
+					media_blocked = True
+					# Inform users
+					Sender.reply(rp.Reply(rp.types.CUSTOM, text="Media has been automatically disabled due to no admin activity."), None, None, None, None)
+		except Exception:
+			logging.exception("Error in auto-disable media task")
+
+	# Check every 30 minutes (leader-only to avoid duplicate notices)
+	if is_leader:
+		sched.register(_auto_disable_media, minutes=30)
 
 def updateUserFromEvent(user, c_user):
 	user.username = c_user.username

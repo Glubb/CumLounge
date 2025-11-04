@@ -17,6 +17,9 @@ allow_contacts: false
 allow_documents: true
 # relay (anonymous) polls
 allow_polls: true
+# designate this instance as the leader (runs global scheduled tasks and notices)
+# set to false for secondary instances sharing the same database
+#is_leader: true
 
 # allow mods to remove message without issuing a cooldown
 allow_remove_command: false

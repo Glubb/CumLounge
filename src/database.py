@@ -263,11 +263,11 @@ class JSONDatabase(Database):
 			return []
 
 	# Stubs for message mapping support; JSON backend is not shared across processes
-	def save_message_mapping(self, uid: int, msid: int, message_id: int):
+	def save_message_mapping(self, uid: int, msid: int, message_id: int, bot_id: int | None = None):
 		return
-	def get_msid_by_uid_message(self, uid: int, message_id: int):
+	def get_msid_by_uid_message(self, uid: int, message_id: int, bot_id: int | None = None):
 		return None
-	def get_recipient_mappings_by_msid(self, msid: int):
+	def get_recipient_mappings_by_msid(self, msid: int, bot_id: int | None = None):
 		return []
 			
 	def getSystemConfig(self):
@@ -286,6 +286,7 @@ class SQLiteDatabase(Database):
 		self.db = sqlite3.connect(path, check_same_thread=False,
 			detect_types=sqlite3.PARSE_DECLTYPES|sqlite3.PARSE_COLNAMES)
 		self.db.row_factory = sqlite3.Row
+		self._mm_has_bot_id = False
 		# Improve multi-process concurrency when sharing one DB file
 		try:
 			# WAL allows readers during writes; NORMAL sync is a good balance
@@ -326,7 +327,8 @@ class SQLiteDatabase(Database):
 	def _ensure_schema(self):
 		def row_exists(table, name):
 			cur = self.db.execute("PRAGMA table_info(`" + table + "`);")
-			return any(row[1] == name for row in cur)
+			rows = list(cur)
+			return any(row[1] == name for row in rows), rows
 
 		with self.lock:
 			# create initial schema
@@ -358,7 +360,8 @@ CREATE TABLE IF NOT EXISTS `users` (
 );
 			""".strip())
 			# migration
-			if not row_exists("users", "tripcode"):
+			exists, _ = row_exists("users", "tripcode")
+			if not exists:
 				self.db.execute("ALTER TABLE `users` ADD `tripcode` TEXT")
 			# message mapping for cross-process lookups
 			self.db.execute("""
@@ -373,27 +376,50 @@ CREATE TABLE IF NOT EXISTS `message_mapping` (
 			self.db.execute("CREATE INDEX IF NOT EXISTS `idx_mm_msid` ON `message_mapping`(`msid`);")
 			self.db.execute("CREATE INDEX IF NOT EXISTS `idx_mm_uid_msid` ON `message_mapping`(`uid`, `msid`);")
 
+			# Ensure bot_id column exists to disambiguate per-bot mappings
+			exists, cols = row_exists("message_mapping", "bot_id")
+			if not exists:
+				self.db.execute("ALTER TABLE `message_mapping` ADD `bot_id` BIGINT;")
+				self.db.execute("CREATE INDEX IF NOT EXISTS `idx_mm_bot_uid` ON `message_mapping`(`bot_id`, `uid`);")
+			# Detect availability for conditional queries
+			self._mm_has_bot_id = True
+
 	# -- Message mapping helpers for sharing across instances --
-	def save_message_mapping(self, uid: int, msid: int, message_id: int):
+	def save_message_mapping(self, uid: int, msid: int, message_id: int, bot_id: int | None = None):
 		"""Persist mapping so other processes can resolve reactions/mirroring."""
-		sql = "REPLACE INTO message_mapping(`msid`,`uid`,`message_id`) VALUES (?,?,?)"
+		if self._mm_has_bot_id and bot_id is not None:
+			sql = "REPLACE INTO message_mapping(`msid`,`uid`,`message_id`,`bot_id`) VALUES (?,?,?,?)"
+			params = (msid, uid, message_id, bot_id)
+		else:
+			sql = "REPLACE INTO message_mapping(`msid`,`uid`,`message_id`) VALUES (?,?,?)"
+			params = (msid, uid, message_id)
 		with self.lock:
-			self.db.execute(sql, (msid, uid, message_id))
+			self.db.execute(sql, params)
 			# Ensure immediate visibility across processes
 			self.db.commit()
 
-	def get_msid_by_uid_message(self, uid: int, message_id: int):
-		sql = "SELECT msid FROM message_mapping WHERE uid = ? AND message_id = ?"
+	def get_msid_by_uid_message(self, uid: int, message_id: int, bot_id: int | None = None):
+		if self._mm_has_bot_id and bot_id is not None:
+			sql = "SELECT msid FROM message_mapping WHERE uid = ? AND message_id = ? AND (bot_id = ? OR bot_id IS NULL)"
+			params = (uid, message_id, bot_id)
+		else:
+			sql = "SELECT msid FROM message_mapping WHERE uid = ? AND message_id = ?"
+			params = (uid, message_id)
 		with self.lock:
-			cur = self.db.execute(sql, (uid, message_id))
+			cur = self.db.execute(sql, params)
 			row = cur.fetchone()
 			return row[0] if row else None
 
-	def get_recipient_mappings_by_msid(self, msid: int):
+	def get_recipient_mappings_by_msid(self, msid: int, bot_id: int | None = None):
 		"""Return list of (uid, message_id) for all recipients of msid."""
-		sql = "SELECT uid, message_id FROM message_mapping WHERE msid = ?"
+		if self._mm_has_bot_id and bot_id is not None:
+			sql = "SELECT uid, message_id FROM message_mapping WHERE msid = ? AND (bot_id = ? OR bot_id IS NULL)"
+			params = (msid, bot_id)
+		else:
+			sql = "SELECT uid, message_id FROM message_mapping WHERE msid = ?"
+			params = (msid,)
 		with self.lock:
-			cur = self.db.execute(sql, (msid,))
+			cur = self.db.execute(sql, params)
 			return [(row[0], row[1]) for row in cur.fetchall()]
 	def getUser(self, id=None):
 		if id is None:

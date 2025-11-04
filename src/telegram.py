@@ -15,6 +15,8 @@ bot = None
 db = None
 ch = None
 message_queue = None
+BOT_ID = None
+BOT_USERNAME = None
 
 # Config flags
 allow_contacts = False
@@ -166,7 +168,7 @@ def send_thread():
             if sent and hasattr(sent, 'message_id') and item.msid is not None:
                 ch.saveMapping(item.user.id, item.msid, sent.message_id)
                 try:
-                    db.save_message_mapping(item.user.id, item.msid, sent.message_id)
+                    db.save_message_mapping(item.user.id, item.msid, sent.message_id, bot_id=BOT_ID)
                 except Exception:
                     pass
         except Exception as e:
@@ -219,7 +221,7 @@ def relay(message):
         msid = ch.assignMessageId(cm)
         try:
             ch.saveMapping(sender_id, msid, message.message_id)
-            db.save_message_mapping(sender_id, msid, message.message_id)
+            db.save_message_mapping(sender_id, msid, message.message_id, bot_id=BOT_ID)
         except Exception:
             pass
 
@@ -301,6 +303,14 @@ def init(config, _db, _ch):
     allow_polls = bool(config.get("allow_polls", False))
 
     bot = telebot.TeleBot(config["bot_token"], threaded=False, parse_mode="HTML")
+    # Identify this bot instance for DB scoping
+    try:
+        me = bot.get_me()
+        logging.info(f"Bot initialized: @{me.username} (ID: {me.id})")
+        globals()["BOT_ID"] = int(me.id)
+        globals()["BOT_USERNAME"] = str(me.username)
+    except Exception as e:
+        logging.warning("Could not resolve bot identity: %s", e)
 
     # Register as a core receiver so system messages can be delivered here
     try:
@@ -384,7 +394,7 @@ def init(config, _db, _ch):
             if msid is None:
                 # Fallback to DB for cross-process support
                 try:
-                    msid = db.get_msid_by_uid_message(chat_id, msg_id)
+                    msid = db.get_msid_by_uid_message(chat_id, msg_id, bot_id=BOT_ID)
                 except Exception:
                     msid = None
                 if msid is None:
@@ -452,7 +462,7 @@ def init(config, _db, _ch):
                             recipient_pairs.append((recipient.id, recipient_msg_id))
                     # If nothing found in cache, try DB
                     if not recipient_pairs:
-                        recipient_pairs = getattr(db, 'get_recipient_mappings_by_msid', lambda _msid: [])(msid)
+                        recipient_pairs = getattr(db, 'get_recipient_mappings_by_msid', lambda _msid, _bid=None: [])(msid, BOT_ID)
                         # filter out the reactor
                         recipient_pairs = [(uid, mid) for (uid, mid) in recipient_pairs if uid != user_id]
                 except Exception:
