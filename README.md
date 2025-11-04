@@ -69,6 +69,17 @@ Admins can temporarily disable relaying of user media (images, videos, documents
 
 You can also auto-disable media when no admin has typed for a while. Set `media_auto_disable_hours` in `config.yaml` (defaults to 8 if omitted, set 0 to disable). The bot periodically checks admin activity and will switch media off with a broadcast notice if the threshold is exceeded.
 
+### Running multiple instances with a shared database
+- Only use the SQLite backend for sharing. In `config.yaml`, point all instances to the same absolute path, e.g.
+   ```yaml
+   database: [sqlite, "/var/lib/catlounge/secretlounge.sqlite"]
+   ```
+- This fork enables SQLite WAL and a busy timeout to improve multi-process access. However:
+   - Don’t run two instances with the same bot token actively polling; Telegram’s getUpdates offset is single-consumer. Prefer one active instance, or switch to webhooks behind a single service.
+   - In-memory caches are not shared. This fork persists message→recipient mappings to SQLite so reactions can be resolved across processes, but other transient state still lives in-memory.
+   - Scheduled tasks (spam score decay, warning cleanup, auto-disable) run in every instance. To avoid duplicate work/messages, run only one “leader” instance in production.
+- JSON backend is for development only and is not safe for multi-process sharing.
+
 ### Starting the bot
 Once the bot is running, you can use a telegram client to connect to your bot. The first person that connects automatically becomes an admin. Thereby, it is important that you do not publish the bot URL before first entering it. If you are the first one to join, you should get a nottification message confirming you have been made an automatic admin. Additional admins and mods may be promoted using the `/admin` and `/mod` commands. We recommend defining a welcome message with rules, too, using `/rules <TEXT>`.
 

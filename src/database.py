@@ -261,6 +261,14 @@ class JSONDatabase(Database):
 			# In JSON implementation we don't store chat mappings
 			# You'll need to implement chat storage if you want to track them
 			return []
+
+	# Stubs for message mapping support; JSON backend is not shared across processes
+	def save_message_mapping(self, uid: int, msid: int, message_id: int):
+		return
+	def get_msid_by_uid_message(self, uid: int, message_id: int):
+		return None
+	def get_recipient_mappings_by_msid(self, msid: int):
+		return []
 			
 	def getSystemConfig(self):
 		with self.lock:
@@ -278,6 +286,15 @@ class SQLiteDatabase(Database):
 		self.db = sqlite3.connect(path, check_same_thread=False,
 			detect_types=sqlite3.PARSE_DECLTYPES|sqlite3.PARSE_COLNAMES)
 		self.db.row_factory = sqlite3.Row
+		# Improve multi-process concurrency when sharing one DB file
+		try:
+			# WAL allows readers during writes; NORMAL sync is a good balance
+			self.db.execute("PRAGMA journal_mode=WAL;")
+			self.db.execute("PRAGMA synchronous=NORMAL;")
+			# Wait up to 5s on locks to reduce 'database is locked' errors
+			self.db.execute("PRAGMA busy_timeout=5000;")
+		except Exception:
+			logging.debug("Unable to set SQLite PRAGMAs; continuing with defaults")
 		self._ensure_schema()
 	def register_tasks(self, sched):
 		def f():
@@ -343,6 +360,41 @@ CREATE TABLE IF NOT EXISTS `users` (
 			# migration
 			if not row_exists("users", "tripcode"):
 				self.db.execute("ALTER TABLE `users` ADD `tripcode` TEXT")
+			# message mapping for cross-process lookups
+			self.db.execute("""
+CREATE TABLE IF NOT EXISTS `message_mapping` (
+	`msid` INTEGER NOT NULL,
+	`uid` BIGINT NOT NULL,
+	`message_id` BIGINT NOT NULL,
+	`created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+	PRIMARY KEY (`uid`, `message_id`)
+);
+			""".strip())
+			self.db.execute("CREATE INDEX IF NOT EXISTS `idx_mm_msid` ON `message_mapping`(`msid`);")
+			self.db.execute("CREATE INDEX IF NOT EXISTS `idx_mm_uid_msid` ON `message_mapping`(`uid`, `msid`);")
+
+	# -- Message mapping helpers for sharing across instances --
+	def save_message_mapping(self, uid: int, msid: int, message_id: int):
+		"""Persist mapping so other processes can resolve reactions/mirroring."""
+		sql = "REPLACE INTO message_mapping(`msid`,`uid`,`message_id`) VALUES (?,?,?)"
+		with self.lock:
+			self.db.execute(sql, (msid, uid, message_id))
+			# Ensure immediate visibility across processes
+			self.db.commit()
+
+	def get_msid_by_uid_message(self, uid: int, message_id: int):
+		sql = "SELECT msid FROM message_mapping WHERE uid = ? AND message_id = ?"
+		with self.lock:
+			cur = self.db.execute(sql, (uid, message_id))
+			row = cur.fetchone()
+			return row[0] if row else None
+
+	def get_recipient_mappings_by_msid(self, msid: int):
+		"""Return list of (uid, message_id) for all recipients of msid."""
+		sql = "SELECT uid, message_id FROM message_mapping WHERE msid = ?"
+		with self.lock:
+			cur = self.db.execute(sql, (msid,))
+			return [(row[0], row[1]) for row in cur.fetchall()]
 	def getUser(self, id=None):
 		if id is None:
 			raise ValueError()

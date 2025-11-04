@@ -165,6 +165,10 @@ def send_thread():
             sent = send_to_single_inner(item.user.id, item.msg, reply_to, item.force_caption)
             if sent and hasattr(sent, 'message_id') and item.msid is not None:
                 ch.saveMapping(item.user.id, item.msid, sent.message_id)
+                try:
+                    db.save_message_mapping(item.user.id, item.msid, sent.message_id)
+                except Exception:
+                    pass
         except Exception as e:
             logging.warning("Message delivery failed: %s", e)
             # If recent, retry once after short delay
@@ -215,6 +219,7 @@ def relay(message):
         msid = ch.assignMessageId(cm)
         try:
             ch.saveMapping(sender_id, msid, message.message_id)
+            db.save_message_mapping(sender_id, msid, message.message_id)
         except Exception:
             pass
 
@@ -377,8 +382,14 @@ def init(config, _db, _ch):
 
             msid = ch.lookupMappingByData(msg_id, uid=chat_id)
             if msid is None:
-                logging.debug("reaction: no msid for chat=%s msg=%s", chat_id, msg_id)
-                return
+                # Fallback to DB for cross-process support
+                try:
+                    msid = db.get_msid_by_uid_message(chat_id, msg_id)
+                except Exception:
+                    msid = None
+                if msid is None:
+                    logging.debug("reaction: no msid for chat=%s msg=%s", chat_id, msg_id)
+                    return
 
             # Count updates don't include user; we only act on per-user updates
             user_obj = getattr(m, 'user', None)
@@ -427,37 +438,38 @@ def init(config, _db, _ch):
             cm = ch.getMessage(msid)
             logging.debug("Lookup msid=%s -> found=%s sender=%s", msid, cm is not None, cm.user_id if cm else None)
             if cm:
-                # The important user is the SENDER of the original message (cm.user_id)
-                # We want to show the reaction on the sender's copy
                 sender_id = cm.user_id
-                
-                # Iterate through all users to find their copies of this message
                 mirrored_count = 0
-                for recipient in db.iterateUsers():
-                    if recipient.id == user_id:
-                        continue  # Skip the reactor's own copy
-                    if not recipient.isJoined():
-                        continue
-                    
-                    # Look up this recipient's copy of the message
-                    recipient_msg_id = ch.lookupMapping(recipient.id, msid=msid)
-                    logging.debug("Recipient %s (is_sender=%s): msid=%s -> msg_id=%s", 
-                                recipient.id, recipient.id == sender_id, msid, recipient_msg_id)
-                    if recipient_msg_id:
-                        try:
-                            # Set reaction on this recipient's copy
-                            # Create a proper ReactionTypeEmoji object
-                            reaction_obj = ReactionTypeEmoji(emoji)
-                            bot.set_message_reaction(
-                                chat_id=recipient.id,
-                                message_id=recipient_msg_id,
-                                reaction=[reaction_obj],
-                                is_big=False
-                            )
-                            mirrored_count += 1
-                            logging.debug("Mirrored reaction %s to user %s msg %s", emoji, recipient.id, recipient_msg_id)
-                        except Exception as e:
-                            logging.warning("✗ Failed to mirror reaction to user %s: %s", recipient.id, e)
+                # Prefer cache when available; otherwise use DB mapping across processes
+                recipient_pairs = []
+                try:
+                    # Gather from cache
+                    for recipient in db.iterateUsers():
+                        if not recipient.isJoined() or recipient.id == user_id:
+                            continue
+                        recipient_msg_id = ch.lookupMapping(recipient.id, msid=msid)
+                        if recipient_msg_id:
+                            recipient_pairs.append((recipient.id, recipient_msg_id))
+                    # If nothing found in cache, try DB
+                    if not recipient_pairs:
+                        recipient_pairs = getattr(db, 'get_recipient_mappings_by_msid', lambda _msid: [])(msid)
+                        # filter out the reactor
+                        recipient_pairs = [(uid, mid) for (uid, mid) in recipient_pairs if uid != user_id]
+                except Exception:
+                    pass
+
+                for (rcpt_uid, rcpt_msg_id) in recipient_pairs:
+                    try:
+                        reaction_obj = ReactionTypeEmoji(emoji)
+                        bot.set_message_reaction(
+                            chat_id=rcpt_uid,
+                            message_id=rcpt_msg_id,
+                            reaction=[reaction_obj],
+                            is_big=False
+                        )
+                        mirrored_count += 1
+                    except Exception as e:
+                        logging.warning("✗ Failed to mirror reaction to user %s: %s", rcpt_uid, e)
                 logging.debug("Mirrored reaction to %d users (sender=%s)", mirrored_count, sender_id)
 
             # Update karma for the message sender
