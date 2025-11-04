@@ -250,6 +250,7 @@ format_strs = {
 	types.ERR_SPAMMY_SIGN: em("Your message has not been sent. Avoid using /sign too often, try again later."),
 	types.ERR_SPAMMY_VOTE_UP: lambda karma_is_pats, **_: em(
 			"Your " + ("pat" if karma_is_pats else "karma") + " was not transmitted.\n" +
+			"\t/togglemedia" +            " - <i>Toggle global media relay on/off</i>\n" +
 			"Avoid using +1 too often, try again later."
 		),
 	types.ERR_SPAMMY_VOTE_DOWN: lambda karma_is_pats, **_: em(
