@@ -9,6 +9,7 @@ import src.core as core
 import src.replies as rp
 from src.cache import CachedMessage
 from src.util import MutablePriorityQueue
+from src.globals import SCORE_BASE_MESSAGE, SCORE_TEXT_CHARACTER, SCORE_TEXT_LINEBREAK
 
 # Globals initialized in init()
 bot = None
@@ -372,6 +373,139 @@ def init(config, _db, _ch):
                             bot.send_message(chat_id, txt, parse_mode='HTML')
                         except Exception as e:
                             logging.debug('start reply failed: %s', e)
+                return True
+
+            # Help: show available commands
+            if cmd == 'help':
+                try:
+                    c_user = db.getUser(id=chat_id)
+                except KeyError:
+                    return True
+                try:
+                    reply = rp.Reply(rp.types.HELP, rank=c_user.rank, karma_is_pats=core.karma_is_pats)
+                    txt = rp.formatForTelegram(reply)
+                    bot.send_message(chat_id, txt, parse_mode='HTML', reply_to_message_id=getattr(m, 'message_id', None))
+                except Exception:
+                    pass
+                return True
+
+            # Info: show info about your account, or (mods) info about replied user
+            if cmd == 'info':
+                try:
+                    c_user = db.getUser(id=chat_id)
+                except KeyError:
+                    return True
+                replied = getattr(m, 'reply_to_message', None)
+                res = None
+                if replied is not None and c_user.rank >= core.RANKS.mod:
+                    target_msid = ch.lookupMappingByData(replied.message_id, uid=chat_id) or getattr(db, 'get_msid_by_uid_message', lambda *_args, **_kw: None)(chat_id, replied.message_id, bot_id=BOT_ID)
+                    if target_msid is not None:
+                        res = core.get_info_mod(c_user, target_msid)
+                if res is None:
+                    res = core.get_info(c_user)
+                if res:
+                    try:
+                        txt = rp.formatForTelegram(res)
+                        bot.send_message(chat_id, txt, parse_mode='HTML', reply_to_message_id=getattr(m, 'message_id', None))
+                    except Exception:
+                        pass
+                return True
+
+            # Users: show user counts
+            if cmd == 'users':
+                try:
+                    c_user = db.getUser(id=chat_id)
+                except KeyError:
+                    return True
+                res = core.get_users(c_user)
+                if res:
+                    try:
+                        txt = rp.formatForTelegram(res)
+                        bot.send_message(chat_id, txt, parse_mode='HTML', reply_to_message_id=getattr(m, 'message_id', None))
+                    except Exception:
+                        pass
+                return True
+
+            # Remove: delete the replied message (mods)
+            if cmd == 'remove':
+                try:
+                    c_user = db.getUser(id=chat_id)
+                except KeyError:
+                    return True
+                if c_user.rank < core.RANKS.mod:
+                    try:
+                        txt = rp.formatForTelegram(rp.Reply(rp.types.ERR_COMMAND_DISABLED))
+                        bot.send_message(chat_id, txt, parse_mode='HTML', reply_to_message_id=m.message_id)
+                    except Exception:
+                        pass
+                    return True
+                replied = getattr(m, 'reply_to_message', None)
+                if replied is None:
+                    try:
+                        txt = rp.formatForTelegram(rp.Reply(rp.types.ERR_NO_REPLY))
+                        bot.send_message(chat_id, txt, parse_mode='HTML', reply_to_message_id=m.message_id)
+                    except Exception:
+                        pass
+                    return True
+                target_msid = ch.lookupMappingByData(replied.message_id, uid=chat_id)
+                if target_msid is None:
+                    try:
+                        target_msid = db.get_msid_by_uid_message(chat_id, replied.message_id, bot_id=BOT_ID)
+                    except Exception:
+                        target_msid = None
+                if target_msid is None:
+                    try:
+                        txt = rp.formatForTelegram(rp.Reply(rp.types.ERR_NOT_IN_CACHE))
+                        bot.send_message(chat_id, txt, parse_mode='HTML', reply_to_message_id=m.message_id)
+                    except Exception:
+                        pass
+                    return True
+                res = core.delete_message(c_user, target_msid, del_all=False)
+                if res:
+                    try:
+                        txt = rp.formatForTelegram(res)
+                        bot.send_message(chat_id, txt, parse_mode='HTML', reply_to_message_id=m.message_id)
+                    except Exception:
+                        pass
+                return True
+
+            # ks: sign a message with karma level
+            if cmd == 'ks':
+                try:
+                    c_user = db.getUser(id=chat_id)
+                except KeyError:
+                    return True
+                parts = text.strip().split(None, 1)
+                if len(parts) < 2 or not parts[1].strip():
+                    try:
+                        txt = rp.formatForTelegram(rp.Reply(rp.types.ERR_NO_ARG))
+                        bot.send_message(chat_id, txt, parse_mode='HTML', reply_to_message_id=m.message_id)
+                    except Exception:
+                        pass
+                    return True
+                body = parts[1].strip()
+                # Prepare (spam checks, cooldown, signing rules)
+                score = (
+                    SCORE_BASE_MESSAGE + len(body) * SCORE_TEXT_CHARACTER + body.count('\n') * SCORE_TEXT_LINEBREAK
+                )
+                prep = core.prepare_user_message(c_user, score, is_media=False, signed=False, tripcode=False, ksigned=True)
+                # On error, core returns a Reply
+                if isinstance(prep, rp.Reply):
+                    try:
+                        txt = rp.formatForTelegram(prep)
+                        bot.send_message(chat_id, txt, parse_mode='HTML', reply_to_message_id=m.message_id)
+                    except Exception:
+                        pass
+                    return True
+                msid = int(prep)
+                # Compose signed-with-level text in plain text (no HTML)
+                level_name = core.getKarmaLevelName(c_user.karma)
+                out_text = f"{body}\n— {level_name}"
+                # Synthetic text event
+                ev = type('Ev', (), {'content_type': 'text', 'text': out_text})()
+                # Broadcast to all targets (except sender)
+                for u in _broadcast_targets(chat_id):
+                    send_to_single(ev, msid, u)
                 return True
             
             # Handle stop command
