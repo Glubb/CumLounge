@@ -179,6 +179,30 @@ def relay(message):
     """Main incoming message handler: forward to all active users (except sender)."""
     try:
         sender_id = message.from_user.id if hasattr(message, 'from_user') else message.chat.id
+        # Enforce admin media toggle: block media sending/forwarding for non-admins when enabled
+        def _is_forward(msg):
+            try:
+                return bool(getattr(msg, 'forward_from', None) or getattr(msg, 'forward_from_chat', None) or (hasattr(msg, 'json') and msg.json.get('forward_origin')))
+            except Exception:
+                return False
+        def _is_media(msg):
+            ct = getattr(msg, 'content_type', '')
+            return ct in {'photo','animation','document','video','sticker','voice','video_note','audio','poll'}
+
+        try:
+            user_obj = db.getUser(id=sender_id)
+        except KeyError:
+            user_obj = None
+
+        if getattr(core, 'media_blocked', False) and (_is_media(message) or (_is_forward(message) and _is_media(message))):
+            # allow admins to bypass
+            if not (user_obj and user_obj.rank >= core.RANKS.admin):
+                try:
+                    txt = rp.formatForTelegram(rp.Reply(rp.types.ERR_MEDIA_DISABLED))
+                    bot.send_message(sender_id, txt, parse_mode='HTML', reply_to_message_id=getattr(message, 'message_id', None))
+                except Exception:
+                    pass
+                return
         # Cache original message for reactions/links
         cm = CachedMessage(user_id=sender_id)
         msid = ch.assignMessageId(cm)
@@ -303,6 +327,19 @@ def init(config, _db, _ch):
                         bot.send_message(chat_id, txt, parse_mode='HTML', reply_to_message_id=m.message_id)
                     except Exception as e:
                         logging.debug('toggle_karma reply failed: %s', e)
+                return True
+            if cmd in ('togglemedia',):
+                try:
+                    c_user = db.getUser(id=chat_id)
+                except KeyError:
+                    return True
+                res = core.toggle_media(c_user)
+                if res:
+                    try:
+                        txt = rp.formatForTelegram(res)
+                        bot.send_message(chat_id, txt, parse_mode='HTML', reply_to_message_id=m.message_id)
+                    except Exception as e:
+                        logging.debug('toggle_media reply failed: %s', e)
                 return True
         except Exception:
             logging.exception('Error handling command')

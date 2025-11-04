@@ -32,13 +32,14 @@ media_limit_period = None
 sign_interval = None
 vote_up_interval = None
 vote_down_interval = None
+media_blocked = False
 
 def relay_message(message, user, msid, reply_msid):
 	"""Deprecated: not used by current Telegram pipeline."""
 	return None, msid
 
 def init(config, _db, _ch):
-	global launched, db, ch, spam_scores, reg_open, log_channel, karma_amount_add, karma_amount_remove, karma_level_names, blacklist_contact, bot_name, karma_is_pats, enable_signing, allow_remove_command, media_limit_period, sign_interval, vote_up_interval, vote_down_interval
+	global launched, db, ch, spam_scores, reg_open, log_channel, karma_amount_add, karma_amount_remove, karma_level_names, blacklist_contact, bot_name, karma_is_pats, enable_signing, allow_remove_command, media_limit_period, sign_interval, vote_up_interval, vote_down_interval, media_blocked
 
 	launched = datetime.now()
 
@@ -65,6 +66,9 @@ def init(config, _db, _ch):
 	sign_interval = timedelta(seconds=int(config.get("sign_limit_interval", 600)))
 	vote_up_interval = timedelta(seconds=int(config.get("vote_up_limit_interval", 0)))
 	vote_down_interval = timedelta(seconds=int(config.get("vote_down_limit_interval", 60)))
+
+	# Optional: allow configuring initial media blocked state (default False)
+	media_blocked = bool(config.get("media_blocked", False))
 
 	if config.get("locale"):
 		rp.localization = __import__("src.replies_" + config["locale"],
@@ -439,6 +443,13 @@ def toggle_karma(user):
 		user.hideKarma = not user.hideKarma
 		new = user.hideKarma
 	return rp.Reply(rp.types.BOOLEAN_CONFIG, description=("Pat" if karma_is_pats else "Karma") + " notifications", enabled=not new)
+
+@requireUser
+@requireAdmin
+def toggle_media(user):
+    global media_blocked
+    media_blocked = not media_blocked
+    return rp.Reply(rp.types.BOOLEAN_CONFIG, description="Media messages", enabled=not media_blocked)
 
 @requireUser
 def get_tripcode(user):
