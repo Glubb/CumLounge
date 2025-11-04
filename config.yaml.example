@@ -55,6 +55,10 @@ bot_name: anon
 # duration (hours) during which new users can't send media or forwards (optional)
 #media_limit_period: 3
 
+# automatically disable media relaying if no admin has been active for the given number of hours (optional)
+# set to 0 to disable auto-disabling; defaults to 8 when omitted
+#media_auto_disable_hours: 8
+
 # map of bots that users can refer to in their messages (optional)
 # e.g. >>>/foo/ would be turned into an inline link to http://t.me/foochatbot
 #linked_network:

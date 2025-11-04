@@ -3,6 +3,7 @@ import time
 import json
 import telebot
 from telebot.types import ReactionTypeEmoji
+import datetime
 
 import src.core as core
 import src.replies as rp
@@ -179,6 +180,12 @@ def relay(message):
     """Main incoming message handler: forward to all active users (except sender)."""
     try:
         sender_id = message.from_user.id if hasattr(message, 'from_user') else message.chat.id
+        # Update lastActive for the sender on any message
+        try:
+            with db.modifyUser(id=sender_id) as u:
+                u.lastActive = datetime.datetime.now()
+        except Exception:
+            pass
         # Enforce admin media toggle: block media sending/forwarding for non-admins when enabled
         def _is_forward(msg):
             try:

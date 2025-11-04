@@ -58,10 +58,16 @@ info - Get info about your account
 ks - Sign with your karma level
 users - Show current user count
 remove - Delete a message [mod]
+togglemedia - Toggle global media relay on/off [admin]
 ```
 Please keep in mind that if you decided to enable `karma_is_pats` in the configurations, you may want to change the `ks` into `ps` here.
 
 Our bot also supports a commands setup with `/setup_commands`. This allows you to set up the commands list from within the bot if you have not already defined any commands. If you need to modify your commands list, please use either BotFather's `/setcommands` or your bot's `/commands` command; both work nearly identical.
+
+### Media controls
+Admins can temporarily disable relaying of user media (images, videos, documents, and forwards) with `/togglemedia`. When disabled, non-admins attempting to send media will receive a notice and their media won’t be forwarded.
+
+You can also auto-disable media when no admin has typed for a while. Set `media_auto_disable_hours` in `config.yaml` (defaults to 8 if omitted, set 0 to disable). The bot periodically checks admin activity and will switch media off with a broadcast notice if the threshold is exceeded.
 
 ### Starting the bot
 Once the bot is running, you can use a telegram client to connect to your bot. The first person that connects automatically becomes an admin. Thereby, it is important that you do not publish the bot URL before first entering it. If you are the first one to join, you should get a nottification message confirming you have been made an automatic admin. Additional admins and mods may be promoted using the `/admin` and `/mod` commands. We recommend defining a welcome message with rules, too, using `/rules <TEXT>`.

@@ -26,3 +26,5 @@
 * Added: /setup_commands command
 * Added: Compatibility for Windows (except for tripcodes)
 * Added: Info message for the first user
+* Added: Admin command /togglemedia to enable/disable media relaying
+* Added: Optional auto-disable of media after admin inactivity (configure via media_auto_disable_hours)
