@@ -62,6 +62,9 @@ bot_name: anon
 # set to 0 to disable auto-disabling; defaults to 8 when omitted
 #media_auto_disable_hours: 8
 
+# Label used by /users for the global count line (optional)
+#global_user_count_label: "Secret Lounge user count"
+
 # map of bots that users can refer to in their messages (optional)
 # e.g. >>>/foo/ would be turned into an inline link to http://t.me/foochatbot
 #linked_network:

@@ -18,6 +18,7 @@ ch = None
 message_queue = None
 BOT_ID = None
 BOT_USERNAME = None
+GLOBAL_COUNT_LABEL = "Global user count"
 
 # Cache for reachable user IDs to reduce DB queries
 _reachable_cache = None
@@ -301,7 +302,7 @@ def run():
 
 
 def init(config, _db, _ch):
-    global bot, db, ch, message_queue, allow_contacts, allow_documents, allow_polls
+    global bot, db, ch, message_queue, allow_contacts, allow_documents, allow_polls, GLOBAL_COUNT_LABEL
 
     if not config.get("bot_token"):
         logging.error("No telegram token specified.")
@@ -328,6 +329,12 @@ def init(config, _db, _ch):
         globals()["BOT_USERNAME"] = str(me.username)
     except Exception as e:
         logging.warning("Could not resolve bot identity: %s", e)
+
+    # Custom label for global user count in /users
+    try:
+        GLOBAL_COUNT_LABEL = str(config.get("global_user_count_label", GLOBAL_COUNT_LABEL))
+    except Exception:
+        pass
 
     # Register as a core receiver so system messages can be delivered here
     try:
@@ -417,13 +424,40 @@ def init(config, _db, _ch):
                     c_user = db.getUser(id=chat_id)
                 except KeyError:
                     return True
-                res = core.get_users(c_user)
-                if res:
-                    try:
-                        txt = rp.formatForTelegram(res)
-                        bot.send_message(chat_id, txt, parse_mode='HTML', reply_to_message_id=getattr(m, 'message_id', None))
-                    except Exception:
-                        pass
+                # Compute per-bot and global counts
+                total_joined = 0
+                reachable_ids = set()
+                try:
+                    if BOT_ID is not None:
+                        reachable_ids = set(db.get_reachable_user_ids(BOT_ID))
+                except Exception:
+                    reachable_ids = set()
+                per_bot_joined = 0
+                for u in db.iterateUsers():
+                    if u.isJoined():
+                        total_joined += 1
+                        if BOT_ID is None or u.id in reachable_ids:
+                            per_bot_joined += 1
+
+                # Build a compact summary and append legacy breakdown for mods/admins
+                lines = [
+                    f"Users in this bot: <b>{per_bot_joined}</b>",
+                    f"{GLOBAL_COUNT_LABEL}: <b>{total_joined}</b>",
+                ]
+                try:
+                    legacy = core.get_users(c_user)
+                    if legacy:
+                        legacy_txt = rp.formatForTelegram(legacy)
+                        # Separate sections
+                        lines.append("")
+                        lines.append(legacy_txt)
+                except Exception:
+                    pass
+                out = "\n".join(lines)
+                try:
+                    bot.send_message(chat_id, out, parse_mode='HTML', reply_to_message_id=getattr(m, 'message_id', None))
+                except Exception:
+                    pass
                 return True
 
             # Remove: delete the replied message (mods)
