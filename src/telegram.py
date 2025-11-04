@@ -115,7 +115,8 @@ def send_to_single_inner(chat_id, ev, reply_to=None, force_caption=None):
 
     ct = getattr(ev, 'content_type', None)
     if ct == 'text':
-        return bot.send_message(chat_id, ev.text, **kwargs)
+        # Forward user text as plain text to avoid HTML parsing of unescaped input
+        return bot.send_message(chat_id, ev.text, parse_mode=None, **kwargs)
     elif ct == 'photo' and ev.photo:
         photo = max(ev.photo, key=lambda p: p.width * p.height)
         return bot.send_photo(chat_id, photo.file_id, **kwargs)
@@ -138,7 +139,8 @@ def send_to_single_inner(chat_id, ev, reply_to=None, force_caption=None):
     elif ct == 'contact':
         return bot.send_contact(chat_id, ev.contact.phone_number, ev.contact.first_name, **kwargs)
     else:
-        return bot.send_message(chat_id, rp.formatForTelegram(rp.Reply(rp.types.CUSTOM, text=str(getattr(ev, 'text', '')))), parse_mode='HTML', **kwargs)
+        # Fallback: send text as plain text (no HTML) if present
+        return bot.send_message(chat_id, str(getattr(ev, 'text', '')), parse_mode=None, **kwargs)
 
 
 def send_to_single(ev, msid, user, *, reply_msid=None, force_caption=None):
