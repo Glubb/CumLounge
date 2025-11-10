@@ -995,6 +995,19 @@ def init(config, _db, _ch):
                     except Exception as e:
                         logging.debug('toggle_media reply failed: %s', e)
                 return True
+            if cmd in ('toggleremove',):
+                try:
+                    c_user = db.getUser(id=chat_id)
+                except KeyError:
+                    return True
+                res = core.toggle_remove(c_user)
+                if res:
+                    try:
+                        txt = rp.formatForTelegram(res)
+                        bot.send_message(chat_id, txt, parse_mode='HTML', reply_to_message_id=m.message_id)
+                    except Exception as e:
+                        logging.debug('toggle_remove reply failed: %s', e)
+                return True
         except Exception:
             logging.exception('Error handling command')
         return False

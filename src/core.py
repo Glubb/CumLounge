@@ -63,8 +63,9 @@ def init(config, _db, _ch):
 	bot_name = config.get("bot_name", "")
 	karma_is_pats = config.get("karma_is_pats", False)
 	blacklist_contact = config.get("blacklist_contact", "")
-	enable_signing = config["enable_signing"]
-	allow_remove_command = config["allow_remove_command"]
+	enable_signing = config.get("enable_signing", False)
+	# Default to True if not specified so mods can /remove by default
+	allow_remove_command = config.get("allow_remove_command", True)
 	if "media_limit_period" in config.keys():
 		media_limit_period = timedelta(hours=int(config["media_limit_period"]))
 	sign_interval = timedelta(seconds=int(config.get("sign_limit_interval", 600)))
@@ -500,6 +501,13 @@ def toggle_media(user):
     global media_blocked
     media_blocked = not media_blocked
     return rp.Reply(rp.types.BOOLEAN_CONFIG, description="Media messages", enabled=not media_blocked)
+
+@requireUser
+@requireAdmin
+def toggle_remove(user):
+	global allow_remove_command
+	allow_remove_command = not allow_remove_command
+	return rp.Reply(rp.types.BOOLEAN_CONFIG, description="/remove command", enabled=allow_remove_command)
 
 @requireUser
 def get_tripcode(user):

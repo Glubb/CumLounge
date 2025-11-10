@@ -60,6 +60,7 @@ DEFAULT_COMMANDS = {
 	"ps": "Sign with your pat level",
 	"users": "Show current user count",
 	"remove": "Delete a message [mod]",
+	"toggleremove": "Toggle /remove command [admin]",
 	"warn": "Warn a user [mod]",
 	"cooldown": "Give a user a cooldown [mod]",
 	"delete": "Warn and delete a message [mod]",

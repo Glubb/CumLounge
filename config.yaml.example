@@ -22,7 +22,8 @@ allow_polls: true
 #is_leader: true
 
 # allow mods to remove message without issuing a cooldown
-allow_remove_command: false
+# Defaults to true if omitted. Use /toggleremove (admin) to switch at runtime.
+allow_remove_command: true
 
 # enable signing messages using /sign or /tsign as well as setting a tripcode
 enable_signing: false
