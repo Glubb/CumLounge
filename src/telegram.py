@@ -71,11 +71,54 @@ class _TelegramReceiver(core.Receiver):
 
     @staticmethod
     def delete(msids):
-        pass
+        """Delete messages across all users by msid(s)."""
+        if not isinstance(msids, list):
+            msids = [msids]
+        
+        for msid in msids:
+            # Get the cached message to find which users have copies
+            cm = ch.getMessage(msid)
+            if cm is None:
+                continue
+            
+            # Delete from all users who received this message
+            for user in db.iterateUsers():
+                if not user.isJoined():
+                    continue
+                
+                # Look up the telegram message_id for this user
+                msg_id = ch.lookupMapping(user.id, msid=msid)
+                if msg_id:
+                    try:
+                        bot.delete_message(user.id, msg_id)
+                        logging.debug("Deleted message %s from user %s", msg_id, user.id)
+                    except Exception as e:
+                        logging.debug("Failed to delete message %s from user %s: %s", msg_id, user.id, e)
+            
+            # Also try DB mapping for cross-process support
+            try:
+                recipient_pairs = db.get_recipient_mappings_by_msid(msid, BOT_ID)
+                for (uid, msg_id) in recipient_pairs:
+                    try:
+                        bot.delete_message(uid, msg_id)
+                        logging.debug("Deleted message %s from user %s (via DB)", msg_id, uid)
+                    except Exception as e:
+                        logging.debug("Failed to delete message %s from user %s: %s", msg_id, uid, e)
+            except Exception:
+                pass
+            
+            # Remove from cache
+            ch.deleteMappings(msid)
 
     @staticmethod
     def stop_invoked(who, delete_out=False):
-        pass
+        """Handle user leaving - optionally delete their outgoing messages."""
+        if delete_out:
+            # Delete all messages from this user
+            msgs = ch.getMessages(who.id)
+            msids = [cm.msid for cm in msgs if cm.msid is not None]
+            if msids:
+                _TelegramReceiver.delete(msids)
 
 def log_into_channel(msg, html=False):
     pass
