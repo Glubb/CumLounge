@@ -592,6 +592,190 @@ def init(config, _db, _ch):
                         pass
                 return True
             
+            # Blacklist: /blacklist REASON (reply, mod command)
+            if cmd == 'blacklist':
+                try:
+                    c_user = db.getUser(id=chat_id)
+                except KeyError:
+                    return True
+                # Permission check: at least moderator
+                if c_user.rank < core.RANKS.mod:
+                    try:
+                        txt = rp.formatForTelegram(rp.Reply(rp.types.ERR_COMMAND_DISABLED))
+                        bot.send_message(chat_id, txt, parse_mode='HTML', reply_to_message_id=m.message_id)
+                    except Exception:
+                        pass
+                    return True
+                # Must be used as a reply
+                replied = getattr(m, 'reply_to_message', None)
+                if replied is None:
+                    try:
+                        txt = rp.formatForTelegram(rp.Reply(rp.types.ERR_NO_REPLY))
+                        bot.send_message(chat_id, txt, parse_mode='HTML', reply_to_message_id=m.message_id)
+                    except Exception:
+                        pass
+                    return True
+                # Get the target msid from the replied message
+                target_msid = ch.lookupMappingByData(replied.message_id, uid=chat_id)
+                if target_msid is None:
+                    try:
+                        target_msid = db.get_msid_by_uid_message(chat_id, replied.message_id, bot_id=BOT_ID)
+                    except Exception:
+                        target_msid = None
+                if target_msid is None:
+                    try:
+                        txt = rp.formatForTelegram(rp.Reply(rp.types.ERR_NOT_IN_CACHE))
+                        bot.send_message(chat_id, txt, parse_mode='HTML', reply_to_message_id=m.message_id)
+                    except Exception:
+                        pass
+                    return True
+                # Extract reason from command text
+                parts = text.strip().split(None, 1)
+                reason = parts[1].strip() if len(parts) > 1 else "No reason specified"
+                # Call core blacklist function (del_all=True to match help text)
+                res = core.blacklist_user(c_user, target_msid, reason, del_all=True)
+                if res:
+                    try:
+                        txt = rp.formatForTelegram(res)
+                        bot.send_message(chat_id, txt, parse_mode='HTML', reply_to_message_id=m.message_id)
+                    except Exception:
+                        pass
+                return True
+            
+            # Unblacklist: /unblacklist ID/USERNAME (admin command)
+            if cmd == 'unblacklist':
+                try:
+                    c_user = db.getUser(id=chat_id)
+                except KeyError:
+                    return True
+                # Permission check: admin only
+                if c_user.rank < core.RANKS.admin:
+                    try:
+                        txt = rp.formatForTelegram(rp.Reply(rp.types.ERR_COMMAND_DISABLED))
+                        bot.send_message(chat_id, txt, parse_mode='HTML', reply_to_message_id=m.message_id)
+                    except Exception:
+                        pass
+                    return True
+                # Extract username argument
+                parts = text.strip().split(None, 1)
+                if len(parts) < 2 or not parts[1].strip():
+                    try:
+                        txt = rp.formatForTelegram(rp.Reply(rp.types.ERR_NO_ARG))
+                        bot.send_message(chat_id, txt, parse_mode='HTML', reply_to_message_id=m.message_id)
+                    except Exception:
+                        pass
+                    return True
+                username = parts[1].strip()
+                res = core.unblacklist_user(c_user, username)
+                if res:
+                    try:
+                        txt = rp.formatForTelegram(res)
+                        bot.send_message(chat_id, txt, parse_mode='HTML', reply_to_message_id=m.message_id)
+                    except Exception:
+                        pass
+                return True
+            
+            # Warn/Delete/Cooldown commands (mod, reply-based)
+            if cmd in ('warn', 'delete', 'deleteall', 'removeall', 'cooldown'):
+                try:
+                    c_user = db.getUser(id=chat_id)
+                except KeyError:
+                    return True
+                # Permission check: at least moderator
+                if c_user.rank < core.RANKS.mod:
+                    try:
+                        txt = rp.formatForTelegram(rp.Reply(rp.types.ERR_COMMAND_DISABLED))
+                        bot.send_message(chat_id, txt, parse_mode='HTML', reply_to_message_id=m.message_id)
+                    except Exception:
+                        pass
+                    return True
+                # Must be used as a reply
+                replied = getattr(m, 'reply_to_message', None)
+                if replied is None:
+                    try:
+                        txt = rp.formatForTelegram(rp.Reply(rp.types.ERR_NO_REPLY))
+                        bot.send_message(chat_id, txt, parse_mode='HTML', reply_to_message_id=m.message_id)
+                    except Exception:
+                        pass
+                    return True
+                # Get the target msid from the replied message
+                target_msid = ch.lookupMappingByData(replied.message_id, uid=chat_id)
+                if target_msid is None:
+                    try:
+                        target_msid = db.get_msid_by_uid_message(chat_id, replied.message_id, bot_id=BOT_ID)
+                    except Exception:
+                        target_msid = None
+                if target_msid is None:
+                    try:
+                        txt = rp.formatForTelegram(rp.Reply(rp.types.ERR_NOT_IN_CACHE))
+                        bot.send_message(chat_id, txt, parse_mode='HTML', reply_to_message_id=m.message_id)
+                    except Exception:
+                        pass
+                    return True
+                
+                # Parse duration if provided (for /cooldown and /delete DURATION)
+                parts = text.strip().split(None, 1)
+                duration = parts[1].strip() if len(parts) > 1 else ""
+                
+                # Route to appropriate core function
+                res = None
+                if cmd == 'warn':
+                    res = core.warn_user(c_user, target_msid, delete=False, del_all=False, duration="")
+                elif cmd == 'cooldown':
+                    res = core.warn_user(c_user, target_msid, delete=False, del_all=False, duration=duration)
+                elif cmd == 'delete':
+                    res = core.warn_user(c_user, target_msid, delete=True, del_all=False, duration=duration)
+                elif cmd in ('deleteall', 'removeall'):
+                    res = core.warn_user(c_user, target_msid, delete=True, del_all=True, duration="")
+                
+                if res:
+                    try:
+                        txt = rp.formatForTelegram(res)
+                        bot.send_message(chat_id, txt, parse_mode='HTML', reply_to_message_id=m.message_id)
+                    except Exception:
+                        pass
+                return True
+            
+            # Uncooldown: /uncooldown ID/USERNAME (admin command)
+            if cmd == 'uncooldown':
+                try:
+                    c_user = db.getUser(id=chat_id)
+                except KeyError:
+                    return True
+                # Permission check: admin only
+                if c_user.rank < core.RANKS.admin:
+                    try:
+                        txt = rp.formatForTelegram(rp.Reply(rp.types.ERR_COMMAND_DISABLED))
+                        bot.send_message(chat_id, txt, parse_mode='HTML', reply_to_message_id=m.message_id)
+                    except Exception:
+                        pass
+                    return True
+                # Extract username/id argument
+                parts = text.strip().split(None, 1)
+                if len(parts) < 2 or not parts[1].strip():
+                    try:
+                        txt = rp.formatForTelegram(rp.Reply(rp.types.ERR_NO_ARG))
+                        bot.send_message(chat_id, txt, parse_mode='HTML', reply_to_message_id=m.message_id)
+                    except Exception:
+                        pass
+                    return True
+                arg = parts[1].strip()
+                # Try to determine if it's an ID or username
+                oid2 = None
+                username2 = None
+                if arg.isdigit():
+                    oid2 = arg
+                else:
+                    username2 = arg.lstrip('@')
+                res = core.uncooldown_user(c_user, oid2=oid2, username2=username2)
+                if res:
+                    try:
+                        txt = rp.formatForTelegram(res)
+                        bot.send_message(chat_id, txt, parse_mode='HTML', reply_to_message_id=m.message_id)
+                    except Exception:
+                        pass
+                return True
+            
             # Handle stop command
             if cmd == 'stop':
                 try:
