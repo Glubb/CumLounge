@@ -159,21 +159,35 @@ def send_to_single_inner(chat_id, ev, reply_to=None, force_caption=None):
         kwargs["allow_sending_without_reply"] = True
 
     ct = getattr(ev, 'content_type', None)
+    
+    # Extract caption for media (use force_caption override if provided)
+    caption = force_caption if force_caption is not None else getattr(ev, 'caption', None)
+    
     if ct == 'text':
         # Forward user text as plain text to avoid HTML parsing of unescaped input
         return bot.send_message(chat_id, ev.text, parse_mode=None, **kwargs)
     elif ct == 'photo' and ev.photo:
         photo = max(ev.photo, key=lambda p: p.width * p.height)
+        if caption:
+            kwargs['caption'] = caption
         return bot.send_photo(chat_id, photo.file_id, **kwargs)
     elif ct == 'sticker':
         return bot.send_sticker(chat_id, ev.sticker.file_id, **kwargs)
     elif ct == 'animation':
+        if caption:
+            kwargs['caption'] = caption
         return bot.send_animation(chat_id, ev.animation.file_id, **kwargs)
     elif ct == 'audio':
+        if caption:
+            kwargs['caption'] = caption
         return bot.send_audio(chat_id, ev.audio.file_id, **kwargs)
     elif ct == 'document':
+        if caption:
+            kwargs['caption'] = caption
         return bot.send_document(chat_id, ev.document.file_id, **kwargs)
     elif ct == 'video':
+        if caption:
+            kwargs['caption'] = caption
         return bot.send_video(chat_id, ev.video.file_id, **kwargs)
     elif ct == 'voice':
         return bot.send_voice(chat_id, ev.voice.file_id, **kwargs)
@@ -210,7 +224,23 @@ def send_thread():
                 time.sleep(0.05)
                 continue
 
+            # Resolve reply_to if reply_msid is set
             reply_to = None
+            if hasattr(item, 'reply_msid') and item.reply_msid is not None:
+                # Look up the recipient's message_id for the replied-to message
+                reply_to = ch.lookupMapping(item.user.id, msid=item.reply_msid)
+                if reply_to is None:
+                    # Fallback to DB for cross-process support
+                    try:
+                        # Get all recipient mappings for this msid, find ours
+                        pairs = db.get_recipient_mappings_by_msid(item.reply_msid, BOT_ID)
+                        for (uid, msg_id) in pairs:
+                            if uid == item.user.id:
+                                reply_to = msg_id
+                                break
+                    except Exception:
+                        pass
+            
             sent = send_to_single_inner(item.user.id, item.msg, reply_to, item.force_caption)
             if sent and hasattr(sent, 'message_id') and item.msid is not None:
                 ch.saveMapping(item.user.id, item.msid, sent.message_id)
@@ -279,6 +309,22 @@ def relay(message):
             bot.send_message(sender_id, txt, parse_mode='HTML', reply_to_message_id=getattr(message, 'message_id', None))
             return
     
+    # Check if this message is a reply to another message
+    reply_msid = None
+    replied_to_msg = getattr(message, 'reply_to_message', None)
+    if replied_to_msg is not None:
+        # Look up the msid of the message being replied to
+        replied_msg_id = getattr(replied_to_msg, 'message_id', None)
+        if replied_msg_id:
+            # Try cache first
+            reply_msid = ch.lookupMappingByData(replied_msg_id, uid=sender_id)
+            if reply_msid is None:
+                # Fallback to DB
+                try:
+                    reply_msid = db.get_msid_by_uid_message(sender_id, replied_msg_id, bot_id=BOT_ID)
+                except Exception:
+                    pass
+    
     # Cache message and create mappings
     cm = CachedMessage(user_id=sender_id)
     msid = ch.assignMessageId(cm)
@@ -288,11 +334,11 @@ def relay(message):
     except Exception:
         pass
     
-    # Broadcast to all targets
+    # Broadcast to all targets with reply chain intact
     for u in _broadcast_targets(sender_id):
-        send_to_single(message, msid, u)
+        send_to_single(message, msid, u, reply_msid=reply_msid)
     
-    logging.debug("relay(): msid=%d broadcast queued", msid)
+    logging.debug("relay(): msid=%d broadcast queued (reply_msid=%s)", msid, reply_msid)
 
 
 def register_tasks(sched):
