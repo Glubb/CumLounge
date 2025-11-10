@@ -33,7 +33,6 @@ bot_name = None
 karma_is_pats = None
 blacklist_contact = None
 enable_signing = None
-allow_remove_command = None
 media_limit_period = None
 sign_interval = None
 vote_up_interval = None
@@ -45,7 +44,7 @@ def relay_message(message, user, msid, reply_msid):
 	return None, msid
 
 def init(config, _db, _ch):
-	global launched, db, ch, spam_scores, reg_open, log_channel, karma_amount_add, karma_amount_remove, karma_level_names, blacklist_contact, bot_name, karma_is_pats, enable_signing, allow_remove_command, media_limit_period, sign_interval, vote_up_interval, vote_down_interval, media_blocked, media_auto_disable_hours, is_leader
+	global launched, db, ch, spam_scores, reg_open, log_channel, karma_amount_add, karma_amount_remove, karma_level_names, blacklist_contact, bot_name, karma_is_pats, enable_signing, media_limit_period, sign_interval, vote_up_interval, vote_down_interval, media_blocked, media_auto_disable_hours, is_leader
 
 	launched = datetime.now()
 
@@ -64,8 +63,6 @@ def init(config, _db, _ch):
 	karma_is_pats = config.get("karma_is_pats", False)
 	blacklist_contact = config.get("blacklist_contact", "")
 	enable_signing = config.get("enable_signing", False)
-	# Default to True if not specified so mods can /remove by default
-	allow_remove_command = config.get("allow_remove_command", True)
 	if "media_limit_period" in config.keys():
 		media_limit_period = timedelta(hours=int(config["media_limit_period"]))
 	sign_interval = timedelta(seconds=int(config.get("sign_limit_interval", 600)))
@@ -503,13 +500,6 @@ def toggle_media(user):
     return rp.Reply(rp.types.BOOLEAN_CONFIG, description="Media messages", enabled=not media_blocked)
 
 @requireUser
-@requireAdmin
-def toggle_remove(user):
-	global allow_remove_command
-	allow_remove_command = not allow_remove_command
-	return rp.Reply(rp.types.BOOLEAN_CONFIG, description="/remove command", enabled=allow_remove_command)
-
-@requireUser
 def get_tripcode(user):
 	if not enable_signing:
 		return rp.Reply(rp.types.ERR_COMMAND_DISABLED)
@@ -671,9 +661,6 @@ def warn_user(user, msid, delete=False, del_all=False, duration=""):
 @requireUser
 @requireRank(RANKS.mod)
 def delete_message(user, msid, del_all=False):
-	if not allow_remove_command:
-		return rp.Reply(rp.types.ERR_COMMAND_DISABLED)
-
 	cm = ch.getMessage(msid)
 	if cm is None or cm.user_id is None:
 		return rp.Reply(rp.types.ERR_NOT_IN_CACHE)

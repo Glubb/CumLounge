@@ -21,10 +21,6 @@ allow_polls: true
 # set to false for secondary instances sharing the same database
 #is_leader: true
 
-# allow mods to remove message without issuing a cooldown
-# Defaults to true if omitted. Use /toggleremove (admin) to switch at runtime.
-allow_remove_command: true
-
 # enable signing messages using /sign or /tsign as well as setting a tripcode
 enable_signing: false
 # limit usage of /sign to once in every interval (seconds)
