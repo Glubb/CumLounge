@@ -56,6 +56,7 @@ DEFAULT_COMMANDS = {
 	"stop": "Leave the chat",
 	"help": "Show all available commands",
 	"info": "Get info about your account",
+	"rules": "Show chat rules",
 	"ps": "Sign with your pat level",
 	"users": "Show current user count",
 	"remove": "Delete a message [mod]",

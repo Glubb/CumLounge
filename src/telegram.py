@@ -418,6 +418,49 @@ def init(config, _db, _ch):
                         pass
                 return True
 
+            # Rules: show rules (user) or set rules (admin with TEXT argument)
+            if cmd == 'rules':
+                try:
+                    c_user = db.getUser(id=chat_id)
+                except KeyError:
+                    return True
+                
+                # Check if there's an argument (admin setting rules)
+                parts = text.strip().split(None, 1)
+                if len(parts) > 1 and parts[1].strip():
+                    # Admin is setting rules
+                    if c_user.rank < core.RANKS.admin:
+                        try:
+                            txt = rp.formatForTelegram(rp.Reply(rp.types.ERR_COMMAND_DISABLED))
+                            bot.send_message(chat_id, txt, parse_mode='HTML', reply_to_message_id=m.message_id)
+                        except Exception:
+                            pass
+                        return True
+                    rules_text = parts[1].strip()
+                    res = core.set_rules(c_user, rules_text)
+                    if res:
+                        try:
+                            txt = rp.formatForTelegram(res)
+                            bot.send_message(chat_id, txt, parse_mode='HTML', reply_to_message_id=m.message_id)
+                        except Exception:
+                            pass
+                else:
+                    # User is viewing rules
+                    res = core.get_rules(c_user)
+                    if res:
+                        try:
+                            txt = rp.formatForTelegram(res)
+                            bot.send_message(chat_id, txt, parse_mode='HTML', reply_to_message_id=getattr(m, 'message_id', None))
+                        except Exception:
+                            pass
+                    else:
+                        # No rules set yet
+                        try:
+                            bot.send_message(chat_id, "No rules have been set yet.", reply_to_message_id=getattr(m, 'message_id', None))
+                        except Exception:
+                            pass
+                return True
+
             # Users: show user counts
             if cmd == 'users':
                 try:
