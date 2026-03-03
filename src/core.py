@@ -22,6 +22,7 @@ _cache_lock = Lock()
 db = None
 ch = None
 spam_scores = None
+repeat_detector = None
 sign_last_used = {} # uid -> datetime
 vote_up_last_used = {} # uid -> datetime
 vote_down_last_used = {} # uid -> datetime
@@ -46,13 +47,17 @@ def relay_message(message, user, msid, reply_msid):
 	return None, msid
 
 def init(config, _db, _ch):
-	global launched, db, ch, spam_scores, reg_open, log_channel, karma_amount_add, karma_amount_remove, karma_level_names, blacklist_contact, bot_name, karma_is_pats, enable_signing, media_limit_period, sign_interval, vote_up_interval, vote_down_interval, media_blocked, media_auto_disable_hours, is_leader
+	global launched, db, ch, spam_scores, repeat_detector, reg_open, log_channel, karma_amount_add, karma_amount_remove, karma_level_names, blacklist_contact, bot_name, karma_is_pats, enable_signing, media_limit_period, sign_interval, vote_up_interval, vote_down_interval, media_blocked, media_auto_disable_hours, is_leader
 
 	launched = datetime.now()
 
 	db = _db
 	ch = _ch
 	spam_scores = ScoreKeeper()
+	repeat_detector = RepeatMessageDetector(
+		max_repeats=config.get("spam_repeat_limit", 4),
+		window_minutes=config.get("spam_repeat_window", 5)
+	)
 
 	reg_open = config.get("reg_open", "")
 	log_channel = config.get("log_channel", False)
@@ -102,6 +107,9 @@ def register_tasks(sched):
 	
 	# Cleanup rate limit caches to prevent memory leaks
 	sched.register(_cleanup_rate_limit_caches, hours=1)
+	
+	# Cleanup repeat message detector
+	sched.register(repeat_detector.cleanup, minutes=10)
 
 	def _auto_disable_media():
 		global media_blocked
@@ -318,6 +326,58 @@ class ScoreKeeper():
 					del self.scores[uid]
 				else:
 					self.scores[uid] = s
+
+class RepeatMessageDetector():
+	"""Detects repeated messages and applies cooldowns for spam."""
+	def __init__(self, max_repeats=4, window_minutes=5):
+		self.lock = Lock()
+		self.recent_messages = {}  # uid -> [(message_hash, timestamp), ...]
+		self.max_repeats = max_repeats
+		self.window = timedelta(minutes=window_minutes)
+	
+	def check_repeat(self, uid, message_text):
+		"""
+		Check if user is repeating messages too much.
+		Returns (is_spam, repeat_count) tuple.
+		"""
+		with self.lock:
+			now = datetime.now()
+			
+			# Get user's recent messages
+			if uid not in self.recent_messages:
+				self.recent_messages[uid] = []
+			
+			# Clean old messages outside the window
+			self.recent_messages[uid] = [
+				(msg_hash, ts) for msg_hash, ts in self.recent_messages[uid]
+				if now - ts < self.window
+			]
+			
+			# Hash the message (simple hash for comparison)
+			msg_hash = hash(message_text.lower().strip())
+			
+			# Count how many times this exact message appears
+			repeat_count = sum(1 for h, _ in self.recent_messages[uid] if h == msg_hash)
+			
+			# Add current message
+			self.recent_messages[uid].append((msg_hash, now))
+			
+			# Check if spam
+			is_spam = repeat_count >= self.max_repeats
+			
+			return is_spam, repeat_count + 1
+	
+	def cleanup(self):
+		"""Remove old entries to prevent memory leaks."""
+		with self.lock:
+			now = datetime.now()
+			for uid in list(self.recent_messages.keys()):
+				self.recent_messages[uid] = [
+					(msg_hash, ts) for msg_hash, ts in self.recent_messages[uid]
+					if now - ts < self.window
+				]
+				if not self.recent_messages[uid]:
+					del self.recent_messages[uid]
 
 ###
 
@@ -958,7 +1018,7 @@ def modify_karma(user, msid, amount, emoji=None, karma_is_pats=False):
 		return rp.Reply(rp.types.SUCCESS_KARMA_REACTION, karma_change=amount)
 
 @requireUser
-def prepare_user_message(user: User, msg_score, *, is_media=False, signed=False, tripcode=False, ksigned=False):
+def prepare_user_message(user: User, msg_score, *, is_media=False, signed=False, tripcode=False, ksigned=False, message_text=None):
 	if user.isInCooldown():
 		return rp.Reply(rp.types.ERR_COOLDOWN, until=user.cooldownUntil)
 	if (signed or tripcode or ksigned) and not enable_signing:
@@ -968,6 +1028,17 @@ def prepare_user_message(user: User, msg_score, *, is_media=False, signed=False,
 	if is_media and user.rank < RANKS.mod and media_limit_period is not None:
 		if (datetime.now() - user.joined) < media_limit_period:
 			return rp.Reply(rp.types.ERR_MEDIA_LIMIT, media_limit_period=media_limit_period)
+
+	# Check for repeated messages (spam)
+	if message_text and not is_media and user.rank < RANKS.mod:
+		is_spam, repeat_count = repeat_detector.check_repeat(user.id, message_text)
+		if is_spam:
+			# Apply automatic cooldown for spam
+			cooldown_duration = timedelta(minutes=5)
+			with db.modifyUser(id=user.id) as u:
+				u.cooldownUntil = datetime.now() + cooldown_duration
+			logging.warning("%s triggered repeat spam detection (sent same message %d times)", user, repeat_count)
+			return rp.Reply(rp.types.ERR_SPAMMY)
 
 	ok = spam_scores.increaseSpamScore(user.id, msg_score)
 	if not ok:
@@ -986,3 +1057,32 @@ def _push_system_message(m, *, who=None, except_who=None, reply_to=None):
 	if who is None:
 		msid = ch.assignMessageId(CachedMessage())
 	Sender.reply(m, msid, who, except_who, reply_to)
+
+def check_repeat_spam(user_id, message_text):
+	"""
+	Check if a user is spamming repeated messages.
+	Returns (should_block, repeat_count) tuple.
+	Automatically applies cooldown if spam detected.
+	"""
+	try:
+		user = db.getUser(id=user_id)
+		
+		# Mods and admins are exempt from repeat spam detection
+		if user.rank >= RANKS.mod:
+			return False, 0
+		
+		# Check for repeated messages
+		is_spam, repeat_count = repeat_detector.check_repeat(user_id, message_text)
+		
+		if is_spam:
+			# Apply automatic cooldown
+			cooldown_duration = timedelta(minutes=5)
+			with db.modifyUser(id=user_id) as u:
+				u.cooldownUntil = datetime.now() + cooldown_duration
+			logging.warning("User %d triggered repeat spam detection (sent same message %d times)", user_id, repeat_count)
+			return True, repeat_count
+		
+		return False, repeat_count
+	except Exception as e:
+		logging.error("Error in repeat spam check: %s", e)
+		return False, 0

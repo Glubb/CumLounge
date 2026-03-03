@@ -299,6 +299,16 @@ def relay(message):
     except Exception as e:
         logging.debug("Failed to update lastActive for user %s: %s", sender_id, e)
     
+    # Check for repeated message spam (text messages only)
+    message_text = getattr(message, 'text', None) or getattr(message, 'caption', None)
+    if message_text:
+        is_spam, repeat_count = core.check_repeat_spam(sender_id, message_text)
+        if is_spam:
+            txt = rp.formatForTelegram(rp.Reply(rp.types.ERR_SPAMMY))
+            bot.send_message(sender_id, txt, parse_mode='HTML', reply_to_message_id=getattr(message, 'message_id', None))
+            logging.info("Blocked repeat spam from user %s (sent same message %d times)", sender_id, repeat_count)
+            return
+    
     # Check media restrictions
     ct = getattr(message, 'content_type', '')
     is_media = ct in {'photo','animation','document','video','sticker','voice','video_note','audio','poll'}
