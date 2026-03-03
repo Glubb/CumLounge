@@ -530,6 +530,53 @@ def init(config, _db, _ch):
                     except Exception:
                         pass
                 return True
+            
+            # User: show detailed user info (mod only, reply required)
+            if cmd == 'user':
+                try:
+                    c_user = db.getUser(id=chat_id)
+                except KeyError:
+                    return True
+                # Permission check: at least moderator
+                if c_user.rank < core.RANKS.mod:
+                    try:
+                        txt = rp.formatForTelegram(rp.Reply(rp.types.ERR_COMMAND_DISABLED))
+                        bot.send_message(chat_id, txt, parse_mode='HTML', reply_to_message_id=m.message_id)
+                    except Exception:
+                        pass
+                    return True
+                # Must be used as a reply
+                replied = getattr(m, 'reply_to_message', None)
+                if replied is None:
+                    try:
+                        txt = rp.formatForTelegram(rp.Reply(rp.types.ERR_NO_REPLY))
+                        bot.send_message(chat_id, txt, parse_mode='HTML', reply_to_message_id=m.message_id)
+                    except Exception:
+                        pass
+                    return True
+                # Get the target msid from the replied message
+                target_msid = ch.lookupMappingByData(replied.message_id, uid=chat_id)
+                if target_msid is None:
+                    try:
+                        target_msid = db.get_msid_by_uid_message(chat_id, replied.message_id, bot_id=BOT_ID)
+                    except Exception:
+                        target_msid = None
+                if target_msid is None:
+                    try:
+                        txt = rp.formatForTelegram(rp.Reply(rp.types.ERR_NOT_IN_CACHE))
+                        bot.send_message(chat_id, txt, parse_mode='HTML', reply_to_message_id=m.message_id)
+                    except Exception:
+                        pass
+                    return True
+                # Get detailed user info
+                res = core.get_user_details(c_user, target_msid)
+                if res:
+                    try:
+                        txt = rp.formatForTelegram(res)
+                        bot.send_message(chat_id, txt, parse_mode='HTML', reply_to_message_id=m.message_id)
+                    except Exception:
+                        pass
+                return True
 
             # Rules: show rules (user) or set rules (admin with TEXT argument)
             if cmd == 'rules':
@@ -842,6 +889,40 @@ def init(config, _db, _ch):
                         pass
                 return True
             
+            # Preblacklist: /preblacklist USERNAME REASON (admin command)
+            if cmd == 'preblacklist':
+                try:
+                    c_user = db.getUser(id=chat_id)
+                except KeyError:
+                    return True
+                # Permission check: admin only
+                if c_user.rank < core.RANKS.admin:
+                    try:
+                        txt = rp.formatForTelegram(rp.Reply(rp.types.ERR_COMMAND_DISABLED))
+                        bot.send_message(chat_id, txt, parse_mode='HTML', reply_to_message_id=m.message_id)
+                    except Exception:
+                        pass
+                    return True
+                # Extract username and reason
+                parts = text.strip().split(None, 2)
+                if len(parts) < 3:
+                    try:
+                        txt = "Usage: /preblacklist USERNAME REASON"
+                        bot.send_message(chat_id, txt, parse_mode='HTML', reply_to_message_id=m.message_id)
+                    except Exception:
+                        pass
+                    return True
+                username = parts[1].strip()
+                reason = parts[2].strip()
+                res = core.preblacklist_user(c_user, username, reason)
+                if res:
+                    try:
+                        txt = rp.formatForTelegram(res)
+                        bot.send_message(chat_id, txt, parse_mode='HTML', reply_to_message_id=m.message_id)
+                    except Exception:
+                        pass
+                return True
+            
             # Warn/Delete/Cooldown commands (mod, reply-based)
             if cmd in ('warn', 'delete', 'deleteall', 'cooldown'):
                 try:
@@ -1082,6 +1163,16 @@ def init(config, _db, _ch):
 
     @bot.message_handler(content_types=types)
     def _on_message(m):
+        # Mark user as reachable whenever they send ANY message
+        sender_id = m.from_user.id if hasattr(m, 'from_user') else m.chat.id
+        if BOT_ID is not None:
+            try:
+                db.mark_bot_user_seen(BOT_ID, sender_id)
+                global _cache_time
+                _cache_time = None
+            except Exception as e:
+                logging.debug("Failed to mark user as seen: %s", e)
+        
         # Intercept commands so they are not broadcast to others
         if getattr(m, 'text', None) and str(m.text).startswith('/'):
             # Always handle commands privately, never relay them

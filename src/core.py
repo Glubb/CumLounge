@@ -516,6 +516,53 @@ def get_info_mod(user, msid):
 		"cooldown": user2.cooldownUntil if user2.isInCooldown() else None,
 	}
 	return rp.Reply(rp.types.USER_INFO_MOD, **params)
+@requireUser
+def get_user_details(user, msid):
+	"""Get detailed user information for mods/admins (includes username, ID, etc)."""
+	cm = ch.getMessage(msid)
+	if cm is None or cm.user_id is None:
+		return rp.Reply(rp.types.ERR_NOT_IN_CACHE)
+
+	user2 = db.getUser(id=cm.user_id)
+
+	# Build detailed info string
+	info_lines = []
+	info_lines.append(f"<b>User Details:</b>")
+	info_lines.append(f"• ID: <code>{user2.id}</code>")
+	info_lines.append(f"• Username: @{user2.username}" if user2.username else "• Username: <i>None</i>")
+	info_lines.append(f"• Real Name: {user2.realname}" if user2.realname else "• Real Name: <i>None</i>")
+	info_lines.append(f"• Obfuscated ID: <b>{user2.getObfuscatedId()}</b>")
+	info_lines.append(f"• Rank: {RANKS.reverse[user2.rank]} ({user2.rank})")
+
+	if user.rank >= RANKS.admin:
+		info_lines.append(f"• Karma: {user2.karma}")
+	else:
+		info_lines.append(f"• Karma: ~{user2.getObfuscatedKarma()}")
+
+	info_lines.append(f"• Warnings: {user2.warnings}")
+
+	if user2.isInCooldown():
+		info_lines.append(f"• Cooldown: Until {user2.cooldownUntil}")
+
+	if user2.warnExpiry:
+		info_lines.append(f"• Warning Expiry: {user2.warnExpiry}")
+
+	if user2.isBlacklisted():
+		info_lines.append(f"• <b>BLACKLISTED</b>")
+		if user2.blacklistReason:
+			info_lines.append(f"• Reason: {user2.blacklistReason}")
+
+	if user2.joined:
+		info_lines.append(f"• Joined: {user2.joined}")
+
+	if user2.left:
+		info_lines.append(f"• Left: {user2.left}")
+
+	if user2.lastActive:
+		info_lines.append(f"• Last Active: {user2.lastActive}")
+
+	return rp.Reply(rp.types.CUSTOM, text="\n".join(info_lines))
+
 
 @requireUser
 def get_karma_info(user):
@@ -784,22 +831,22 @@ def warn_user(user, msid, delete=False, del_all=False, duration=""):
 			for msid, cm2 in msgs:
 				Sender.delete([msid])
 			if d is not None:
-				logging.info("%s warned %s (cooldown: %s) and deleted all %d messages", user, user2.getObfuscatedId(), d, len(msgs))
+				logging.info("%s warned %s (@%s) (cooldown: %s) and deleted all %d messages", user, user2.getObfuscatedId(), user2.username or "no_username", d, len(msgs))
 			else:
-				logging.info("%s warned %s and deleted all %d messages", user, user2.getObfuscatedId(), len(msgs))
+				logging.info("%s warned %s (@%s) and deleted all %d messages", user, user2.getObfuscatedId(), user2.username or "no_username", len(msgs))
 			return rp.Reply(rp.types.SUCCESS_WARN_DELETEALL, id=user2.getObfuscatedId(), count=len(msgs), cooldown=d)
 		else:
 			Sender.delete([msid])
 			if d is not None:
-				logging.info("%s warned %s (cooldown: %s) and deleted a message", user, user2.getObfuscatedId(), d)
+				logging.info("%s warned %s (@%s) (cooldown: %s) and deleted a message", user, user2.getObfuscatedId(), user2.username or "no_username", d)
 			else:
-				logging.info("%s warned %s and deleted a message", user, user2.getObfuscatedId())
+				logging.info("%s warned %s (@%s) and deleted a message", user, user2.getObfuscatedId(), user2.username or "no_username")
 			return rp.Reply(rp.types.SUCCESS_WARN_DELETE, id=user2.getObfuscatedId(), cooldown=d)
 	else:
 		if d is not None:
-			logging.info("%s warned %s (cooldown: %s)", user, user2.getObfuscatedId(), d)
+			logging.info("%s warned %s (@%s) (cooldown: %s)", user, user2.getObfuscatedId(), user2.username or "no_username", d)
 		else:
-			logging.info("%s warned %s", user, user2.getObfuscatedId())
+			logging.info("%s warned %s (@%s)", user, user2.getObfuscatedId(), user2.username or "no_username")
 		return rp.Reply(rp.types.SUCCESS_WARN, id=user2.getObfuscatedId(), cooldown=d)
 
 @requireUser
@@ -895,11 +942,11 @@ def blacklist_user(user, msid, reason, del_all=False):
 		logging.debug("Deleting %d messages from blacklisted user", len(msgs))
 		for msid, cm2 in msgs:
 			Sender.delete([msid])
-		logging.info("%s was blacklisted by %s and all his messages were deleted for: %s", user2, user, reason[:100])
+		logging.info("%s was blacklisted by %s (@%s) and all his messages were deleted for: %s", user2, user, user2.username or "no_username", reason[:100])
 		return rp.Reply(rp.types.SUCCESS_BLACKLIST_DELETEALL, id=user2.getObfuscatedId(), count=len(msgs), reason=reason)
 	else:
 		Sender.delete([msid])
-		logging.info("%s was blacklisted by %s for: %s", user2, user, reason[:100])
+		logging.info("%s was blacklisted by %s (@%s) for: %s", user2, user, user2.username or "no_username", reason[:100])
 		return rp.Reply(rp.types.SUCCESS_BLACKLIST, id=user2.getObfuscatedId(), reason=reason)
 
 @requireUser
@@ -925,6 +972,51 @@ def unblacklist_user(user, username):
     logging.info("%s unblacklisted %s (previous reason: %s)", 
                  user.getFormattedName(), user2.getFormattedName(), old_reason or "None")
     return rp.Reply(rp.types.SUCCESS_UNBLACKLIST, id=user2.getFormattedName())
+@requireUser
+@requireRank(RANKS.admin)
+def preblacklist_user(user, username, reason):
+	"""Blacklist a user by username before they join."""
+	username = sanitize_username(username)
+	if not username:
+		return rp.Reply(rp.types.ERR_NO_ARG)
+
+	# Sanitize reason
+	reason = sanitize_text(reason, max_length=500)
+	if not reason:
+		reason = "No reason specified"
+
+	# Check if user already exists
+	user2 = getUserByName(username)
+	if user2 is not None:
+		# User exists, blacklist them normally
+		if user2.rank >= user.rank:
+			return rp.Reply(rp.types.ERR_COMMAND_DISABLED)
+		with db.modifyUser(id=user2.id) as user2:
+			user2.setBlacklisted(reason)
+		logging.info("%s preblacklisted existing user %s (@%s) for: %s", user, user2.getObfuscatedId(), username, reason[:100])
+		return rp.Reply(rp.types.SUCCESS_BLACKLIST, id=user2.getObfuscatedId(), reason=reason)
+
+	# User doesn't exist yet, create a placeholder blacklisted user
+	# We'll use a temporary ID based on username hash
+	import hashlib
+	temp_id = -abs(int(hashlib.md5(username.encode()).hexdigest()[:8], 16))
+
+	try:
+		# Check if placeholder already exists
+		existing = db.getUser(id=temp_id)
+		logging.info("%s updated preblacklist for @%s (reason: %s)", user, username, reason[:100])
+		with db.modifyUser(id=temp_id) as existing:
+			existing.setBlacklisted(reason)
+		return rp.Reply(rp.types.CUSTOM, text=f"✅ Updated preblacklist for @{username}\nReason: {reason}")
+	except KeyError:
+		# Create new placeholder user
+		with db.modifyUser(id=temp_id) as new_user:
+			new_user.username = username
+			new_user.realname = f"Preblacklisted: @{username}"
+			new_user.setBlacklisted(reason)
+		logging.info("%s preblacklisted @%s (user hasn't joined yet) for: %s", user, username, reason[:100])
+		return rp.Reply(rp.types.CUSTOM, text=f"✅ Preblacklisted @{username}\nReason: {reason}\n\n<i>This user will be automatically blacklisted when they try to join.</i>")
+
 
 @requireUser
 def handle_message_reaction(user, msid, emoji):

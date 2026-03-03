@@ -347,6 +347,7 @@ format_strs = {
 		(
 			"\n<b><u>Mod commands</u></b>\n" +
 			"	/info" +              " (reply) - <i>Show info about a user</i>\n" +
+			"	/user" +              " (reply) - <i>Show detailed user info (mod only)</i>\n" +
 			"	/modsay TEXT" +               " - <i>Post mod message</i>\n" +
 			"	/warn" +       	      " (reply) - <i>Warn a user</i>\n" +
 			"	/remove" +      	  " (reply) - <i>Delete the message</i>\n" +
@@ -364,6 +365,7 @@ format_strs = {
 			"	/botinfo" +                " - <i>Show bot system info</i>\n" +
 			"	/uncooldown ID/USERNAME" + " - <i>Remove cooldown from a user</i>\n" +
 			"	/unblacklist ID/USERNAME" + " - <i>Remove user from blacklist</i>\n" +
+			"	/preblacklist USERNAME REASON" + " - <i>Blacklist user before they join</i>\n" +
 			"	/mod USERNAME" +           " - <i>Promote a user to mod</i>\n" +
 			"	/admin USERNAME" +         " - <i>Promote a user to admin</i>\n" +
 			"\t/demote USERNAME" +        " - <i>Demote a user to regular user</i>\n" +
