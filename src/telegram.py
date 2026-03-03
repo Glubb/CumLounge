@@ -740,12 +740,15 @@ def init(config, _db, _ch):
             
             # Blacklist: /blacklist REASON (reply, mod command)
             if cmd == 'blacklist':
+                logging.debug("Blacklist command received from user %s", chat_id)
                 try:
                     c_user = db.getUser(id=chat_id)
                 except KeyError:
+                    logging.debug("User %s not found in database", chat_id)
                     return True
                 # Permission check: at least moderator
                 if c_user.rank < core.RANKS.mod:
+                    logging.debug("User %s lacks mod permissions (rank: %d)", chat_id, c_user.rank)
                     try:
                         txt = rp.formatForTelegram(rp.Reply(rp.types.ERR_COMMAND_DISABLED))
                         bot.send_message(chat_id, txt, parse_mode='HTML', reply_to_message_id=m.message_id)
@@ -755,6 +758,7 @@ def init(config, _db, _ch):
                 # Must be used as a reply
                 replied = getattr(m, 'reply_to_message', None)
                 if replied is None:
+                    logging.debug("Blacklist command used without reply")
                     try:
                         txt = rp.formatForTelegram(rp.Reply(rp.types.ERR_NO_REPLY))
                         bot.send_message(chat_id, txt, parse_mode='HTML', reply_to_message_id=m.message_id)
@@ -766,9 +770,11 @@ def init(config, _db, _ch):
                 if target_msid is None:
                     try:
                         target_msid = db.get_msid_by_uid_message(chat_id, replied.message_id, bot_id=BOT_ID)
-                    except Exception:
+                    except Exception as e:
+                        logging.debug("Failed to get msid from DB: %s", e)
                         target_msid = None
                 if target_msid is None:
+                    logging.debug("Could not find msid for replied message")
                     try:
                         txt = rp.formatForTelegram(rp.Reply(rp.types.ERR_NOT_IN_CACHE))
                         bot.send_message(chat_id, txt, parse_mode='HTML', reply_to_message_id=m.message_id)
@@ -778,14 +784,16 @@ def init(config, _db, _ch):
                 # Extract reason from command text
                 parts = text.strip().split(None, 1)
                 reason = parts[1].strip() if len(parts) > 1 else "No reason specified"
+                logging.debug("Calling blacklist_user for msid=%s, reason=%s", target_msid, reason)
                 # Call core blacklist function (del_all=True to match help text)
                 res = core.blacklist_user(c_user, target_msid, reason, del_all=True)
+                logging.debug("Blacklist result: %s", res)
                 if res:
                     try:
                         txt = rp.formatForTelegram(res)
                         bot.send_message(chat_id, txt, parse_mode='HTML', reply_to_message_id=m.message_id)
-                    except Exception:
-                        pass
+                    except Exception as e:
+                        logging.error("Failed to send blacklist response: %s", e)
                 return True
             
             # Unblacklist: /unblacklist ID/USERNAME (admin command)

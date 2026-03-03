@@ -867,18 +867,23 @@ def uncooldown_user(user, oid2=None, username2=None):
 @requireUser
 @requireRank(RANKS.mod)
 def blacklist_user(user, msid, reason, del_all=False):
+	logging.debug("blacklist_user called: user=%s, msid=%s, reason=%s, del_all=%s", user.id, msid, reason, del_all)
 	cm = ch.getMessage(msid)
 	if cm is None or cm.user_id is None:
+		logging.debug("Message not in cache or no user_id")
 		return rp.Reply(rp.types.ERR_NOT_IN_CACHE)
 	
 	# Sanitize reason
 	reason = sanitize_text(reason, max_length=500)
 	if not reason:
 		reason = "No reason specified"
-
+	
+	logging.debug("Target user_id: %s", cm.user_id)
 	with db.modifyUser(id=cm.user_id) as user2:
 		if user2.rank >= user.rank:
+			logging.debug("Cannot blacklist user with equal or higher rank")
 			return
+		logging.debug("Setting user %s as blacklisted", user2.id)
 		user2.setBlacklisted(reason)
 	cm.warned = True
 	Sender.stop_invoked(user2, True) # do this before queueing new messages below
@@ -887,6 +892,7 @@ def blacklist_user(user, msid, reason, del_all=False):
 		who=user2, reply_to=msid)
 	if del_all:
 		msgs = ch.getMessages(cm.user_id)
+		logging.debug("Deleting %d messages from blacklisted user", len(msgs))
 		for msid, cm2 in msgs:
 			Sender.delete([msid])
 		logging.info("%s was blacklisted by %s and all his messages were deleted for: %s", user2, user, reason[:100])
