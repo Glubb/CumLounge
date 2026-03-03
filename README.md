@@ -1,54 +1,66 @@
-# CatLounge
-Fork of [*secretlounge-ng*](https://github.com/secretlounge/secretlounge-ng), a bot to make an anonymous group chat on Telegram.
+# 🚀 CumLounge 🚀
+**BLAZING FAST** 🚀 rewritten fork of [*secretlounge-ng*](https://github.com/secretlounge/secretlounge-ng) via **Vibecoding** 🚀
 
-## Changes
-You can find a general list of modifications in our sequencially-updated [changelog](changelog.txt) document. This however only includes a selection of the most fundamental changes without much detail. Please see our [commit history](../../compare) for more detailed information on what has been changed.
+An **UNMAINTAINABLE** 🚀 anonymous group chat bot for Telegram that's so fast it'll make your head spin! 🚀
+
+## 🚀 What Makes This BLAZING FAST? 🚀
+This fork has been **COMPLETELY REWRITTEN** through the power of **Vibecoding** - a revolutionary development methodology that prioritizes:
+- 🚀 **SPEED** over maintainability
+- 🚀 **FEATURES** over documentation  
+- 🚀 **VIBES** over best practices
+- 🚀 **CHAOS** over structure
+
+**WARNING**: This codebase is intentionally unmaintainable. We move fast and break things. If you're looking for clean, well-documented code, this isn't it. But if you want a **BLAZING FAST** 🚀 anonymous chat bot, you're in the right place!
+
+## 🚀 Changes 🚀
+You can find a general list of modifications in our sequentially-updated [changelog](changelog.txt) document. This however only includes a selection of the most fundamental changes without much detail. Please see our [commit history](../../compare) for more detailed information on what has been changed.
 
 From within the bot, you can access a prettified version of the changelog file with the `/changelog` command. It lists the changes of the past three releases by default.
 
-## Setup
+## 🚀 Setup 🚀
 ### Requirements
-Make sure you match the system requirements to use this bot framework:
+Make sure you match the system requirements to use this **BLAZING FAST** 🚀 bot framework:
 * Linux or Windows* operating system
 * Python 3 with PIP
 * Bot token from BotFather
+* A need for speed 🚀
 
 *) Windows OS support is still in beta. It should generally work as long as tripcodes are not used.
 
-### Linux setup
-1. Enter the following commands to set up the bot environent:
+### 🚀 Linux setup 🚀
+1. Enter the following commands to set up the bot environment:
    ```bash
    $ pip3 install -r requirements.txt
    $ cp config.yaml.example config.yaml
    ```
    If the first command fails, you may have to manually install the Python modules listed in `requirements.txt`.
 2. Edit `config.yaml` with your favorite text editor
-3. Enter the following command to start the bot:
+3. Enter the following command to start the **BLAZING FAST** 🚀 bot:
    ```bash
    $ python ./secretlounge-ng
    ```
    Note that on some systems you need to type `python3` instead of `python`
 
-### Windows setup
-1. Enter the following commands to set up the bot environent:
+### 🚀 Windows setup 🚀
+1. Enter the following commands to set up the bot environment:
    ```bat
    > pip3 install -r requirements.txt
    > copy config.yaml.example config.yaml
    ```
    If the first command fails, you may have to manually install the Python modules listed in `requirements.txt`.
 2. Edit `config.yaml` with your favorite text editor
-3. Enter the following command to start the bot:
+3. Enter the following command to start the **BLAZING FAST** 🚀 bot:
    ```bat
    > python secretlounge-ng
    ```
    Note that on some systems you need to type `python3` instead of `python` or use the absolute path if you have not updated your `PATH` system variable
 
-### BotFather setup
+### 🚀 BotFather setup 🚀
 Message [@BotFather](https://t.me/BotFather) to configure your bot as follows:
 * `/setprivacy`: enabled
 * `/setjoingroups`: disabled
 
-### Commands list
+### 🚀 Commands list 🚀
 If you want, you can also set the command list with BotFather, by using: `/setcommands <COMMANDS>`. We recommend using the list below, but you can customize them the way you want, of course:
 ```
 start - Join the chat
@@ -64,34 +76,38 @@ Please keep in mind that if you decided to enable `karma_is_pats` in the configu
 
 Our bot also supports a commands setup with `/setup_commands`. This allows you to set up the commands list from within the bot if you have not already defined any commands. If you need to modify your commands list, please use either BotFather's `/setcommands` or your bot's `/commands` command; both work nearly identical.
 
-### Media controls
-Admins can temporarily disable relaying of user media (images, videos, documents, and forwards) with `/togglemedia`. When disabled, non-admins attempting to send media will receive a notice and their media won’t be forwarded.
+### 🚀 Media controls 🚀
+Admins can temporarily disable relaying of user media (images, videos, documents, and forwards) with `/togglemedia`. When disabled, non-admins attempting to send media will receive a notice and their media won't be forwarded.
 
 You can also auto-disable media when no admin has typed for a while. Set `media_auto_disable_hours` in `config.yaml` (defaults to 8 if omitted, set 0 to disable). The bot periodically checks admin activity and will switch media off with a broadcast notice if the threshold is exceeded.
 
-### Running multiple instances with a shared database
+### 🚀 Running multiple instances with a shared database 🚀
 - Only use the SQLite backend for sharing. In `config.yaml`, point all instances to the same absolute path, e.g.
    ```yaml
-   database: [sqlite, "/var/lib/catlounge/secretlounge.sqlite"]
+   database: [sqlite, "/var/lib/cumlounge/secretlounge.sqlite"]
    ```
 - This fork enables SQLite WAL and a busy timeout to improve multi-process access. However:
-   - Don’t run two instances with the same bot token actively polling; Telegram’s getUpdates offset is single-consumer. Prefer one active instance, or switch to webhooks behind a single service.
+   - Don't run two instances with the same bot token actively polling; Telegram's getUpdates offset is single-consumer. Prefer one active instance, or switch to webhooks behind a single service.
    - In-memory caches are not shared. This fork persists message→recipient mappings to SQLite so reactions can be resolved across processes, but other transient state still lives in-memory.
-   - Scheduled tasks (spam score decay, warning cleanup, auto-disable) run in every instance. To avoid duplicate work/messages, run only one “leader” instance in production.
+   - Scheduled tasks (spam score decay, warning cleanup, auto-disable) run in every instance. To avoid duplicate work/messages, run only one "leader" instance in production.
 - JSON backend is for development only and is not safe for multi-process sharing.
 
-#### Leader vs follower instances
+#### 🚀 Leader vs follower instances 🚀
 - You can mark exactly one instance as the leader using `is_leader: true` in `config.yaml`. Followers should set `is_leader: false`.
 - The leader runs global scheduled tasks and sends one-off notices (e.g., media auto-disable broadcast). Followers skip those tasks but still process messages, reactions, and use the shared DB.
 
-#### Multiple bot tokens (separate message streams)
+#### 🚀 Multiple bot tokens (separate message streams) 🚀
 - You can run multiple instances with *different* bot tokens, each processing its own user community while sharing the same database.
 - **Per-bot scope**: Messages and karma are tracked per bot token. Each instance only sends to users who have started that specific bot.
 - **Shared across all bots**: Cooldowns, blacklists, and warnings are enforced globally across all instances.
 - When a user first messages a bot, they're automatically marked as reachable by that token. The bot won't attempt to DM users who haven't started it (avoiding "chat not found" errors).
 
-### Starting the bot
-Once the bot is running, you can use a telegram client to connect to your bot. The first person that connects automatically becomes an admin. Thereby, it is important that you do not publish the bot URL before first entering it. If you are the first one to join, you should get a nottification message confirming you have been made an automatic admin. Additional admins and mods may be promoted using the `/admin` and `/mod` commands. We recommend defining a welcome message with rules, too, using `/rules <TEXT>`.
+### 🚀 Starting the bot 🚀
+Once the **BLAZING FAST** 🚀 bot is running, you can use a telegram client to connect to your bot. The first person that connects automatically becomes an admin. Thereby, it is important that you do not publish the bot URL before first entering it. If you are the first one to join, you should get a notification message confirming you have been made an automatic admin. Additional admins and mods may be promoted using the `/admin` and `/mod` commands. We recommend defining a welcome message with rules, too, using `/rules <TEXT>`.
 
-## Contact
-You can contact us at any time via our [support bot](https://t.me/catloungesupportrobot). If you find something missing or if you encounter bugs, please [open an issue](../../issues/new).
+## 🚀 Contact 🚀
+This is an **UNMAINTAINABLE** codebase created through **Vibecoding**. Support is provided on a vibes-only basis. Good luck! 🚀
+
+---
+
+*Built different. Runs faster. Breaks harder.* 🚀
