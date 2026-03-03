@@ -297,6 +297,37 @@ class JSONDatabase(Database):
 		return None
 	def get_recipient_mappings_by_msid(self, msid: int, bot_id: Optional[int] = None):
 		return []
+	def cleanup_old_message_mappings(self, hours: int = 48):
+		return 0
+	def delete_message_mappings(self, msid: int):
+		return 0
+	def delete_message_mappings(self, msid: int):
+		"""Delete all message mappings for a given msid."""
+		sql = "DELETE FROM message_mapping WHERE msid = ?"
+		with self.lock:
+			try:
+				cur = self.db.execute(sql, (msid,))
+				deleted = cur.rowcount
+				if deleted > 0:
+					self._mark_dirty()
+				return deleted
+			except Exception as e:
+				logging.error("Failed to delete message mappings for msid %s: %s", msid, e)
+				return 0
+	def cleanup_old_message_mappings(self, hours: int = 48):
+		"""Delete message mappings older than specified hours."""
+		sql = "DELETE FROM message_mapping WHERE created_at < datetime('now', '-' || ? || ' hours')"
+		with self.lock:
+			try:
+				cur = self.db.execute(sql, (hours,))
+				deleted = cur.rowcount
+				if deleted > 0:
+					logging.info("Cleaned up %d old message mappings", deleted)
+					self._mark_dirty()
+				return deleted
+			except Exception as e:
+				logging.error("Failed to cleanup old message mappings: %s", e)
+				return 0
 
 	# Stubs for per-bot reachability; JSON backend is dev-only
 	def mark_bot_user_seen(self, bot_id: int, uid: int):

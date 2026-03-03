@@ -109,6 +109,12 @@ class _TelegramReceiver(core.Receiver):
             
             # Remove from cache
             ch.deleteMappings(msid)
+            
+            # Remove from database
+            try:
+                db.delete_message_mappings(msid)
+            except Exception:
+                pass
 
     @staticmethod
     def stop_invoked(who, delete_out=False):
@@ -370,8 +376,15 @@ def register_tasks(sched):
                 logging.warning("Failed to deliver %d messages before they expired from cache.", n)
         except Exception:
             logging.exception("Error in telegram cleanup task")
+    
+    def clean_old_db_mappings():
+        try:
+            db.cleanup_old_message_mappings(hours=48)
+        except Exception:
+            logging.exception("Error cleaning old message mappings")
 
     sched.register(clean_expired_messages, hours=6)
+    sched.register(clean_old_db_mappings, hours=12)
 
 
 def check_reaction_support():
