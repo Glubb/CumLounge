@@ -158,8 +158,8 @@ format_strs = {
 		"☑ <b>{id}</b> <i>has been warned" + (" (cooldown: {cooldown})" if cooldown is not None else "") + " and the message was deleted</i>",
 	types.SUCCESS_WARN_DELETEALL: lambda cooldown, **_:
 		"☑ <b>{id}</b> <i>has been warned" + (" (cooldown: {cooldown})" if cooldown is not None else "") + " and all {count} messages were deleted</i>",
-	types.SUCCESS_BLACKLIST: "☑ <b>{id}</b> <i>has been blacklisted and the message was deleted</i>",
-	types.SUCCESS_BLACKLIST_DELETEALL: "☑ <b>{id}</b> <i>has been blacklisted and all {count} messages were deleted</i>",
+	types.SUCCESS_BLACKLIST: "☑ <b>{id}</b> <i>has been blacklisted and the message was deleted</i>\nReason: {reason}",
+	types.SUCCESS_BLACKLIST_DELETEALL: "☑ <b>{id}</b> <i>has been blacklisted and all {count} messages were deleted</i>\nReason: {reason}",
 	types.SUCCESS_UNBLACKLIST: "☑ <b>{id}</b> <i>has been unblacklisted</i>",
 	types.LOG_CHANNEL: "catlounge-ng-meow v{version} started\n"+
 						"This is the log channel for: <b>{bot_name}</b> lounge",

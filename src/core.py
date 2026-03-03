@@ -896,11 +896,11 @@ def blacklist_user(user, msid, reason, del_all=False):
 		for msid, cm2 in msgs:
 			Sender.delete([msid])
 		logging.info("%s was blacklisted by %s and all his messages were deleted for: %s", user2, user, reason[:100])
-		return rp.Reply(rp.types.SUCCESS_BLACKLIST_DELETEALL, id=user2.getObfuscatedId(), count=len(msgs))
+		return rp.Reply(rp.types.SUCCESS_BLACKLIST_DELETEALL, id=user2.getObfuscatedId(), count=len(msgs), reason=reason)
 	else:
 		Sender.delete([msid])
 		logging.info("%s was blacklisted by %s for: %s", user2, user, reason[:100])
-		return rp.Reply(rp.types.SUCCESS_BLACKLIST, id=user2.getObfuscatedId())
+		return rp.Reply(rp.types.SUCCESS_BLACKLIST, id=user2.getObfuscatedId(), reason=reason)
 
 @requireUser
 @requireRank(RANKS.admin)
