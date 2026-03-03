@@ -305,14 +305,33 @@ def relay(message):
     except Exception as e:
         logging.debug("Failed to update lastActive for user %s: %s", sender_id, e)
     
-    # Check for repeated message spam (text messages only)
+    # Check for repeated message spam (text, stickers, and GIFs)
     message_text = getattr(message, 'text', None) or getattr(message, 'caption', None)
+    content_type = getattr(message, 'content_type', '')
+    
+    # Create a unique identifier for the message
+    spam_check_id = None
     if message_text:
-        is_spam, repeat_count = core.check_repeat_spam(sender_id, message_text)
+        # For text messages, use the text content
+        spam_check_id = message_text
+    elif content_type == 'sticker':
+        # For stickers, use the file_unique_id (same sticker = same ID)
+        sticker = getattr(message, 'sticker', None)
+        if sticker:
+            spam_check_id = f"sticker:{getattr(sticker, 'file_unique_id', '')}"
+    elif content_type == 'animation':
+        # For GIFs/animations, use the file_unique_id
+        animation = getattr(message, 'animation', None)
+        if animation:
+            spam_check_id = f"animation:{getattr(animation, 'file_unique_id', '')}"
+    
+    # Check for spam if we have an identifier
+    if spam_check_id:
+        is_spam, repeat_count = core.check_repeat_spam(sender_id, spam_check_id)
         if is_spam:
             txt = rp.formatForTelegram(rp.Reply(rp.types.ERR_SPAMMY))
             bot.send_message(sender_id, txt, parse_mode='HTML', reply_to_message_id=getattr(message, 'message_id', None))
-            logging.info("Blocked repeat spam from user %s (sent same message %d times)", sender_id, repeat_count)
+            logging.info("Blocked repeat spam from user %s (sent same content %d times)", sender_id, repeat_count)
             return
     
     # Check media restrictions
