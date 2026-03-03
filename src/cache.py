@@ -33,12 +33,12 @@ class Cache():
 		self.revmap = {}
 	
 	def _saveMapping(self, x, uid, msid, data):
-		if uid not in x.keys():
+		if uid not in x:
 			x[uid] = {}
 		x[uid][msid] = data
 	
 	def _lookupMapping(self, x, uid, msid, data):
-		if uid not in x.keys():
+		if uid not in x:
 			return None
 		if msid is not None:
 			return x[uid].get(msid, None)
@@ -60,8 +60,9 @@ class Cache():
 				functor(msid, cm)
 	
 	def getMessages(self, uid):
+		"""Get all (msid, CachedMessage) pairs for a specific user."""
 		with self.lock:
-			return [cm for cm in self.msgs.values() if cm.user_id == uid]
+			return [(msid, cm) for msid, cm in self.msgs.items() if cm.user_id == uid]
 	
 	def saveMapping(self, uid, msid, data):
 		with self.lock:
@@ -95,7 +96,10 @@ class Cache():
 		with self.lock:
 			for d in self.idmap.values():
 				d.pop(msid, None)
-			self.revmap = {k: v for k, v in self.revmap.items() if v != msid}
+			# More efficient: delete keys directly instead of rebuilding dict
+			keys_to_delete = [k for k, v in self.revmap.items() if v == msid]
+			for k in keys_to_delete:
+				del self.revmap[k]
 	
 	def expire(self):
 		ids = set()

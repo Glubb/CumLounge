@@ -116,7 +116,7 @@ class _TelegramReceiver(core.Receiver):
         if delete_out:
             # Delete all messages from this user
             msgs = ch.getMessages(who.id)
-            msids = [cm.msid for cm in msgs if cm.msid is not None]
+            msids = [msid for msid, cm in msgs]
             if msids:
                 _TelegramReceiver.delete(msids)
 
@@ -132,7 +132,8 @@ def _get_cached_reachable_ids():
         try:
             _reachable_cache = set(db.get_reachable_user_ids(BOT_ID)) if BOT_ID else set()
             _cache_time = now
-        except Exception:
+        except Exception as e:
+            logging.warning("Failed to get reachable user IDs: %s", e)
             _reachable_cache = set()
     return _reachable_cache
 
@@ -257,16 +258,16 @@ def send_thread():
                         logging.debug("Marked user %s as unreachable for bot %s", item.user.id, BOT_ID)
                         global _cache_time
                         _cache_time = None  # Invalidate cache
-                except Exception:
-                    pass
+                except Exception as ex:
+                    logging.debug("Failed to mark user as unreachable: %s", ex)
                 continue
             
             logging.warning("Message delivery failed: %s", e)
-            try:
-                if time.time() - getattr(item, 'timestamp', 0) < 60:
-                    time.sleep(0.5)
-                    message_queue.put(0, item)
-            except Exception:
+            # Retry logic for transient errors
+            if hasattr(item, 'timestamp') and time.time() - item.timestamp < 60:
+                time.sleep(0.5)
+                message_queue.put(0, item)
+            else:
                 time.sleep(0.5)
 
 
@@ -288,15 +289,15 @@ def relay(message):
             db.mark_bot_user_seen(BOT_ID, sender_id)
             global _cache_time
             _cache_time = None
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug("Failed to mark user as seen: %s", e)
     
     # Update lastActive
     try:
         with db.modifyUser(id=sender_id) as u:
             u.lastActive = datetime.datetime.now()
     except Exception as e:
-        pass
+        logging.debug("Failed to update lastActive for user %s: %s", sender_id, e)
     
     # Check media restrictions
     ct = getattr(message, 'content_type', '')

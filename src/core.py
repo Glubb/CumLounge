@@ -8,6 +8,7 @@ from src.globals import *
 from src.database import User, SystemConfig
 from src.cache import CachedMessage
 from src.util import genTripcode, getLastModFile
+from src.validation import sanitize_text, sanitize_username
 
 launched = None
 is_leader = True
@@ -16,6 +17,7 @@ is_leader = True
 _user_cache = {}
 _user_cache_time = {}
 _USER_CACHE_TTL = 30
+_cache_lock = Lock()
 
 db = None
 ch = None
@@ -87,6 +89,7 @@ def init(config, _db, _ch):
 
 def register_tasks(sched):
 	sched.register(spam_scores.scheduledTask, seconds=SPAM_INTERVAL_SECONDS)
+	
 	def task():
 		now = datetime.now()
 		for user in db.iterateUsers():
@@ -96,6 +99,9 @@ def register_tasks(sched):
 				with db.modifyUser(id=user.id) as user:
 					user.removeWarning()
 	sched.register(task, minutes=15)
+	
+	# Cleanup rate limit caches to prevent memory leaks
+	sched.register(_cleanup_rate_limit_caches, hours=1)
 
 	def _auto_disable_media():
 		global media_blocked
@@ -133,32 +139,84 @@ def _get_cached_user(uid):
 	global _user_cache, _user_cache_time
 	now = datetime.now()
 	
-	if uid in _user_cache:
+	# Check cache first (thread-safe read)
+	with _cache_lock:
 		cached_time = _user_cache_time.get(uid)
 		if cached_time and (now - cached_time).total_seconds() < _USER_CACHE_TTL:
-			return _user_cache[uid]
+			cached_user = _user_cache.get(uid)
+			if cached_user is not None:
+				return cached_user
 	
+	# Fetch from DB and update cache
 	try:
 		user = db.getUser(id=uid)
-		_user_cache[uid] = user
-		_user_cache_time[uid] = now
+		with _cache_lock:
+			_user_cache[uid] = user
+			_user_cache_time[uid] = now
 		return user
 	except KeyError:
 		return None
 
 def _invalidate_user_cache(uid):
 	"""Invalidate cached user data."""
-	global _user_cache, _user_cache_time
-	_user_cache.pop(uid, None)
-	_user_cache_time.pop(uid, None)
+	with _cache_lock:
+		_user_cache.pop(uid, None)
+		_user_cache_time.pop(uid, None)
+
+def _cleanup_rate_limit_caches():
+	"""Remove stale entries from rate limit caches to prevent memory leaks."""
+	global sign_last_used, vote_up_last_used, vote_down_last_used
+	now = datetime.now()
+	
+	with _cache_lock:
+		# Clean sign cache (keep entries within 2x interval)
+		if sign_interval and sign_interval.total_seconds() > 0:
+			threshold = sign_interval * 2
+			sign_last_used = {
+				uid: ts for uid, ts in sign_last_used.items()
+				if now - ts < threshold
+			}
+		
+		# Clean vote up cache
+		if vote_up_interval and vote_up_interval.total_seconds() > 0:
+			threshold = vote_up_interval * 2
+			vote_up_last_used = {
+				uid: ts for uid, ts in vote_up_last_used.items()
+				if now - ts < threshold
+			}
+		
+		# Clean vote down cache
+		if vote_down_interval and vote_down_interval.total_seconds() > 0:
+			threshold = vote_down_interval * 2
+			vote_down_last_used = {
+				uid: ts for uid, ts in vote_down_last_used.items()
+				if now - ts < threshold
+			}
+	
+	logging.debug("Rate limit cache cleanup: sign=%d, vote_up=%d, vote_down=%d",
+		len(sign_last_used), len(vote_up_last_used), len(vote_down_last_used))
 
 def getUserByName(username):
 	if not username:
 		return None
-	username = username.lstrip('@').lower()
-	for user in db.iterateUsers():
-		if user.username is not None and user.username.lower() == username:
-			return user
+	username = sanitize_username(username)
+	if not username:
+		return None
+	# Try DB method first if available (more efficient)
+	if hasattr(db, 'getUserByUsername'):
+		try:
+			user = db.getUserByUsername(username)
+			if user:
+				return user
+		except Exception as e:
+			logging.warning("Failed to get user by username %s: %s", username, e)
+	# Fallback to iteration for JSONDatabase
+	try:
+		for user in db.iterateUsers():
+			if user.username is not None and user.username.lower() == username:
+				return user
+	except Exception as e:
+		logging.error("Error iterating users: %s", e)
 	return None
 
 def getUserByOid(oid):
@@ -473,9 +531,14 @@ def get_rules(user):
 @requireUser
 @requireRank(RANKS.admin)
 def set_rules(user, arg):
+	# Sanitize input
+	arg = sanitize_text(arg, max_length=4000)
+	if arg is None:
+		return rp.Reply(rp.types.ERR_NO_ARG)
+	
 	with db.modifySystemConfig() as config:
 		config.motd = arg
-	logging.info("%s set rules to: %r", user, arg)
+	logging.info("%s set rules to: %r", user, arg[:100])
 	return rp.Reply(rp.types.SUCCESS_RULES, bot_name=bot_name)
 
 @requireUser
@@ -510,6 +573,11 @@ def get_tripcode(user):
 def set_tripcode(user, text):
 	if not enable_signing:
 		return rp.Reply(rp.types.ERR_COMMAND_DISABLED)
+	
+	# Sanitize and validate
+	text = sanitize_text(text, max_length=30)
+	if not text:
+		return rp.Reply(rp.types.ERR_INVALID_TRIP_FORMAT)
 
 	if not (0 < text.find("#") < len(text) - 1):
 		return rp.Reply(rp.types.ERR_INVALID_TRIP_FORMAT)
@@ -524,6 +592,10 @@ def set_tripcode(user, text):
 @requireUser
 @requireRank(RANKS.admin)
 def promote_user(user, username2, rank):
+	username2 = sanitize_username(username2)
+	if not username2:
+		return rp.Reply(rp.types.ERR_NO_USER)
+	
 	user2 = getUserByName(username2)
 	if user2 is None:
 		return rp.Reply(rp.types.ERR_NO_USER)
@@ -545,6 +617,10 @@ def demote_user(user, username2):
 	"""Demote a user back to regular user rank.
 	Guardrails: cannot demote users with rank >= invoker's rank; refuse if blacklisted.
 	"""
+	username2 = sanitize_username(username2)
+	if not username2:
+		return rp.Reply(rp.types.ERR_NO_USER)
+	
 	user2 = getUserByName(username2)
 	if user2 is None:
 		return rp.Reply(rp.types.ERR_NO_USER)
@@ -563,18 +639,26 @@ def demote_user(user, username2):
 @requireUser
 @requireRank(RANKS.mod)
 def send_mod_message(user, arg):
+	arg = sanitize_text(arg, max_length=1000)
+	if not arg:
+		return rp.Reply(rp.types.ERR_NO_ARG)
+	
 	text = arg + " ~<b>mods</b>"
 	m = rp.Reply(rp.types.CUSTOM, text=text)
 	_push_system_message(m)
-	logging.info("%s sent mod message: %s", user, arg)
+	logging.info("%s sent mod message: %s", user, arg[:100])
 
 @requireUser
 @requireRank(RANKS.admin)
 def send_admin_message(user, arg):
+	arg = sanitize_text(arg, max_length=1000)
+	if not arg:
+		return rp.Reply(rp.types.ERR_NO_ARG)
+	
 	text = arg + " ~<b>admins</b>"
 	m = rp.Reply(rp.types.CUSTOM, text=text)
 	_push_system_message(m)
-	logging.info("%s sent admin message: %s", user, arg)
+	logging.info("%s sent admin message: %s", user, arg[:100])
 
 # NOTE: The finalized handle_message_reaction implementation appears below.
 
@@ -637,8 +721,8 @@ def warn_user(user, msid, delete=False, del_all=False, duration=""):
 	if delete:
 		if del_all:
 			msgs = ch.getMessages(cm.user_id)
-			for cm2 in msgs:
-				Sender.delete([cm2])
+			for msid, cm2 in msgs:
+				Sender.delete([msid])
 			if d is not None:
 				logging.info("%s warned %s (cooldown: %s) and deleted all %d messages", user, user2.getObfuscatedId(), d, len(msgs))
 			else:
@@ -669,8 +753,8 @@ def delete_message(user, msid, del_all=False):
 
 	if del_all:
 		msgs = ch.getMessages(user2.id)
-		for cm2 in msgs:
-			Sender.delete([cm2])
+		for msid, cm2 in msgs:
+			Sender.delete([msid])
 		logging.info("%s deleted all messages from %s", user, user2.getObfuscatedId())
 		return rp.Reply(rp.types.SUCCESS_DELETEALL, id=user2.getObfuscatedId(), count=len(msgs))
 	else:
@@ -726,6 +810,11 @@ def blacklist_user(user, msid, reason, del_all=False):
 	cm = ch.getMessage(msid)
 	if cm is None or cm.user_id is None:
 		return rp.Reply(rp.types.ERR_NOT_IN_CACHE)
+	
+	# Sanitize reason
+	reason = sanitize_text(reason, max_length=500)
+	if not reason:
+		reason = "No reason specified"
 
 	with db.modifyUser(id=cm.user_id) as user2:
 		if user2.rank >= user.rank:
@@ -738,22 +827,22 @@ def blacklist_user(user, msid, reason, del_all=False):
 		who=user2, reply_to=msid)
 	if del_all:
 		msgs = ch.getMessages(cm.user_id)
-		for cm2 in msgs:
-			Sender.delete([cm2])
-		logging.info("%s was blacklisted by %s and all his messages were deleted for: %s", user2, user, reason)
+		for msid, cm2 in msgs:
+			Sender.delete([msid])
+		logging.info("%s was blacklisted by %s and all his messages were deleted for: %s", user2, user, reason[:100])
 		return rp.Reply(rp.types.SUCCESS_BLACKLIST_DELETEALL, id=user2.getObfuscatedId(), count=len(msgs))
 	else:
 		Sender.delete([msid])
-		logging.info("%s was blacklisted by %s for: %s", user2, user, reason)
+		logging.info("%s was blacklisted by %s for: %s", user2, user, reason[:100])
 		return rp.Reply(rp.types.SUCCESS_BLACKLIST, id=user2.getObfuscatedId())
 
 @requireUser
 @requireRank(RANKS.admin)
 def unblacklist_user(user, username):
-    if username is None:
+    username = sanitize_username(username)
+    if not username:
         return rp.Reply(rp.types.ERR_NO_ARG)
     
-    username = username.lstrip('@')
     user2 = getUserByName(username)
     if user2 is None:
         logging.warning("Failed unblacklist attempt by %s: user %s not found", user, username)
@@ -785,24 +874,13 @@ def handle_message_reaction(user, msid, emoji):
 		return rp.Reply(rp.types.ERR_NOT_IN_CACHE)
 
 	_norm = lambda e: e.replace('\uFE0F', '') if e else e
-	pos_norm = {_norm(x) for x in POSITIVE_REACTIONS}
 	norm = _norm(emoji)
-
-	if norm in pos_norm:
-		karma_change = karma_amount_add
-		is_pat = emoji in {"❤️", "🥰", "💖", "💗", "💓", "💝"}
-		result = modify_karma(user, msid, karma_change, emoji=emoji, karma_is_pats=is_pat)
-		if result.type == rp.types.ERR_VOTE_OWN_MESSAGE:
-			return result
-		
-		if not sender.hideKarma:
-			notification = rp.Reply(rp.types.SUCCESS_EMOJI_RECEIVED, 
-				karma_change=karma_change, emoji=emoji, karma_is_pats=is_pat)
-			_push_system_message(notification, who=sender, reply_to=msid)
-		
-		return rp.Reply(rp.types.SUCCESS_EMOJI_REACTION, karma_change=karma_change, emoji=emoji, karma_is_pats=is_pat, bot_name=bot_name)
-
-	if norm in {_norm("👎"), _norm("💩")}:
+	
+	# Negative reactions: thumbs down and poop
+	negative_reactions = {_norm("👎"), _norm("💩")}
+	
+	if norm in negative_reactions:
+		# Negative karma for thumbs down and poop
 		karma_change = -karma_amount_remove
 		result = modify_karma(user, msid, karma_change, emoji=emoji)
 		if result.type == rp.types.ERR_VOTE_OWN_MESSAGE:
@@ -814,8 +892,21 @@ def handle_message_reaction(user, msid, emoji):
 			_push_system_message(notification, who=sender, reply_to=msid)
 		
 		return rp.Reply(rp.types.SUCCESS_EMOJI_REACTION, karma_change=karma_change, emoji=emoji, karma_is_pats=False, bot_name=bot_name)
-
-	return None
+	else:
+		# All other reactions give positive karma
+		karma_change = karma_amount_add
+		# Consider heart emojis as "pats" for display purposes
+		is_pat = emoji in {"❤️", "🥰", "💖", "💗", "💓", "💝"}
+		result = modify_karma(user, msid, karma_change, emoji=emoji, karma_is_pats=is_pat)
+		if result.type == rp.types.ERR_VOTE_OWN_MESSAGE:
+			return result
+		
+		if not sender.hideKarma:
+			notification = rp.Reply(rp.types.SUCCESS_EMOJI_RECEIVED, 
+				karma_change=karma_change, emoji=emoji, karma_is_pats=is_pat)
+			_push_system_message(notification, who=sender, reply_to=msid)
+		
+		return rp.Reply(rp.types.SUCCESS_EMOJI_REACTION, karma_change=karma_change, emoji=emoji, karma_is_pats=is_pat, bot_name=bot_name)
 
 @requireUser
 def modify_karma(user, msid, amount, emoji=None, karma_is_pats=False):

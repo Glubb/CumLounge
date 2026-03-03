@@ -55,10 +55,10 @@ class MutablePriorityQueue():
 		self.queue.put((prio, iid))
 	def delete(self, selector):
 		with self.lock:
-			keys = list(self.items.keys())
-			for iid in keys:
-				if selector(self.items[iid]):
-					del self.items[iid]
+			# More efficient: build list of keys to delete first
+			keys_to_delete = [iid for iid, item in self.items.items() if selector(item)]
+			for iid in keys_to_delete:
+				del self.items[iid]
 
 class Enum():
 	def __init__(self, m, reverse=True):

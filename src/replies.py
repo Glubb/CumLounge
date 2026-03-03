@@ -146,10 +146,10 @@ format_strs = {
 	types.SUCCESS_DELETE: "☑ <i>The message by</i> <b>{id}</b> <i>has been deleted</i>",
 	types.SUCCESS_DELETEALL: "☑ <i>All</i> {count} <i>messages by</i> <b>{id}</b> <i>have been deleted</i>",
 	types.SUCCESS_KARMA_REACTION: "☑ <i>{karma_change:+d} karma from reaction</i>",
-	types.SUCCESS_EMOJI_REACTION: lambda karma_is_pats, **_: em(
-			"You just gave this {bot_name} a {emoji} ({karma_change:+d} " + ("pat" if karma_is_pats else "karma") + "), awesome!"
+	types.SUCCESS_EMOJI_REACTION: lambda karma_is_pats, bot_name="", **_: em(
+			"You just gave this " + bot_name + " a {emoji} ({karma_change:+d} " + ("pat" if karma_is_pats else "karma") + "), awesome!"
 		),
-	types.SUCCESS_EMOJI_RECEIVED: lambda karma_is_pats, **_: em(
+	types.SUCCESS_EMOJI_RECEIVED: lambda karma_is_pats, bot_name="", **_: em(
 			"You just received a {emoji} ({karma_change:+d} " + ("pat" if karma_is_pats else "karma") + "), awesome!"
 		),
 	types.SUCCESS_WARN: lambda cooldown, **_:

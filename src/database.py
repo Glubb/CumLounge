@@ -7,6 +7,8 @@ from random import randint
 from threading import RLock
 from typing import Optional
 
+from typing import Optional, Iterator
+
 from src.globals import *
 
 # what's inside the db
@@ -140,19 +142,44 @@ class Database():
 		raise NotImplementedError()
 	def close(self):
 		raise NotImplementedError()
-	def getUser(self, id=None):
+	def getUser(self, id: Optional[int] = None) -> User:
+		"""
+		Get user by ID.
+		
+		Args:
+			id: User ID
+			
+		Returns:
+			User object
+			
+		Raises:
+			KeyError: If user not found
+			ValueError: If id is None
+		"""
 		raise NotImplementedError()
-	def setUser(self, id, user):
+	
+	def setUser(self, id: int, user: User) -> None:
+		"""Update user in database."""
 		raise NotImplementedError()
-	def addUser(self, user):
+	
+	def addUser(self, user: User) -> None:
+		"""Add new user to database."""
 		raise NotImplementedError()
-	def iterateUserIds(self):
+	
+	def iterateUserIds(self) -> Iterator[int]:
+		"""Iterate over all user IDs."""
 		raise NotImplementedError()
-	def getSystemConfig(self):
+	
+	def getSystemConfig(self) -> Optional[SystemConfig]:
+		"""Get system configuration."""
 		raise NotImplementedError()
-	def setSystemConfig(self, config):
+	
+	def setSystemConfig(self, config: SystemConfig) -> None:
+		"""Update system configuration."""
 		raise NotImplementedError()
-	def iterateUsers(self):
+	
+	def iterateUsers(self) -> Iterator[User]:
+		"""Iterate over all users."""
 		with self.lock:
 			l = list(self.getUser(id=id) for id in self.iterateUserIds())
 		yield from l
@@ -386,6 +413,12 @@ CREATE TABLE IF NOT EXISTS `users` (
 			exists, _ = row_exists("users", "tripcode")
 			if not exists:
 				self.db.execute("ALTER TABLE `users` ADD `tripcode` TEXT")
+			
+			# Performance indexes
+			self.db.execute("CREATE INDEX IF NOT EXISTS `idx_users_rank` ON `users`(`rank`);")
+			self.db.execute("CREATE INDEX IF NOT EXISTS `idx_users_username` ON `users`(`username`) WHERE `username` IS NOT NULL;")
+			self.db.execute("CREATE INDEX IF NOT EXISTS `idx_users_joined` ON `users`(`joined`) WHERE `left` IS NULL;")
+			self.db.execute("CREATE INDEX IF NOT EXISTS `idx_users_active` ON `users`(`lastActive`) WHERE `left` IS NULL;")
 			# message mapping for cross-process lookups
 			self.db.execute("""
 CREATE TABLE IF NOT EXISTS `message_mapping` (
@@ -430,8 +463,11 @@ CREATE TABLE IF NOT EXISTS `bot_users` (
 			sql = "REPLACE INTO message_mapping(`msid`,`uid`,`message_id`) VALUES (?,?,?)"
 			params = (msid, uid, message_id)
 		with self.lock:
-			self.db.execute(sql, params)
-			self._mark_dirty()
+			try:
+				self.db.execute(sql, params)
+				self._mark_dirty()
+			except Exception as e:
+				logging.error("Failed to save message mapping: %s", e)
 
 	def get_msid_by_uid_message(self, uid: int, message_id: int, bot_id: Optional[int] = None):
 		if self._mm_has_bot_id and bot_id is not None:
@@ -441,9 +477,13 @@ CREATE TABLE IF NOT EXISTS `bot_users` (
 			sql = "SELECT msid FROM message_mapping WHERE uid = ? AND message_id = ?"
 			params = (uid, message_id)
 		with self.lock:
-			cur = self.db.execute(sql, params)
-			row = cur.fetchone()
-			return row[0] if row else None
+			try:
+				cur = self.db.execute(sql, params)
+				row = cur.fetchone()
+				return row[0] if row else None
+			except Exception as e:
+				logging.error("Failed to get msid by uid/message: %s", e)
+				return None
 
 	def get_recipient_mappings_by_msid(self, msid: int, bot_id: Optional[int] = None):
 		"""Return list of (uid, message_id) for all recipients of msid."""
@@ -454,36 +494,50 @@ CREATE TABLE IF NOT EXISTS `bot_users` (
 			sql = "SELECT uid, message_id FROM message_mapping WHERE msid = ?"
 			params = (msid,)
 		with self.lock:
-			cur = self.db.execute(sql, params)
-			return [(row[0], row[1]) for row in cur.fetchall()]
+			try:
+				cur = self.db.execute(sql, params)
+				return [(row[0], row[1]) for row in cur.fetchall()]
+			except Exception as e:
+				logging.error("Failed to get recipient mappings: %s", e)
+				return []
 
 	# -- Per-bot reachable users --
 	def mark_bot_user_seen(self, bot_id: int, uid: int):
 		"""Record that this user has started/messaged this bot (can now receive DMs)."""
 		with self.lock:
-			self.db.execute(
-				"REPLACE INTO bot_users(`bot_id`,`uid`,`last_seen`,`can_send`) VALUES (?,?,CURRENT_TIMESTAMP,1)",
-				(bot_id, uid)
-			)
-			self._mark_dirty()
+			try:
+				self.db.execute(
+					"REPLACE INTO bot_users(`bot_id`,`uid`,`last_seen`,`can_send`) VALUES (?,?,CURRENT_TIMESTAMP,1)",
+					(bot_id, uid)
+				)
+				self._mark_dirty()
+			except Exception as e:
+				logging.error("Failed to mark bot user seen: %s", e)
 
 	def set_bot_user_send_blocked(self, bot_id: int, uid: int):
 		"""Mark that sending to this user with this bot fails (chat not found)."""
 		with self.lock:
-			self.db.execute(
-				"UPDATE bot_users SET can_send = 0 WHERE bot_id = ? AND uid = ?",
-				(bot_id, uid)
-			)
-			self._mark_dirty()
+			try:
+				self.db.execute(
+					"UPDATE bot_users SET can_send = 0 WHERE bot_id = ? AND uid = ?",
+					(bot_id, uid)
+				)
+				self._mark_dirty()
+			except Exception as e:
+				logging.error("Failed to set bot user send blocked: %s", e)
 
 	def get_reachable_user_ids(self, bot_id: int):
 		"""Return list of user IDs this bot can send messages to."""
 		with self.lock:
-			cur = self.db.execute(
-				"SELECT uid FROM bot_users WHERE bot_id = ? AND can_send = 1",
-				(bot_id,)
-			)
-			return [row[0] for row in cur.fetchall()]
+			try:
+				cur = self.db.execute(
+					"SELECT uid FROM bot_users WHERE bot_id = ? AND can_send = 1",
+					(bot_id,)
+				)
+				return [row[0] for row in cur.fetchall()]
+			except Exception as e:
+				logging.error("Failed to get reachable user IDs: %s", e)
+				return []
 
 	def getUser(self, id=None):
 		if id is None:
@@ -521,16 +575,21 @@ CREATE TABLE IF NOT EXISTS `bot_users` (
 		sql = "SELECT `id` FROM users"
 		with self.lock:
 			cur = self.db.execute(sql)
-			l = cur.fetchall()
-		yield from l
+			# Yield tuples directly without materializing full list
+			for row in cur:
+				yield row[0]
 		
 	def getUserByUsername(self, username):
 		# Remove @ if present
 		username = username.lstrip('@')
 		sql = "SELECT * FROM users WHERE username = ?"
 		with self.lock:
-			cur = self.db.execute(sql, (username,))
-			row = cur.fetchone()
+			try:
+				cur = self.db.execute(sql, (username,))
+				row = cur.fetchone()
+			except Exception as e:
+				logging.error("Database error in getUserByUsername: %s", e)
+				return None
 		if row is None:
 			return None
 		return SQLiteDatabase._userFromRow(row)
