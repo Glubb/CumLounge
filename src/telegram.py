@@ -1053,8 +1053,9 @@ def init(config, _db, _ch):
     def _on_message(m):
         # Intercept commands so they are not broadcast to others
         if getattr(m, 'text', None) and str(m.text).startswith('/'):
-            if _handle_command(m):
-                return
+            # Always handle commands privately, never relay them
+            _handle_command(m)
+            return
         relay(m)
 
     # Reaction updates (both per-user and count updates)
