@@ -363,9 +363,9 @@ format_strs = {
 			"	/adminsay TEXT" +          " - <i>Post admin message</i>\n" +
 			"	/rules TEXT" +             " - <i>Define rules (HTML)</i>\n" +
 			"	/botinfo" +                " - <i>Show bot system info</i>\n" +
-			"	/uncooldown ID/USERNAME" + " - <i>Remove cooldown from a user</i>\n" +
-			"	/unblacklist ID/USERNAME" + " - <i>Remove user from blacklist</i>\n" +
-			"	/preblacklist USERNAME REASON" + " - <i>Blacklist user before they join</i>\n" +
+				"\t/uncooldown ID/USERNAME" + " - <i>Remove cooldown from a user</i>\n" +
+				"\t/unblacklist ID/USERNAME" + " - <i>Remove user from blacklist</i>\n" +
+				"\t/preblacklist USERNAME REASON" + " - <i>Blacklist user before they join</i>\n" +
 			"	/mod USERNAME" +           " - <i>Promote a user to mod</i>\n" +
 			"	/admin USERNAME" +         " - <i>Promote a user to admin</i>\n" +
 			"\t/demote USERNAME" +        " - <i>Demote a user to regular user</i>\n" +

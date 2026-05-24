@@ -46,36 +46,41 @@ class _TelegramReceiver(core.Receiver):
                 if not u.isJoined() or u.isBlacklisted():
                     continue
                 if except_who is not None and _uid(except_who) == u.id:
-                    continue
-                if BOT_ID is not None and u.id not in reachable_ids:
-                    continue
-                recipients.append(u.id)
-        else:
-            uid = _uid(who)
-            if uid is not None:
-                recipients.append(uid)
-
-        # Send to recipients, optionally as a reply to a mapped message
-        for rid in recipients:
-            kwargs = {"parse_mode": "HTML"}
-            try:
-                if reply_to is not None:
-                    msg_id = ch.lookupMapping(rid, msid=reply_to)
-                    if msg_id is not None:
-                        kwargs["reply_to_message_id"] = msg_id
-                        kwargs["allow_sending_without_reply"] = True
-                bot.send_message(rid, text, **kwargs)
-                logging.debug("Delivered system message to %s", rid)
-            except Exception as e:
-                logging.debug("Failed to deliver system message to %s: %s", rid, e)
-
-    @staticmethod
-    def delete(msids):
-        """Delete messages across all users by msid(s)."""
-        if not isinstance(msids, list):
-            msids = [msids]
-        
-        for msid in msids:
+                        msids_set = set(msids)
+                        # first stop actively delivering these messages
+                        message_queue.delete(lambda item: item.msid in msids_set)
+                        # compute owner for each msid
+                        msids_owner = []
+                        for msid in msids:
+                            tmp = ch.getMessage(msid)
+                            msids_owner.append(None if tmp is None else tmp.user_id)
+                        assert len(msids_owner) == len(msids)
+                        # Use cache reverse-index to only target users that actually received the
+                        # message instead of scanning all users. This avoids O(users) work per msid.
+                        for j, msid in enumerate(msids):
+                            owner = msids_owner[j]
+                            with ch.lock:
+                                uids = set(ch.msid_index.get(msid, set()))
+                            for uid in uids:
+                                try:
+                                    user = db.getUser(id=uid)
+                                except KeyError:
+                                    continue
+                                if not user.isJoined():
+                                    continue
+                                if uid == owner and not user.debugEnabled:
+                                    continue
+                                id = ch.lookupMapping(uid, msid=msid)
+                                if id is None:
+                                    continue
+                                user_id = user.id
+                                def f(user_id=user_id, id=id):
+                                    delete_message_inner(user_id, id)
+                                # msid=None here since this is a deletion, not a message being sent
+                                put_into_queue(user, None, f)
+                        # drop the mappings for these messages so the id doesn't end up used e.g. for replies
+                        for msid in msids_set:
+                            ch.deleteMappings(msid)
             # Get the cached message to find which users have copies
             cm = ch.getMessage(msid)
             if cm is None:
