@@ -34,92 +34,27 @@ allow_polls = False
 class _TelegramReceiver(core.Receiver):
     @staticmethod
     def reply(m, msid, who, except_who, reply_to):
-        text = rp.formatForTelegram(m)
-        _uid = lambda x: x.id if hasattr(x, 'id') else int(x) if x is not None else None
+        # Format the reply once
+        formatted = rp.formatForTelegram(m)
 
-        # Determine recipients
-        recipients = []
-        if who is None:
-            reachable_ids = _get_cached_reachable_ids()
-            
-            for u in db.iterateUsers():
-                if not u.isJoined() or u.isBlacklisted():
-                    continue
-                if except_who is not None and _uid(except_who) == u.id:
-                        msids_set = set(msids)
-                        # first stop actively delivering these messages
-                        message_queue.delete(lambda item: item.msid in msids_set)
-                        # compute owner for each msid
-                        msids_owner = []
-                        for msid in msids:
-                            tmp = ch.getMessage(msid)
-                            msids_owner.append(None if tmp is None else tmp.user_id)
-                        assert len(msids_owner) == len(msids)
-                        # Use cache reverse-index to only target users that actually received the
-                        # message instead of scanning all users. This avoids O(users) work per msid.
-                        for j, msid in enumerate(msids):
-                            owner = msids_owner[j]
-                            with ch.lock:
-                                uids = set(ch.msid_index.get(msid, set()))
-                            for uid in uids:
-                                try:
-                                    user = db.getUser(id=uid)
-                                except KeyError:
-                                    continue
-                                if not user.isJoined():
-                                    continue
-                                if uid == owner and not user.debugEnabled:
-                                    continue
-                                id = ch.lookupMapping(uid, msid=msid)
-                                if id is None:
-                                    continue
-                                user_id = user.id
-                                def f(user_id=user_id, id=id):
-                                    delete_message_inner(user_id, id)
-                                # msid=None here since this is a deletion, not a message being sent
-                                put_into_queue(user, None, f)
-                        # drop the mappings for these messages so the id doesn't end up used e.g. for replies
-                        for msid in msids_set:
-                            ch.deleteMappings(msid)
-            # Get the cached message to find which users have copies
-            cm = ch.getMessage(msid)
-            if cm is None:
+        # If `who` is specified, deliver only to that user; otherwise broadcast
+        if who is not None:
+            try:
+                uid = who.id if hasattr(who, 'id') else int(who)
+                user = db.getUser(id=uid)
+            except Exception:
+                return
+            if not user.isJoined():
+                return
+            send_to_single(m, msid, user, reply_msid=reply_to)
+            return
+
+        for user in db.iterateUsers():
+            if not user.isJoined():
                 continue
-            
-            # Delete from all users who received this message
-            for user in db.iterateUsers():
-                if not user.isJoined():
-                    continue
-                
-                # Look up the telegram message_id for this user
-                msg_id = ch.lookupMapping(user.id, msid=msid)
-                if msg_id:
-                    try:
-                        bot.delete_message(user.id, msg_id)
-                        logging.debug("Deleted message %s from user %s", msg_id, user.id)
-                    except Exception as e:
-                        logging.debug("Failed to delete message %s from user %s: %s", msg_id, user.id, e)
-            
-            # Also try DB mapping for cross-process support
-            try:
-                recipient_pairs = db.get_recipient_mappings_by_msid(msid, BOT_ID)
-                for (uid, msg_id) in recipient_pairs:
-                    try:
-                        bot.delete_message(uid, msg_id)
-                        logging.debug("Deleted message %s from user %s (via DB)", msg_id, uid)
-                    except Exception as e:
-                        logging.debug("Failed to delete message %s from user %s: %s", msg_id, uid, e)
-            except Exception:
-                pass
-            
-            # Remove from cache
-            ch.deleteMappings(msid)
-            
-            # Remove from database
-            try:
-                db.delete_message_mappings(msid)
-            except Exception:
-                pass
+            if except_who is not None and hasattr(except_who, 'id') and except_who.id == user.id and not user.debugEnabled:
+                continue
+            send_to_single(m, msid, user, reply_msid=reply_to)
 
     @staticmethod
     def stop_invoked(who, delete_out=False):
