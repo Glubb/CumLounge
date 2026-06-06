@@ -98,6 +98,7 @@ def validate_config(config: dict) -> list[str]:
         "vote_up_limit_interval": (0, 3600),
         "vote_down_limit_interval": (0, 3600),
         "media_auto_disable_hours": (0, 168),
+        "purge_old_default_days": (0, 3650),  # 0 allowed: makes default /refresh do full non-pinned purge (deletion+recreation)
     }
     
     for field, (min_val, max_val) in numeric_fields.items():

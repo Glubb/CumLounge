@@ -59,6 +59,12 @@ bot_name: anon
 # set to 0 to disable auto-disabling; defaults to 8 when omitted
 #media_auto_disable_hours: 8
 
+# Default days for /refresh (purge old non-pinned messages, preserving pinned ones).
+# Used when /refresh is called without a number. Set to 7 for "past a week".
+# Admins can always override on the command line: /refresh 30 or /refresh all (full non-pinned purge for deletion+recreation of history).
+# 0 or negative in the command means purge everything non-pinned (useful for full refresh/recreation while keeping users/ranks).
+#purge_old_default_days: 7
+
 # Label used by /users for the global count line (optional)
 #global_user_count_label: "Secret Lounge user count"
 

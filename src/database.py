@@ -297,37 +297,30 @@ class JSONDatabase(Database):
 		return None
 	def get_recipient_mappings_by_msid(self, msid: int, bot_id: Optional[int] = None):
 		return []
-	def cleanup_old_message_mappings(self, hours: int = 48):
-		return 0
 	def delete_message_mappings(self, msid: int):
 		return 0
-	def delete_message_mappings(self, msid: int):
-		"""Delete all message mappings for a given msid."""
-		sql = "DELETE FROM message_mapping WHERE msid = ?"
-		with self.lock:
-			try:
-				cur = self.db.execute(sql, (msid,))
-				deleted = cur.rowcount
-				if deleted > 0:
-					self._mark_dirty()
-				return deleted
-			except Exception as e:
-				logging.error("Failed to delete message mappings for msid %s: %s", msid, e)
-				return 0
 	def cleanup_old_message_mappings(self, hours: int = 48):
-		"""Delete message mappings older than specified hours."""
-		sql = "DELETE FROM message_mapping WHERE created_at < datetime('now', '-' || ? || ' hours')"
-		with self.lock:
-			try:
-				cur = self.db.execute(sql, (hours,))
-				deleted = cur.rowcount
-				if deleted > 0:
-					logging.info("Cleaned up %d old message mappings", deleted)
-					self._mark_dirty()
-				return deleted
-			except Exception as e:
-				logging.error("Failed to cleanup old message mappings: %s", e)
-				return 0
+		return 0
+	# Author tracking stubs (for delete across restarts)
+	def save_message_author(self, msid: int, author_uid: int):
+		return
+	def get_message_author(self, msid: int):
+		return None
+	def delete_message_author(self, msid: int):
+		return 0
+	def cleanup_old_message_authors(self, hours: int = 72):
+		return 0
+
+	# Pin tracking stubs (pinned messages are excluded from old-message purges)
+	def pin_msid(self, msid: int, by_uid: Optional[int] = None):
+		return
+	def unpin_msid(self, msid: int):
+		return 0
+	def get_pinned_msids(self):
+		return []
+	def get_old_non_pinned_msids(self, cutoff=None):
+		"""Return msids older than cutoff (or all if None) that are not pinned (for /refresh purge / recreation)."""
+		return []
 
 	# Stubs for per-bot reachability; JSON backend is dev-only
 	def mark_bot_user_seen(self, bot_id: int, uid: int):
@@ -463,6 +456,26 @@ CREATE TABLE IF NOT EXISTS `message_mapping` (
 			self.db.execute("CREATE INDEX IF NOT EXISTS `idx_mm_msid` ON `message_mapping`(`msid`);")
 			self.db.execute("CREATE INDEX IF NOT EXISTS `idx_mm_uid_msid` ON `message_mapping`(`uid`, `msid`);")
 
+			# Per-msid author tracking so that delete/warn can work after cache expiry or restart
+			self.db.execute("""
+CREATE TABLE IF NOT EXISTS `message_authors` (
+	`msid` INTEGER PRIMARY KEY,
+	`author_uid` BIGINT NOT NULL,
+	`created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+			""".strip())
+			self.db.execute("CREATE INDEX IF NOT EXISTS `idx_ma_created` ON `message_authors`(`created_at`);")
+
+			# Pinned msids (protected from purge/cleanup of old non-pinned messages; supports /unpin even for old pins)
+			self.db.execute("""
+CREATE TABLE IF NOT EXISTS `pinned` (
+	`msid` INTEGER PRIMARY KEY,
+	`pinned_by` BIGINT,
+	`pinned_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+			""".strip())
+			self.db.execute("CREATE INDEX IF NOT EXISTS `idx_pinned_at` ON `pinned`(`pinned_at`);")
+
 			# Ensure bot_id column exists to disambiguate per-bot mappings
 			exists, cols = row_exists("message_mapping", "bot_id")
 			if not exists:
@@ -568,6 +581,162 @@ CREATE TABLE IF NOT EXISTS `bot_users` (
 				return [row[0] for row in cur.fetchall()]
 			except Exception as e:
 				logging.error("Failed to get reachable user IDs: %s", e)
+				return []
+
+	# -- Message author tracking (for delete after restart / cache expiry) --
+	def save_message_author(self, msid: int, author_uid: int):
+		"""Record the original author of an msid so delete commands can notify even if message aged out of RAM cache."""
+		with self.lock:
+			try:
+				self.db.execute(
+					"REPLACE INTO message_authors(`msid`,`author_uid`) VALUES (?,?)",
+					(msid, author_uid)
+				)
+				self._mark_dirty()
+			except Exception as e:
+				logging.error("Failed to save message author: %s", e)
+
+	def get_message_author(self, msid: int):
+		"""Return the author uid for an msid, or None."""
+		with self.lock:
+			try:
+				cur = self.db.execute("SELECT author_uid FROM message_authors WHERE msid = ?", (msid,))
+				row = cur.fetchone()
+				return row[0] if row else None
+			except Exception as e:
+				logging.error("Failed to get message author: %s", e)
+				return None
+
+	def delete_message_author(self, msid: int):
+		with self.lock:
+			try:
+				cur = self.db.execute("DELETE FROM message_authors WHERE msid = ?", (msid,))
+				if cur.rowcount > 0:
+					self._mark_dirty()
+				return cur.rowcount
+			except Exception as e:
+				logging.error("Failed to delete message author for msid %s: %s", msid, e)
+				return 0
+
+	def delete_message_mappings(self, msid: int):
+		"""Delete mappings (and author record) for an msid. Used after successful delete or expiry."""
+		with self.lock:
+			deleted = 0
+			try:
+				cur = self.db.execute("DELETE FROM message_mapping WHERE msid = ?", (msid,))
+				deleted = cur.rowcount or 0
+				self.db.execute("DELETE FROM message_authors WHERE msid = ?", (msid,))
+				if deleted > 0:
+					self._mark_dirty()
+			except Exception as e:
+				logging.error("Failed to delete message mappings for msid %s: %s", msid, e)
+			return deleted
+
+	def cleanup_old_message_mappings(self, hours: int = 2160):
+		"""Delete mappings and author records older than N hours for *non-pinned* messages only.
+		Pinned messages keep their mappings indefinitely so /unpin and admin actions continue to work.
+		Default ~90 days is a long safety net; the explicit /refresh (7 days, non-pinned) is the main policy tool."""
+		with self.lock:
+			total = 0
+			try:
+				# Protect pinned: only clean non-pinned old mappings
+				cur = self.db.execute(
+					"""DELETE FROM message_mapping 
+					   WHERE created_at < datetime('now', '-' || ? || ' hours')
+					     AND msid NOT IN (SELECT msid FROM pinned)""",
+					(hours,)
+				)
+				total += (cur.rowcount or 0)
+				# Authors: also protect pinned (keep a bit longer)
+				cur2 = self.db.execute(
+					"""DELETE FROM message_authors 
+					   WHERE created_at < datetime('now', '-' || ? || ' hours')
+					     AND msid NOT IN (SELECT msid FROM pinned)""",
+					(hours + 24,)
+				)
+				if total > 0 or (cur2.rowcount or 0) > 0:
+					logging.info("Cleaned up %d old (non-pinned) message mappings", total)
+					self._mark_dirty()
+				return total
+			except Exception as e:
+				logging.error("Failed to cleanup old message mappings: %s", e)
+				return 0
+
+	def cleanup_old_message_authors(self, hours: int = 2200):
+		"""Standalone author cleanup (usually driven via cleanup_old_message_mappings). Respects pins."""
+		with self.lock:
+			try:
+				cur = self.db.execute(
+					"""DELETE FROM message_authors 
+					   WHERE created_at < datetime('now', '-' || ? || ' hours')
+					     AND msid NOT IN (SELECT msid FROM pinned)""",
+					(hours,)
+				)
+				if cur.rowcount:
+					self._mark_dirty()
+				return cur.rowcount or 0
+			except Exception as e:
+				logging.error("Failed to cleanup old message authors: %s", e)
+				return 0
+
+	# -- Pin tracking (for protecting important messages from bulk old purges + supporting long-lived /unpin) --
+	def pin_msid(self, msid: int, by_uid: Optional[int] = None):
+		"""Mark an msid as pinned (protected from age-based purge)."""
+		with self.lock:
+			try:
+				self.db.execute(
+					"REPLACE INTO pinned(`msid`, `pinned_by`) VALUES (?, ?)",
+					(msid, by_uid)
+				)
+				self._mark_dirty()
+			except Exception as e:
+				logging.error("Failed to pin msid %s: %s", msid, e)
+
+	def unpin_msid(self, msid: int):
+		"""Remove pin protection for an msid (it becomes eligible for normal/old cleanup)."""
+		with self.lock:
+			try:
+				cur = self.db.execute("DELETE FROM pinned WHERE msid = ?", (msid,))
+				if cur.rowcount > 0:
+					self._mark_dirty()
+				return cur.rowcount or 0
+			except Exception as e:
+				logging.error("Failed to unpin msid %s: %s", msid, e)
+				return 0
+
+	def get_pinned_msids(self):
+		"""Return list of currently pinned msids."""
+		with self.lock:
+			try:
+				cur = self.db.execute("SELECT msid FROM pinned")
+				return [row[0] for row in cur.fetchall()]
+			except Exception as e:
+				logging.error("Failed to get pinned msids: %s", e)
+				return []
+
+	def get_old_non_pinned_msids(self, cutoff=None):
+		"""Return msids that are not pinned.
+		If cutoff is provided, only those with created_at < cutoff.
+		If cutoff is None, returns *all* non-pinned (for full /refresh all or recreation)."""
+		with self.lock:
+			try:
+				if cutoff is None:
+					cur = self.db.execute(
+						"""SELECT msid FROM message_authors
+						   WHERE msid NOT IN (SELECT msid FROM pinned)
+						   ORDER BY created_at"""
+					)
+				else:
+					cur = self.db.execute(
+						"""SELECT msid FROM message_authors
+						   WHERE created_at < ?
+						     AND msid NOT IN (SELECT msid FROM pinned)
+						   ORDER BY created_at""",
+						(cutoff,)
+					)
+				return [row[0] for row in cur.fetchall()]
+			except Exception as e:
+				logging.error("Failed to get old non-pinned msids: %s", e)
 				return []
 
 	def getUser(self, id=None):

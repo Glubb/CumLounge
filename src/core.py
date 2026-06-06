@@ -42,12 +42,13 @@ vote_up_interval = None
 vote_down_interval = None
 media_blocked = False
 media_auto_disable_hours = 8
+purge_old_default_days = 7
 
 def relay_message(message, user, msid, reply_msid):
 	return None, msid
 
 def init(config, _db, _ch):
-	global launched, db, ch, spam_scores, repeat_detector, reg_open, log_channel, karma_amount_add, karma_amount_remove, karma_level_names, blacklist_contact, bot_name, karma_is_pats, enable_signing, media_limit_period, sign_interval, vote_up_interval, vote_down_interval, media_blocked, media_auto_disable_hours, is_leader
+	global launched, db, ch, spam_scores, repeat_detector, reg_open, log_channel, karma_amount_add, karma_amount_remove, karma_level_names, blacklist_contact, bot_name, karma_is_pats, enable_signing, media_limit_period, sign_interval, vote_up_interval, vote_down_interval, media_blocked, media_auto_disable_hours, is_leader, purge_old_default_days
 
 	launched = datetime.now()
 
@@ -82,6 +83,11 @@ def init(config, _db, _ch):
 		media_auto_disable_hours = int(config.get("media_auto_disable_hours", 8))
 	except Exception:
 		media_auto_disable_hours = 8
+
+	try:
+		purge_old_default_days = int(config.get("purge_old_default_days", 7))
+	except Exception:
+		purge_old_default_days = 7
 
 	if config.get("locale"):
 		rp.localization = __import__("src.replies_" + config["locale"],
@@ -773,14 +779,26 @@ def send_admin_message(user, arg):
 @requireRank(RANKS.mod)
 def warn_user(user, msid, delete=False, del_all=False, duration=""):
 	cm = ch.getMessage(msid)
-	if cm is None or cm.user_id is None:
+	author_uid = None
+	if cm is not None and cm.user_id is not None:
+		author_uid = cm.user_id
+	else:
+		# Support delete/warn of messages that have expired from RAM cache or after restart.
+		# Requires the persistent message_authors + message_mapping tables.
+		try:
+			author_uid = db.get_message_author(msid)
+		except Exception:
+			author_uid = None
+	if author_uid is None:
 		return rp.Reply(rp.types.ERR_NOT_IN_CACHE)
 
+	user2 = db.getUser(id=author_uid)
+
 	d = None
-	if not cm.warned:
-		with db.modifyUser(id=cm.user_id) as user2:
+	if cm is not None and not cm.warned:
+		with db.modifyUser(id=author_uid) as u2:
 			if duration == "":
-				d = user2.addWarning()
+				d = u2.addWarning()
 			else:
 				cooldown = {
 					"seconds": 0,
@@ -815,21 +833,23 @@ def warn_user(user, msid, delete=False, del_all=False, duration=""):
 						return rp.Reply(rp.types.ERR_INVALID_DURATION)
 					cooldown[key] = int(n)
 					i += 1
-				d = user2.addWarning(timedelta(**cooldown))
-			user2.karma -= KARMA_WARN_PENALTY
+				d = u2.addWarning(timedelta(**cooldown))
+			u2.karma -= KARMA_WARN_PENALTY
 		_push_system_message(
 			rp.Reply(rp.types.GIVEN_COOLDOWN, duration=d, deleted=delete),
 			who=user2, reply_to=msid)
 		cm.warned = True
-	else:
-		user2 = db.getUser(id=cm.user_id)
+	elif cm is not None and cm.warned:
 		if not delete: # allow deleting already warned messages
 			return rp.Reply(rp.types.ERR_ALREADY_WARNED)
+	elif cm is None:
+		# Old message (no cm): we still allow delete, just can't set warned flag
+		pass
 	if delete:
 		if del_all:
-			msgs = ch.getMessages(cm.user_id)
-			for msid, cm2 in msgs:
-				Sender.delete([msid])
+			msgs = ch.getMessages(author_uid)
+			for m2, cm2 in msgs:
+				Sender.delete([m2])
 			if d is not None:
 				logging.info("%s warned %s (@%s) (cooldown: %s) and deleted all %d messages", user, user2.getObfuscatedId(), user2.username or "no_username", d, len(msgs))
 			else:
@@ -853,15 +873,22 @@ def warn_user(user, msid, delete=False, del_all=False, duration=""):
 @requireRank(RANKS.mod)
 def delete_message(user, msid, del_all=False):
 	cm = ch.getMessage(msid)
-	if cm is None or cm.user_id is None:
+	author_uid = cm.user_id if (cm is not None and cm.user_id is not None) else None
+	if author_uid is None:
+		# Fallback: allow deleting messages no longer in the in-memory cache (post-restart or >48h cache age)
+		try:
+			author_uid = db.get_message_author(msid)
+		except Exception:
+			author_uid = None
+	if author_uid is None:
 		return rp.Reply(rp.types.ERR_NOT_IN_CACHE)
 
-	user2 = db.getUser(id=cm.user_id)
+	user2 = db.getUser(id=author_uid)
 
 	if del_all:
 		msgs = ch.getMessages(user2.id)
-		for msid, cm2 in msgs:
-			Sender.delete([msid])
+		for m2, cm2 in msgs:
+			Sender.delete([m2])
 		logging.info("%s deleted all messages from %s", user, user2.getObfuscatedId())
 		return rp.Reply(rp.types.SUCCESS_DELETEALL, id=user2.getObfuscatedId(), count=len(msgs))
 	else:
@@ -887,6 +914,56 @@ def cleanup_messages(user):
 	logging.info("%s invoked cleanup (matched: %d)", user, len(msids))
 	Sender.delete(msids)
 	return rp.Reply(rp.types.DELETION_QUEUED, count=len(msids))
+
+@requireUser
+@requireRank(RANKS.admin)
+def purge_old_messages(user, days: int = None):
+	"""Bulk delete (and forget) all non-pinned messages older than N days (or all if days<=0).
+	This is the mechanism behind "refreshing the bot" / deletion+recreation:
+	it cleans internal state (cache + message_mapping + message_authors) for the
+	selected messages and attempts to remove the copies via Telegram where the
+	API still allows it (generally messages < ~48h old).
+	Pinned messages (recorded via /pin) are explicitly excluded so important
+	announcements etc. survive refreshes.
+	"""
+	if days is None:
+		days = purge_old_default_days
+
+	if days <= 0:
+		cutoff = None
+		age_desc = "all"
+	else:
+		cutoff = datetime.now() - timedelta(days=days)
+		age_desc = f"older than {days} days"
+
+	try:
+		msids = db.get_old_non_pinned_msids(cutoff)
+	except Exception:
+		msids = []
+	if not msids:
+		return rp.Reply(rp.types.CUSTOM, text=f"No non-pinned messages {age_desc} found.")
+
+	# This will:
+	# - Attempt real bot.delete_message on any recipient copies we still have mappings for
+	# - Clean the in-memory cache entries
+	# - Clean DB mappings + author rows (via the receiver)
+	Sender.delete(msids)
+
+	# Also explicitly ensure any author/pin records for these are gone (in case mappings were already cleaned)
+	for msid in msids:
+		try:
+			db.delete_message_mappings(msid)  # also removes authors
+			# pinned should not be present (we queried non-pinned), but be defensive
+			db.unpin_msid(msid)
+		except Exception:
+			pass
+
+	if days <= 0:
+		logging.info("%s performed full non-pinned purge (recreation): %d messages (all non-pinned)", user, len(msids))
+		return rp.Reply(rp.types.CUSTOM, text=f"Bot refreshed / recreated: purged all {len(msids)} non-pinned messages. Pinned messages were preserved. New messages will start fresh.")
+	else:
+		logging.info("%s refreshed/purged %d messages older than %d days (non-pinned only)", user, len(msids), days)
+		return rp.Reply(rp.types.CUSTOM, text=f"Refreshed: purged {len(msids)} non-pinned messages older than {days} days. Pinned messages were left alone.")
 
 @requireUser
 @requireRank(RANKS.admin)

@@ -66,6 +66,62 @@ class _TelegramReceiver(core.Receiver):
             if msids:
                 _TelegramReceiver.delete(msids)
 
+    @staticmethod
+    def delete(msids):
+        """Actually delete the relayed copies of the given internal msids via Telegram API.
+
+        Uses persistent DB mappings so this works after cache expiry and across restarts
+        (as long as within Telegram's ~48h hard limit for most delete_message calls).
+        """
+        if not msids:
+            return
+        for msid in list(msids):
+            pairs = []
+            # Prefer DB (survives restart); supplement from cache if present
+            try:
+                db_pairs = db.get_recipient_mappings_by_msid(msid, BOT_ID)
+                if db_pairs:
+                    pairs.extend(db_pairs)
+            except Exception:
+                pass
+            if not pairs:
+                # Fallback to in-memory cache (current process, pre-expiry)
+                try:
+                    # Use msid_index for speed if available
+                    uids = getattr(ch, 'msid_index', {}).get(msid, set()) or set()
+                    for uid in list(uids):
+                        mid = ch.lookupMapping(uid, msid=msid)
+                        if mid is not None:
+                            pairs.append((uid, mid))
+                except Exception:
+                    pass
+            # De-dupe
+            seen = set()
+            uniq = []
+            for p in pairs:
+                if p not in seen:
+                    seen.add(p)
+                    uniq.append(p)
+            pairs = uniq
+
+            for (uid, mid) in pairs:
+                try:
+                    bot.delete_message(chat_id=uid, message_id=mid)
+                except Exception as ex:
+                    # Swallow common "already deleted / too old / not found"
+                    low = str(ex).lower()
+                    if "not found" not in low and "can't be deleted" not in low and "message to delete" not in low:
+                        logging.debug("bot.delete_message failed for uid=%s mid=%s: %s", uid, mid, ex)
+            # Clean local structures
+            try:
+                ch.deleteMappings(msid)
+            except Exception:
+                pass
+            try:
+                db.delete_message_mappings(msid)
+            except Exception:
+                pass
+
 def log_into_channel(msg, html=False):
     pass
 
@@ -307,6 +363,7 @@ def relay(message):
     try:
         ch.saveMapping(sender_id, msid, message.message_id)
         db.save_message_mapping(sender_id, msid, message.message_id, bot_id=BOT_ID)
+        db.save_message_author(msid, sender_id)
     except Exception:
         pass
     
@@ -337,8 +394,10 @@ def register_tasks(sched):
             logging.exception("Error in telegram cleanup task")
     
     def clean_old_db_mappings():
+        # Long safety-net retention for non-pinned mappings. The main "past a week" policy
+        # for non-pinned content is driven explicitly by the /refresh admin command.
         try:
-            db.cleanup_old_message_mappings(hours=48)
+            db.cleanup_old_message_mappings(hours=2160)  # ~90 days
         except Exception:
             logging.exception("Error cleaning old message mappings")
 
@@ -697,6 +756,11 @@ def init(config, _db, _ch):
                         pass
                     return True
                 msid = int(prep)
+                # Persist author so /delete etc work after restart even for signed messages
+                try:
+                    db.save_message_author(msid, chat_id)
+                except Exception:
+                    pass
                 # Compose signed-with-level text in plain text (no HTML)
                 level_name = core.getKarmaLevelName(c_user.karma)
                 out_text = f"{body}\n— {level_name}"
@@ -1078,6 +1142,16 @@ def init(config, _db, _ch):
                         failed += 1
                         logging.debug("pin/unpin failed for uid=%s mid=%s: %s", rcpt_uid, rcpt_msg_id, e)
 
+                # Persist pin state in DB so that /refresh (purge old non-pinned) leaves pinned messages alone,
+                # and /unpin continues to work for old pinned messages.
+                try:
+                    if cmd == 'pin':
+                        db.pin_msid(target_msid, chat_id)
+                    else:
+                        db.unpin_msid(target_msid)
+                except Exception as e:
+                    logging.debug("Failed to record pin/unpin state for msid=%s: %s", target_msid, e)
+
                 # Acknowledge
                 try:
                     action = 'Pinned' if cmd == 'pin' else 'Unpinned'
@@ -1087,6 +1161,45 @@ def init(config, _db, _ch):
                     bot.send_message(chat_id, msg, reply_to_message_id=m.message_id)
                 except Exception:
                     pass
+                return True
+
+            # Refresh the bot: purge non-pinned messages older than N days (default from config purge_old_default_days, usually 7).
+            # Supports "deletion and recreation": /refresh all (or 0) purges *all* non-pinned messages regardless of age.
+            # This deletes (where Telegram API still permits) and forgets messages in cache + DB mappings/authors,
+            # except anything protected by /pin (pinned messages survive recreation).
+            # Admin only. Examples: /refresh , /refresh 30 , /refresh all
+            if cmd == 'refresh':
+                try:
+                    c_user = db.getUser(id=chat_id)
+                except KeyError:
+                    return True
+                if c_user.rank < core.RANKS.admin:
+                    try:
+                        txt = rp.formatForTelegram(rp.Reply(rp.types.ERR_COMMAND_DISABLED))
+                        bot.send_message(chat_id, txt, parse_mode='HTML', reply_to_message_id=m.message_id)
+                    except Exception:
+                        pass
+                    return True
+                days = getattr(core, 'purge_old_default_days', 7)
+                parts = text.strip().split(None, 1)
+                if len(parts) > 1:
+                    arg = parts[1].strip().lower()
+                    if arg in ('all', '0', '*', 'everything'):
+                        days = 0  # special: purge all non-pinned (full deletion + recreation)
+                    elif arg.isdigit():
+                        try:
+                            d = int(arg)
+                            if d >= 0:
+                                days = d
+                        except Exception:
+                            pass
+                res = core.purge_old_messages(c_user, days=days)
+                if res:
+                    try:
+                        txt = rp.formatForTelegram(res)
+                        bot.send_message(chat_id, txt, parse_mode='HTML', reply_to_message_id=m.message_id)
+                    except Exception:
+                        pass
                 return True
 
             # Map aliases

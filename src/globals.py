@@ -71,7 +71,10 @@ DEFAULT_COMMANDS = {
 	"togglemedia": "Toggle global media relay on/off [admin]",
 	"mod": "Promote a user to mod [admin]",
 	"admin": "Promote a user to admin [admin]",
-	"demote": "Demote a user to user [admin]"
+	"demote": "Demote a user to user [admin]",
+	"pin": "Pin a message in all chats (reply or /pin <msid>) [mod]",
+	"unpin": "Unpin a message [mod]",
+	"refresh": "Purge non-pinned msgs >N days (or 'all' for full non-pinned deletion/recreation). Config: purge_old_default_days. Pinned protected. [admin]"
 }
 
 # File names
