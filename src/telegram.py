@@ -118,7 +118,7 @@ class _TelegramReceiver(core.Receiver):
             except Exception:
                 pass
             try:
-                db.delete_message_mappings(msid)
+                db.delete_message_mappings(msid, bot_id=BOT_ID)
             except Exception:
                 pass
 
@@ -363,7 +363,7 @@ def relay(message):
     try:
         ch.saveMapping(sender_id, msid, message.message_id)
         db.save_message_mapping(sender_id, msid, message.message_id, bot_id=BOT_ID)
-        db.save_message_author(msid, sender_id)
+        db.save_message_author(msid, sender_id, bot_id=BOT_ID)
     except Exception:
         pass
     
@@ -718,7 +718,7 @@ def init(config, _db, _ch):
                     return True
                 # Remove single message or all messages from the user
                 del_all = (cmd == 'removeall')
-                res = core.delete_message(c_user, target_msid, del_all=del_all)
+                res = core.delete_message(c_user, target_msid, del_all=del_all, bot_id=BOT_ID)
                 if res:
                     try:
                         txt = rp.formatForTelegram(res)
@@ -758,7 +758,7 @@ def init(config, _db, _ch):
                 msid = int(prep)
                 # Persist author so /delete etc work after restart even for signed messages
                 try:
-                    db.save_message_author(msid, chat_id)
+                    db.save_message_author(msid, chat_id, bot_id=BOT_ID)
                 except Exception:
                     pass
                 # Compose signed-with-level text in plain text (no HTML)
@@ -991,13 +991,13 @@ def init(config, _db, _ch):
                 # Route to appropriate core function
                 res = None
                 if cmd == 'warn':
-                    res = core.warn_user(c_user, target_msid, delete=False, del_all=False, duration="")
+                    res = core.warn_user(c_user, target_msid, delete=False, del_all=False, duration="", bot_id=BOT_ID)
                 elif cmd == 'cooldown':
-                    res = core.warn_user(c_user, target_msid, delete=False, del_all=False, duration=duration)
+                    res = core.warn_user(c_user, target_msid, delete=False, del_all=False, duration=duration, bot_id=BOT_ID)
                 elif cmd == 'delete':
-                    res = core.warn_user(c_user, target_msid, delete=True, del_all=False, duration=duration)
+                    res = core.warn_user(c_user, target_msid, delete=True, del_all=False, duration=duration, bot_id=BOT_ID)
                 elif cmd == 'deleteall':
-                    res = core.warn_user(c_user, target_msid, delete=True, del_all=True, duration="")
+                    res = core.warn_user(c_user, target_msid, delete=True, del_all=True, duration="", bot_id=BOT_ID)
                 
                 if res:
                     try:
@@ -1143,12 +1143,12 @@ def init(config, _db, _ch):
                         logging.debug("pin/unpin failed for uid=%s mid=%s: %s", rcpt_uid, rcpt_msg_id, e)
 
                 # Persist pin state in DB so that /refresh (purge old non-pinned) leaves pinned messages alone,
-                # and /unpin continues to work for old pinned messages.
+                # and /unpin continues to work for old pinned messages. Scoped by bot for multi-bot DB sharing.
                 try:
                     if cmd == 'pin':
-                        db.pin_msid(target_msid, chat_id)
+                        db.pin_msid(target_msid, chat_id, bot_id=BOT_ID)
                     else:
-                        db.unpin_msid(target_msid)
+                        db.unpin_msid(target_msid, bot_id=BOT_ID)
                 except Exception as e:
                     logging.debug("Failed to record pin/unpin state for msid=%s: %s", target_msid, e)
 
@@ -1193,7 +1193,7 @@ def init(config, _db, _ch):
                                 days = d
                         except Exception:
                             pass
-                res = core.purge_old_messages(c_user, days=days)
+                res = core.purge_old_messages(c_user, days=days, bot_id=BOT_ID)
                 if res:
                     try:
                         txt = rp.formatForTelegram(res)

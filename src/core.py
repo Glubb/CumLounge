@@ -2,6 +2,7 @@ import logging
 import sys
 from datetime import datetime, timedelta
 from threading import Lock
+from typing import Optional
 
 import src.replies as rp
 from src.globals import *
@@ -777,7 +778,7 @@ def send_admin_message(user, arg):
 
 @requireUser
 @requireRank(RANKS.mod)
-def warn_user(user, msid, delete=False, del_all=False, duration=""):
+def warn_user(user, msid, delete=False, del_all=False, duration="", bot_id: Optional[int] = None):
 	cm = ch.getMessage(msid)
 	author_uid = None
 	if cm is not None and cm.user_id is not None:
@@ -786,7 +787,7 @@ def warn_user(user, msid, delete=False, del_all=False, duration=""):
 		# Support delete/warn of messages that have expired from RAM cache or after restart.
 		# Requires the persistent message_authors + message_mapping tables.
 		try:
-			author_uid = db.get_message_author(msid)
+			author_uid = db.get_message_author(msid, bot_id=bot_id)
 		except Exception:
 			author_uid = None
 	if author_uid is None:
@@ -871,13 +872,13 @@ def warn_user(user, msid, delete=False, del_all=False, duration=""):
 
 @requireUser
 @requireRank(RANKS.mod)
-def delete_message(user, msid, del_all=False):
+def delete_message(user, msid, del_all=False, bot_id: Optional[int] = None):
 	cm = ch.getMessage(msid)
 	author_uid = cm.user_id if (cm is not None and cm.user_id is not None) else None
 	if author_uid is None:
 		# Fallback: allow deleting messages no longer in the in-memory cache (post-restart or >48h cache age)
 		try:
-			author_uid = db.get_message_author(msid)
+			author_uid = db.get_message_author(msid, bot_id=bot_id)
 		except Exception:
 			author_uid = None
 	if author_uid is None:
@@ -917,7 +918,7 @@ def cleanup_messages(user):
 
 @requireUser
 @requireRank(RANKS.admin)
-def purge_old_messages(user, days: int = None):
+def purge_old_messages(user, days: int = None, bot_id: Optional[int] = None):
 	"""Bulk delete (and forget) all non-pinned messages older than N days (or all if days<=0).
 	This is the mechanism behind "refreshing the bot" / deletion+recreation:
 	it cleans internal state (cache + message_mapping + message_authors) for the
@@ -937,7 +938,7 @@ def purge_old_messages(user, days: int = None):
 		age_desc = f"older than {days} days"
 
 	try:
-		msids = db.get_old_non_pinned_msids(cutoff)
+		msids = db.get_old_non_pinned_msids(cutoff, bot_id=bot_id)
 	except Exception:
 		msids = []
 	if not msids:
@@ -952,9 +953,9 @@ def purge_old_messages(user, days: int = None):
 	# Also explicitly ensure any author/pin records for these are gone (in case mappings were already cleaned)
 	for msid in msids:
 		try:
-			db.delete_message_mappings(msid)  # also removes authors
+			db.delete_message_mappings(msid, bot_id=bot_id)  # also removes authors
 			# pinned should not be present (we queried non-pinned), but be defensive
-			db.unpin_msid(msid)
+			db.unpin_msid(msid, bot_id=bot_id)
 		except Exception:
 			pass
 

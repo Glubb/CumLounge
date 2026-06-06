@@ -297,28 +297,28 @@ class JSONDatabase(Database):
 		return None
 	def get_recipient_mappings_by_msid(self, msid: int, bot_id: Optional[int] = None):
 		return []
-	def delete_message_mappings(self, msid: int):
+	def delete_message_mappings(self, msid: int, bot_id: Optional[int] = None):
 		return 0
 	def cleanup_old_message_mappings(self, hours: int = 48):
 		return 0
-	# Author tracking stubs (for delete across restarts)
-	def save_message_author(self, msid: int, author_uid: int):
+	# Author tracking stubs (for delete across restarts) -- multi-bot aware
+	def save_message_author(self, msid: int, author_uid: int, bot_id: Optional[int] = None):
 		return
-	def get_message_author(self, msid: int):
+	def get_message_author(self, msid: int, bot_id: Optional[int] = None):
 		return None
-	def delete_message_author(self, msid: int):
+	def delete_message_author(self, msid: int, bot_id: Optional[int] = None):
 		return 0
 	def cleanup_old_message_authors(self, hours: int = 72):
 		return 0
 
-	# Pin tracking stubs (pinned messages are excluded from old-message purges)
-	def pin_msid(self, msid: int, by_uid: Optional[int] = None):
+	# Pin tracking stubs (pinned messages are excluded from old-message purges) -- multi-bot aware
+	def pin_msid(self, msid: int, by_uid: Optional[int] = None, bot_id: Optional[int] = None):
 		return
-	def unpin_msid(self, msid: int):
+	def unpin_msid(self, msid: int, bot_id: Optional[int] = None):
 		return 0
-	def get_pinned_msids(self):
+	def get_pinned_msids(self, bot_id: Optional[int] = None):
 		return []
-	def get_old_non_pinned_msids(self, cutoff=None):
+	def get_old_non_pinned_msids(self, cutoff=None, bot_id: Optional[int] = None):
 		"""Return msids older than cutoff (or all if None) that are not pinned (for /refresh purge / recreation)."""
 		return []
 
@@ -456,25 +456,41 @@ CREATE TABLE IF NOT EXISTS `message_mapping` (
 			self.db.execute("CREATE INDEX IF NOT EXISTS `idx_mm_msid` ON `message_mapping`(`msid`);")
 			self.db.execute("CREATE INDEX IF NOT EXISTS `idx_mm_uid_msid` ON `message_mapping`(`uid`, `msid`);")
 
-			# Per-msid author tracking so that delete/warn can work after cache expiry or restart
+			# Per-msid author tracking so that delete/warn can work after cache expiry or restart.
+			# bot_id added for multi-bot shared-DB deployments (msid numbers can collide across bots).
 			self.db.execute("""
 CREATE TABLE IF NOT EXISTS `message_authors` (
-	`msid` INTEGER PRIMARY KEY,
+	`msid` INTEGER NOT NULL,
 	`author_uid` BIGINT NOT NULL,
+	`bot_id` BIGINT,
 	`created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 			""".strip())
 			self.db.execute("CREATE INDEX IF NOT EXISTS `idx_ma_created` ON `message_authors`(`created_at`);")
+			self.db.execute("CREATE UNIQUE INDEX IF NOT EXISTS `idx_ma_msid_bot` ON `message_authors`(`msid`, `bot_id`);")
 
-			# Pinned msids (protected from purge/cleanup of old non-pinned messages; supports /unpin even for old pins)
+			# Pinned msids (protected from purge/cleanup of old non-pinned messages; supports /unpin even for old pins).
+			# Scoped by bot_id for multi-bot shared DB setups.
 			self.db.execute("""
 CREATE TABLE IF NOT EXISTS `pinned` (
-	`msid` INTEGER PRIMARY KEY,
+	`msid` INTEGER NOT NULL,
 	`pinned_by` BIGINT,
+	`bot_id` BIGINT,
 	`pinned_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 			""".strip())
 			self.db.execute("CREATE INDEX IF NOT EXISTS `idx_pinned_at` ON `pinned`(`pinned_at`);")
+			self.db.execute("CREATE UNIQUE INDEX IF NOT EXISTS `idx_pinned_msid_bot` ON `pinned`(`msid`, `bot_id`);")
+
+			# Migration: add bot_id to message_authors and pinned for multi-bot support (if the tables were created by older versions)
+			exists, _ = row_exists("message_authors", "bot_id")
+			if not exists:
+				self.db.execute("ALTER TABLE `message_authors` ADD `bot_id` BIGINT;")
+				self.db.execute("CREATE UNIQUE INDEX IF NOT EXISTS `idx_ma_msid_bot` ON `message_authors`(`msid`, `bot_id`);")
+			exists, _ = row_exists("pinned", "bot_id")
+			if not exists:
+				self.db.execute("ALTER TABLE `pinned` ADD `bot_id` BIGINT;")
+				self.db.execute("CREATE UNIQUE INDEX IF NOT EXISTS `idx_pinned_msid_bot` ON `pinned`(`msid`, `bot_id`);")
 
 			# Ensure bot_id column exists to disambiguate per-bot mappings
 			exists, cols = row_exists("message_mapping", "bot_id")
@@ -584,33 +600,49 @@ CREATE TABLE IF NOT EXISTS `bot_users` (
 				return []
 
 	# -- Message author tracking (for delete after restart / cache expiry) --
-	def save_message_author(self, msid: int, author_uid: int):
-		"""Record the original author of an msid so delete commands can notify even if message aged out of RAM cache."""
+	# Scoped by bot_id so multiple bots sharing a DB don't collide on numeric msid values.
+	def save_message_author(self, msid: int, author_uid: int, bot_id: Optional[int] = None):
+		"""Record the original author of an msid (optionally per bot_id)."""
 		with self.lock:
 			try:
-				self.db.execute(
-					"REPLACE INTO message_authors(`msid`,`author_uid`) VALUES (?,?)",
-					(msid, author_uid)
-				)
+				if bot_id is not None:
+					self.db.execute(
+						"REPLACE INTO message_authors(`msid`,`author_uid`,`bot_id`) VALUES (?,?,?)",
+						(msid, author_uid, bot_id)
+					)
+				else:
+					self.db.execute(
+						"REPLACE INTO message_authors(`msid`,`author_uid`) VALUES (?,?)",
+						(msid, author_uid)
+					)
 				self._mark_dirty()
 			except Exception as e:
 				logging.error("Failed to save message author: %s", e)
 
-	def get_message_author(self, msid: int):
-		"""Return the author uid for an msid, or None."""
+	def get_message_author(self, msid: int, bot_id: Optional[int] = None):
+		"""Return the author uid for an msid (preferring matching bot_id if provided)."""
 		with self.lock:
 			try:
-				cur = self.db.execute("SELECT author_uid FROM message_authors WHERE msid = ?", (msid,))
+				if bot_id is not None:
+					cur = self.db.execute(
+						"SELECT author_uid FROM message_authors WHERE msid = ? AND (bot_id = ? OR bot_id IS NULL) ORDER BY bot_id DESC LIMIT 1",
+						(msid, bot_id)
+					)
+				else:
+					cur = self.db.execute("SELECT author_uid FROM message_authors WHERE msid = ?", (msid,))
 				row = cur.fetchone()
 				return row[0] if row else None
 			except Exception as e:
 				logging.error("Failed to get message author: %s", e)
 				return None
 
-	def delete_message_author(self, msid: int):
+	def delete_message_author(self, msid: int, bot_id: Optional[int] = None):
 		with self.lock:
 			try:
-				cur = self.db.execute("DELETE FROM message_authors WHERE msid = ?", (msid,))
+				if bot_id is not None:
+					cur = self.db.execute("DELETE FROM message_authors WHERE msid = ? AND (bot_id = ? OR bot_id IS NULL)", (msid, bot_id))
+				else:
+					cur = self.db.execute("DELETE FROM message_authors WHERE msid = ?", (msid,))
 				if cur.rowcount > 0:
 					self._mark_dirty()
 				return cur.rowcount
@@ -618,14 +650,18 @@ CREATE TABLE IF NOT EXISTS `bot_users` (
 				logging.error("Failed to delete message author for msid %s: %s", msid, e)
 				return 0
 
-	def delete_message_mappings(self, msid: int):
-		"""Delete mappings (and author record) for an msid. Used after successful delete or expiry."""
+	def delete_message_mappings(self, msid: int, bot_id: Optional[int] = None):
+		"""Delete mappings (and author record) for an msid (scoped to bot if provided). Used after successful delete or expiry."""
 		with self.lock:
 			deleted = 0
 			try:
-				cur = self.db.execute("DELETE FROM message_mapping WHERE msid = ?", (msid,))
+				if bot_id is not None:
+					cur = self.db.execute("DELETE FROM message_mapping WHERE msid = ? AND (bot_id = ? OR bot_id IS NULL)", (msid, bot_id))
+					self.db.execute("DELETE FROM message_authors WHERE msid = ? AND (bot_id = ? OR bot_id IS NULL)", (msid, bot_id))
+				else:
+					cur = self.db.execute("DELETE FROM message_mapping WHERE msid = ?", (msid,))
+					self.db.execute("DELETE FROM message_authors WHERE msid = ?", (msid,))
 				deleted = cur.rowcount or 0
-				self.db.execute("DELETE FROM message_authors WHERE msid = ?", (msid,))
 				if deleted > 0:
 					self._mark_dirty()
 			except Exception as e:
@@ -680,23 +716,33 @@ CREATE TABLE IF NOT EXISTS `bot_users` (
 				return 0
 
 	# -- Pin tracking (for protecting important messages from bulk old purges + supporting long-lived /unpin) --
-	def pin_msid(self, msid: int, by_uid: Optional[int] = None):
-		"""Mark an msid as pinned (protected from age-based purge)."""
+	# bot_id scoped for multi-bot shared DBs (different communities can have colliding msid numbers).
+	def pin_msid(self, msid: int, by_uid: Optional[int] = None, bot_id: Optional[int] = None):
+		"""Mark an msid as pinned for this bot (protected from age-based purge)."""
 		with self.lock:
 			try:
-				self.db.execute(
-					"REPLACE INTO pinned(`msid`, `pinned_by`) VALUES (?, ?)",
-					(msid, by_uid)
-				)
+				if bot_id is not None:
+					self.db.execute(
+						"REPLACE INTO pinned(`msid`, `pinned_by`, `bot_id`) VALUES (?, ?, ?)",
+						(msid, by_uid, bot_id)
+					)
+				else:
+					self.db.execute(
+						"REPLACE INTO pinned(`msid`, `pinned_by`) VALUES (?, ?)",
+						(msid, by_uid)
+					)
 				self._mark_dirty()
 			except Exception as e:
 				logging.error("Failed to pin msid %s: %s", msid, e)
 
-	def unpin_msid(self, msid: int):
-		"""Remove pin protection for an msid (it becomes eligible for normal/old cleanup)."""
+	def unpin_msid(self, msid: int, bot_id: Optional[int] = None):
+		"""Remove pin protection for an msid (for this bot if bot_id given)."""
 		with self.lock:
 			try:
-				cur = self.db.execute("DELETE FROM pinned WHERE msid = ?", (msid,))
+				if bot_id is not None:
+					cur = self.db.execute("DELETE FROM pinned WHERE msid = ? AND (bot_id = ? OR bot_id IS NULL)", (msid, bot_id))
+				else:
+					cur = self.db.execute("DELETE FROM pinned WHERE msid = ?", (msid,))
 				if cur.rowcount > 0:
 					self._mark_dirty()
 				return cur.rowcount or 0
@@ -704,36 +750,46 @@ CREATE TABLE IF NOT EXISTS `bot_users` (
 				logging.error("Failed to unpin msid %s: %s", msid, e)
 				return 0
 
-	def get_pinned_msids(self):
-		"""Return list of currently pinned msids."""
+	def get_pinned_msids(self, bot_id: Optional[int] = None):
+		"""Return list of currently pinned msids (optionally for a specific bot)."""
 		with self.lock:
 			try:
-				cur = self.db.execute("SELECT msid FROM pinned")
+				if bot_id is not None:
+					cur = self.db.execute("SELECT msid FROM pinned WHERE bot_id = ? OR bot_id IS NULL", (bot_id,))
+				else:
+					cur = self.db.execute("SELECT msid FROM pinned")
 				return [row[0] for row in cur.fetchall()]
 			except Exception as e:
 				logging.error("Failed to get pinned msids: %s", e)
 				return []
 
-	def get_old_non_pinned_msids(self, cutoff=None):
-		"""Return msids that are not pinned.
+	def get_old_non_pinned_msids(self, cutoff=None, bot_id: Optional[int] = None):
+		"""Return msids that are not pinned (for this bot if bot_id provided).
 		If cutoff is provided, only those with created_at < cutoff.
 		If cutoff is None, returns *all* non-pinned (for full /refresh all or recreation)."""
 		with self.lock:
 			try:
-				if cutoff is None:
-					cur = self.db.execute(
-						"""SELECT msid FROM message_authors
-						   WHERE msid NOT IN (SELECT msid FROM pinned)
-						   ORDER BY created_at"""
-					)
+				params = []
+				where = []
+				if cutoff is not None:
+					where.append("created_at < ?")
+					params.append(cutoff)
+				# Exclude msids that have a pin for this bot (or legacy NULL bot_id)
+				if bot_id is not None:
+					where.append("""msid NOT IN (
+						SELECT msid FROM pinned 
+						WHERE (bot_id = ? OR bot_id IS NULL)
+					)""")
+					params.append(bot_id)
 				else:
-					cur = self.db.execute(
-						"""SELECT msid FROM message_authors
-						   WHERE created_at < ?
-						     AND msid NOT IN (SELECT msid FROM pinned)
-						   ORDER BY created_at""",
-						(cutoff,)
-					)
+					where.append("msid NOT IN (SELECT msid FROM pinned)")
+
+				sql = "SELECT msid FROM message_authors"
+				if where:
+					sql += " WHERE " + " AND ".join(where)
+				sql += " ORDER BY created_at"
+
+				cur = self.db.execute(sql, tuple(params))
 				return [row[0] for row in cur.fetchall()]
 			except Exception as e:
 				logging.error("Failed to get old non-pinned msids: %s", e)
