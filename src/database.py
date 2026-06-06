@@ -467,7 +467,6 @@ CREATE TABLE IF NOT EXISTS `message_authors` (
 );
 			""".strip())
 			self.db.execute("CREATE INDEX IF NOT EXISTS `idx_ma_created` ON `message_authors`(`created_at`);")
-			self.db.execute("CREATE UNIQUE INDEX IF NOT EXISTS `idx_ma_msid_bot` ON `message_authors`(`msid`, `bot_id`);")
 
 			# Pinned msids (protected from purge/cleanup of old non-pinned messages; supports /unpin even for old pins).
 			# Scoped by bot_id for multi-bot shared DB setups.
@@ -480,17 +479,19 @@ CREATE TABLE IF NOT EXISTS `pinned` (
 );
 			""".strip())
 			self.db.execute("CREATE INDEX IF NOT EXISTS `idx_pinned_at` ON `pinned`(`pinned_at`);")
-			self.db.execute("CREATE UNIQUE INDEX IF NOT EXISTS `idx_pinned_msid_bot` ON `pinned`(`msid`, `bot_id`);")
 
-			# Migration: add bot_id to message_authors and pinned for multi-bot support (if the tables were created by older versions)
+			# Migration: add bot_id to message_authors and pinned for multi-bot support
+			# (if the tables were created by older versions of the code)
 			exists, _ = row_exists("message_authors", "bot_id")
 			if not exists:
 				self.db.execute("ALTER TABLE `message_authors` ADD `bot_id` BIGINT;")
-				self.db.execute("CREATE UNIQUE INDEX IF NOT EXISTS `idx_ma_msid_bot` ON `message_authors`(`msid`, `bot_id`);")
 			exists, _ = row_exists("pinned", "bot_id")
 			if not exists:
 				self.db.execute("ALTER TABLE `pinned` ADD `bot_id` BIGINT;")
-				self.db.execute("CREATE UNIQUE INDEX IF NOT EXISTS `idx_pinned_msid_bot` ON `pinned`(`msid`, `bot_id`);")
+
+			# Now safe to create the bot_id indexes (column exists for both fresh and migrated DBs)
+			self.db.execute("CREATE UNIQUE INDEX IF NOT EXISTS `idx_ma_msid_bot` ON `message_authors`(`msid`, `bot_id`);")
+			self.db.execute("CREATE UNIQUE INDEX IF NOT EXISTS `idx_pinned_msid_bot` ON `pinned`(`msid`, `bot_id`);")
 
 			# Ensure bot_id column exists to disambiguate per-bot mappings
 			exists, cols = row_exists("message_mapping", "bot_id")
